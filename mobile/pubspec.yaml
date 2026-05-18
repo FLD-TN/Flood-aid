@@ -1,0 +1,36 @@
+name: mobile
+description: "FloodAid - Nền tảng Hỗ trợ Điều phối Cứu trợ Lũ lụt"
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # HTTP & API
+  http: ^1.6.0
+  
+  # GPS & Location
+  geolocator: ^14.0.2
+  
+  # Local Storage
+  shared_preferences: ^2.3.0
+  
+  # UI
+  google_fonts: ^6.2.1
+  flutter_map: ^8.3.0
+  latlong2: ^0.9.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/

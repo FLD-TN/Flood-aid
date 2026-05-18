@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-background text-on-background font-body-md overflow-hidden;
+  }
+}
+
+@layer utilities {
+  .glass-panel {
+    background: rgba(20, 38, 55, 0.75);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  
+  .pulse-teal {
+    box-shadow: 0 0 0 0 rgba(60, 186, 178, 0.7);
+    animation: pulse-teal-anim 2s infinite;
+  }
+  
+  @keyframes pulse-teal-anim {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(60, 186, 178, 0.7); }
+    70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(60, 186, 178, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(60, 186, 178, 0); }
+  }
+  
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+}
+
+/* Ensure Leaflet map takes full height */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+}

@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RescueCore | Ocean Depth Command</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&amp;family=Instrument+Serif:ital,wght@0,400;1,400&amp;family=JetBrains+Mono:wght@400;500&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                "surface-bright": "#2c3a4a",
+                "outline-variant": "#43474a",
+                "on-primary-fixed": "#151d20",
+                "primary": "#3CBAB2",
+                "on-primary": "#0B1A28",
+                "on-surface": "#E8F0F5",
+                "secondary": "#b3cada",
+                "on-tertiary-fixed-variant": "#00504c",
+                "on-background": "#E8F0F5",
+                "primary-container": "#1d3d3b",
+                "surface-container-highest": "#283645",
+                "on-primary-container": "#80f6ed",
+                "on-error-container": "#ffdad6",
+                "outline": "#8d9194",
+                "surface-container-low": "#0e1d2b",
+                "tertiary-container": "#80f6ed",
+                "inverse-on-surface": "#233241",
+                "error-container": "#93000a",
+                "surface-container-lowest": "#020f1d",
+                "on-secondary-container": "#a2b8c8",
+                "surface-container": "#12212f",
+                "primary-fixed-dim": "#c0c8cd",
+                "on-surface-variant": "#c4c7c9",
+                "error": "#ffb4ab",
+                "primary-fixed": "#dce4e9",
+                "on-tertiary-container": "#00716b",
+                "on-primary-fixed-variant": "#40484c",
+                "surface": "#142637",
+                "secondary-fixed": "#cfe6f7",
+                "on-tertiary": "#003734",
+                "secondary-container": "#344957",
+                "on-tertiary-fixed": "#00201e",
+                "tertiary-fixed": "#80f6ed",
+                "on-error": "#690005",
+                "surface-container-high": "#1d2b3a",
+                "on-secondary": "#1d3340",
+                "surface-dim": "#051422",
+                "inverse-surface": "#d5e4f8",
+                "tertiary-fixed-dim": "#61d9d0",
+                "secondary-fixed-dim": "#b3cada",
+                "inverse-primary": "#576064",
+                "tertiary": "#3CBAB2",
+                "surface-tint": "#c0c8cd",
+                "surface-variant": "#283645",
+                "on-secondary-fixed": "#061e2a",
+                "on-secondary-fixed-variant": "#344957",
+                "background": "#0B1A28"
+            },
+            "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+            },
+            "spacing": {
+                "sm": "8px",
+                "lg": "32px",
+                "md": "16px",
+                "xl": "64px",
+                "container-margin": "24px",
+                "gutter": "16px"
+            },
+            "fontFamily": {
+                "h2": ["Instrument Serif"],
+                "body-lg": ["Inter"],
+                "display": ["Instrument Serif"],
+                "body-md": ["Inter"],
+                "label-sm": ["JetBrains Mono"],
+                "display-mobile": ["Instrument Serif"],
+                "h1": ["Instrument Serif"]
+            },
+            "fontSize": {
+                "h2": ["2rem", {"lineHeight": "1.3", "fontWeight": "400"}],
+                "body-lg": ["1.125rem", {"lineHeight": "1.6", "fontWeight": "400"}],
+                "display": ["4.5rem", {"lineHeight": "1.1", "letterSpacing": "-0.015em", "fontWeight": "400"}],
+                "body-md": ["1rem", {"lineHeight": "1.6", "fontWeight": "400"}],
+                "label-sm": ["0.75rem", {"lineHeight": "1", "letterSpacing": "0.04em", "fontWeight": "400"}],
+                "display-mobile": ["3rem", {"lineHeight": "1.1", "fontWeight": "400"}],
+                "h1": ["2.5rem", {"lineHeight": "1.2", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(20, 38, 55, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .pulse-teal {
+            box-shadow: 0 0 0 0 rgba(60, 186, 178, 0.7);
+            animation: pulse-teal-anim 2s infinite;
+        }
+        @keyframes pulse-teal-anim {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(60, 186, 178, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(60, 186, 178, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(60, 186, 178, 0); }
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md overflow-hidden">
+<!-- SIDE NAVIGATION BAR -->
+<aside class="h-screen w-20 hover:w-64 transition-all duration-300 fixed left-0 top-0 z-50 bg-surface-container-lowest border-r border-outline-variant flex flex-col py-lg group">
+<div class="px-md mb-xl flex items-center overflow-hidden whitespace-nowrap">
+<span class="material-symbols-outlined text-primary text-2xl mr-md" data-icon="dashboard">dashboard</span>
+<div class="opacity-0 group-hover:opacity-100 transition-opacity">
+<h1 class="font-h1 text-2xl text-on-surface">RescueCore</h1>
+<p class="font-label-sm text-[10px] uppercase tracking-widest text-on-surface-variant">Incident Command</p>
+</div>
+</div>
+<nav class="flex-1 space-y-sm px-sm">
+<!-- Dashboard Active -->
+<a class="flex items-center p-md rounded-lg text-primary border-l-4 border-primary bg-primary/10 transition-all duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="ml-lg opacity-0 group-hover:opacity-100 font-label-sm">Dashboard</span>
+</a>
+<a class="flex items-center p-md rounded-lg text-on-surface-variant hover:bg-surface-bright transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="warning">warning</span>
+<span class="ml-lg opacity-0 group-hover:opacity-100 font-label-sm">Alerts</span>
+</a>
+<a class="flex items-center p-md rounded-lg text-on-surface-variant hover:bg-surface-bright transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="groups">groups</span>
+<span class="ml-lg opacity-0 group-hover:opacity-100 font-label-sm">Teams</span>
+</a>
+<a class="flex items-center p-md rounded-lg text-on-surface-variant hover:bg-surface-bright transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="map">map</span>
+<span class="ml-lg opacity-0 group-hover:opacity-100 font-label-sm">Map</span>
+</a>
+<a class="flex items-center p-md rounded-lg text-on-surface-variant hover:bg-surface-bright transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="assessment">assessment</span>
+<span class="ml-lg opacity-0 group-hover:opacity-100 font-label-sm">Reports</span>
+</a>
+<a class="flex items-center p-md rounded-lg text-on-surface-variant hover:bg-surface-bright transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="ml-lg opacity-0 group-hover:opacity-100 font-label-sm">Settings</span>
+</a>
+</nav>
+</aside>
+<!-- TOP NAVIGATION BAR -->
+<header class="fixed top-0 right-0 left-20 z-40 bg-surface/80 backdrop-blur-md border-b border-outline-variant flex justify-between items-center h-16 px-gutter w-full">
+<div class="flex items-center gap-xl">
+<h2 class="font-h1 text-2xl text-on-surface">RescueCore Admin</h2>
+<div class="relative hidden lg:block w-96">
+<span class="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-on-surface-variant" data-icon="search">search</span>
+<input class="bg-surface-container-low border-outline-variant text-on-surface w-full pl-xl py-2 rounded-lg focus:ring-primary focus:border-primary font-body-md text-sm" placeholder="Search coordinates, teams, or alerts..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-lg">
+<div class="flex items-center gap-md">
+<button class="p-2 text-on-surface-variant hover:bg-surface-bright rounded-full transition-all duration-200">
+<span class="material-symbols-outlined" data-icon="notifications_active">notifications_active</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-surface-bright rounded-full transition-all duration-200">
+<span class="material-symbols-outlined" data-icon="sensors">sensors</span>
+</button>
+</div>
+<div class="h-8 w-px bg-outline-variant"></div>
+<div class="flex items-center gap-sm cursor-pointer hover:bg-surface-bright p-1 pr-3 rounded-full transition-all">
+<img alt="Chief Controller Profile" class="h-8 w-8 rounded-full border border-primary" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCMEnLOQ6hx7rDRubTGr5gVc_zUq_3ZDMUkv87wSvfDYMu72Hz2h7Cit4LjSn3mO1GELjo9vjVg2lTHSNpuMKD1r0CIu-3XP9l45Y-cHQP_gabYG6oDoG0lG9IGPOLfE699F3ctZBo7rIEaGEAwFTIfJTEfS8jmuA4Qk5wXOd0KEUEf22HEtMODZMjCpMozxU05NmpvmwbbmO0jNqqlE3wV2MyiFDwwKut7eP2uVakhHChBb23yg6S_COOSVimAR73Wb3ez-fs6TiI_"/>
+<span class="font-label-sm text-on-surface hidden md:block">Chief Controller</span>
+</div>
+</div>
+</header>
+<!-- MAIN CONTENT CANVAS -->
+<main class="ml-20 pt-16 h-screen relative w-[calc(100%-5rem)] bg-background">
+<!-- FULL BACKGROUND MAP -->
+<div class="absolute inset-0 z-0 overflow-hidden">
+<img class="w-full h-full object-cover opacity-60 mix-blend-luminosity grayscale" data-alt="A highly detailed aerial terrain map of Central Vietnam during a severe flooding event. Deep blue-toned shadows to highlight the water's path." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB8dak5tgPVoeQkK23E0-FzlT1loU6OkISTaM1xzSKdBb-OZKdQ2Dr-SwEXPOyvBQe8XN_tDwAXEOdJZnU42wyQqtGbHrNHr63BUhtIhUFD_3FOgTOsiN5BvrLDeR44IrhWelLscJOhPbCqPOunDI56lrkF6LBNw1L0bs9bfGDoMvgnZv3SnU6BHag5Zd0cOP89N4MzP5glLa-TJODXX_sni5e7LlrLMmdwdbn3TSyqwQ29atLJBqIYbsr4hrF7u68BDVg-gaBeH3UQ"/>
+<!-- Map Indicators -->
+<div class="absolute top-[40%] left-[30%] pulse-teal w-4 h-4 bg-primary rounded-full border-2 border-surface z-10" title="SOS: Da Nang Sector 4"></div>
+<div class="absolute top-[55%] left-[45%] pulse-teal w-4 h-4 bg-primary rounded-full border-2 border-surface z-10" title="SOS: Hoi An Old Town"></div>
+<div class="absolute top-[32%] left-[58%] w-8 h-8 bg-surface-bright text-primary flex items-center justify-center rounded-full shadow-lg border border-primary/30 z-10" title="Rescue Team Alpha">
+<span class="material-symbols-outlined text-[18px]" data-icon="directions_boat">directions_boat</span>
+</div>
+<div class="absolute top-[48%] left-[22%] w-8 h-8 bg-surface-bright text-primary flex items-center justify-center rounded-full shadow-lg border border-primary/30 z-10" title="Rescue Team Beta">
+<span class="material-symbols-outlined text-[18px]" data-icon="directions_boat">directions_boat</span>
+</div>
+</div>
+<!-- OVERLAY: TOP METRICS -->
+<div class="absolute top-gutter left-gutter right-gutter z-20 flex gap-gutter">
+<div class="glass-panel flex-1 px-lg py-md rounded-xl flex items-center gap-md border-l-4 border-l-primary">
+<div class="bg-primary/20 p-sm rounded-lg text-primary">
+<span class="material-symbols-outlined" data-icon="emergency">emergency</span>
+</div>
+<div>
+<p class="font-label-sm text-[10px] text-on-surface-variant uppercase tracking-widest">Active SOS</p>
+<p class="font-h1 text-3xl text-on-surface">142</p>
+</div>
+</div>
+<div class="glass-panel flex-1 px-lg py-md rounded-xl flex items-center gap-md">
+<div class="bg-surface-bright p-sm rounded-lg text-primary">
+<span class="material-symbols-outlined" data-icon="groups">groups</span>
+</div>
+<div>
+<p class="font-label-sm text-[10px] text-on-surface-variant uppercase tracking-widest">Deployed Teams</p>
+<p class="font-h1 text-3xl text-on-surface">85</p>
+</div>
+</div>
+<div class="glass-panel flex-1 px-lg py-md rounded-xl flex items-center gap-md">
+<div class="bg-surface-bright p-sm rounded-lg text-primary">
+<span class="material-symbols-outlined" data-icon="health_and_safety">health_and_safety</span>
+</div>
+<div>
+<p class="font-label-sm text-[10px] text-on-surface-variant uppercase tracking-widest">Progress Saved</p>
+<p class="font-h1 text-3xl text-on-surface">1,204</p>
+</div>
+</div>
+</div>
+<!-- OVERLAY: LEFT PANEL (SOS FEED) -->
+<div class="absolute top-32 left-gutter bottom-gutter w-80 z-20 flex flex-col gap-md">
+<div class="glass-panel rounded-xl flex-1 flex flex-col overflow-hidden border border-outline-variant/30">
+<div class="p-md border-b border-outline-variant/30 flex justify-between items-center bg-surface-dim/40">
+<h3 class="font-label-sm text-xs font-bold text-on-surface flex items-center gap-xs">
+<span class="material-symbols-outlined text-primary text-[18px]" data-icon="fmd_bad">fmd_bad</span>
+                    PRIORITY ALERTS
+                </h3>
+<span class="px-2 py-[2px] bg-primary/20 text-primary text-[10px] rounded font-bold uppercase tracking-tighter">Live</span>
+</div>
+<div class="flex-1 overflow-y-auto p-sm space-y-sm">
+<!-- Alert Item -->
+<div class="p-md rounded-lg bg-surface-dim/60 border border-outline-variant/20 hover:border-primary/50 transition-colors cursor-pointer group">
+<div class="flex justify-between items-start mb-xs">
+<span class="font-label-sm text-[10px] text-primary uppercase">Urgent #882</span>
+<span class="font-label-sm text-[10px] text-on-surface-variant">2m ago</span>
+</div>
+<p class="font-body-md text-sm text-on-surface font-semibold">Cam Le Sector 2</p>
+<div class="mt-sm p-2 bg-surface-container-lowest rounded text-[11px] text-on-surface-variant border-l-2 border-primary">
+<span class="text-primary font-bold">AI Summary:</span> Rooftop evacuation needed for 5 citizens. Water rising 10cm/hr.
+                    </div>
+</div>
+<!-- Alert Item -->
+<div class="p-md rounded-lg bg-surface-dim/20 border border-outline-variant/20 hover:border-primary/50 transition-colors cursor-pointer">
+<div class="flex justify-between items-start mb-xs">
+<span class="font-label-sm text-[10px] text-on-surface-variant uppercase">High #879</span>
+<span class="font-label-sm text-[10px] text-on-surface-variant">8m ago</span>
+</div>
+<p class="font-body-md text-sm text-on-surface font-semibold">Son Tra Peninsula</p>
+<div class="mt-sm p-2 bg-surface-container-lowest rounded text-[11px] text-on-surface-variant border-l-2 border-outline">
+<span class="text-on-surface font-bold">AI Summary:</span> Medical supplies request. 2 patients with fever.
+                    </div>
+</div>
+<!-- Alert Item -->
+<div class="p-md rounded-lg bg-surface-dim/20 border border-outline-variant/20 hover:border-primary/50 transition-colors cursor-pointer">
+<div class="flex justify-between items-start mb-xs">
+<span class="font-label-sm text-[10px] text-primary uppercase">Urgent #875</span>
+<span class="font-label-sm text-[10px] text-on-surface-variant">14m ago</span>
+</div>
+<p class="font-body-md text-sm text-on-surface font-semibold">Lien Chieu District</p>
+<div class="mt-sm p-2 bg-surface-container-lowest rounded text-[11px] text-on-surface-variant border-l-2 border-primary">
+<span class="text-primary font-bold">AI Summary:</span> Electrical hazard reported near evacuation center.
+                    </div>
+</div>
+</div>
+<div class="p-sm bg-surface-dim/60 border-t border-outline-variant/30">
+<button class="w-full py-2 bg-primary text-on-primary font-label-sm text-xs rounded-lg hover:brightness-110 transition-all uppercase tracking-widest font-bold">View Dispatch Queue</button>
+</div>
+</div>
+</div>
+<!-- OVERLAY: BOTTOM PANEL (ACTIVITY LOG) -->
+<div class="absolute bottom-gutter left-[340px] right-gutter z-20">
+<div class="glass-panel rounded-xl flex flex-col border border-outline-variant/30">
+<div class="px-lg py-sm border-b border-outline-variant/30 flex justify-between items-center cursor-pointer hover:bg-surface-bright/20">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-primary text-[20px]" data-icon="history">history</span>
+<h3 class="font-label-sm text-xs font-bold text-on-surface uppercase tracking-widest">Volunteer Activity Log</h3>
+<div class="flex items-center gap-xs ml-lg">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+<span class="font-label-sm text-[10px] text-on-surface-variant">42 Active Threads</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="keyboard_arrow_up">keyboard_arrow_up</span>
+</div>
+<!-- Mini Log Preview -->
+<div class="p-sm flex gap-md overflow-x-auto no-scrollbar">
+<div class="min-w-[280px] p-sm bg-surface-dim/40 rounded-lg flex items-center gap-sm border border-outline-variant/20">
+<img alt="Volunteer 1" class="w-8 h-8 rounded-full border border-primary/50" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBkhzjqe_s4_oObLoHes43KeRCkZfOWvcHiKCjlpYl0aKda-5y-saYDBHiFtzHPGHOLPYXMwYfQa2ByZ-xDzzrBZtDZS0e6YvWmZVWwNym-7dqdXEwn_vsKhMMgzSX-AR27RDjdkw9d85bYfgrkuZK5RzMYcWWPgKdmEzs0zNHqpSQjQZT9vcH2vSzpbhGQ5hThQ54aHnQlaQqAOkPAOHdhKwXDgQHEO-NQHGzjuJuCk9cNoQ8ayc6AUFGhB-MrU4UjlTDT3wqFB8BD"/>
+<div class="flex-1 overflow-hidden">
+<p class="font-label-sm text-xs text-on-surface truncate">Minh Hoang</p>
+<p class="font-label-sm text-[9px] text-primary">Delivered food at Point Alpha</p>
+</div>
+<span class="font-label-sm text-[9px] text-on-surface-variant">Now</span>
+</div>
+<div class="min-w-[280px] p-sm bg-surface-dim/40 rounded-lg flex items-center gap-sm border border-outline-variant/20">
+<img alt="Volunteer 2" class="w-8 h-8 rounded-full border border-outline-variant" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCBHXnywu2FcPGq_fFPdwSN_UjSQ-eQtrhoQm-4azTZq8948_43JiXnOHM5rT9ztCVCgH2lbed6TjDP5vlgIqouUtbVn0pytt4VOo59zVOQBNzf5I-2mtW1i0sCIOAMxBD2s1Bx60Jke0c-t0Ic_0d9axMCp9ZuxJXTVWgTC6er6I66HVnD5aKtO7GdaMWDQYlyFC4K1R5OEGQE4JtogNP_515H_kg6C1kfKNygTKYVFWPEF_k0rZ65YE-L72KYyLN6US8Vfm49DQo8"/>
+<div class="flex-1 overflow-hidden">
+<p class="font-label-sm text-xs text-on-surface truncate">Thanh Van</p>
+<p class="font-label-sm text-[9px] text-on-surface-variant">Arrived at Da Nang Central Base</p>
+</div>
+<span class="font-label-sm text-[9px] text-on-surface-variant">4m</span>
+</div>
+<div class="min-w-[280px] p-sm bg-surface-dim/40 rounded-lg flex items-center gap-sm border border-outline-variant/20">
+<img alt="Volunteer 3" class="w-8 h-8 rounded-full border border-primary/50" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDMcUQ-5imCuakeyKw_TrFiUeUHq1cmqlcTgHHOgzZRQwxpblM0dJmuewfsO0E4m4JRXAXg_mQ57H1CwB35trxJkiP77BYvMFOIdPdqMG9Gxdw0-iXWYsOVWLjrJ6OpoKR5Oe4wYpNhL_kXvOr1wsFm-kkreVVRtaTIFm4KoS0eeZBwxC-I9x8o-qZfF1khtnPcP8h3OSrJFCXYDWMKMQ5kB_xltNZYo16nHwiYp6W-2VoCxTjPUYHEDblBI4UJDS9Fx2iVR8f-nVDY"/>
+<div class="flex-1 overflow-hidden">
+<p class="font-label-sm text-xs text-on-surface truncate">Quoc Bao</p>
+<p class="font-label-sm text-[9px] text-primary">Boat deployment - Sector 2</p>
+</div>
+<span class="font-label-sm text-[9px] text-on-surface-variant">12m</span>
+</div>
+</div>
+</div>
+</div>
+<!-- FLOATING ACTION BUTTON -->
+<button class="absolute bottom-32 right-gutter z-30 w-14 h-14 rounded-full bg-primary text-on-primary shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[32px]" data-icon="add_alert">add_alert</span>
+</button>
+<!-- MAP CONTROLS -->
+<div class="absolute bottom-32 right-gutter translate-y-[-72px] z-30 flex flex-col gap-xs">
+<button class="w-10 h-10 glass-panel rounded-lg flex items-center justify-center hover:bg-surface-bright transition-colors text-on-surface-variant hover:text-primary">
+<span class="material-symbols-outlined text-[20px]" data-icon="layers">layers</span>
+</button>
+<button class="w-10 h-10 glass-panel rounded-lg flex items-center justify-center hover:bg-surface-bright transition-colors text-on-surface-variant hover:text-primary">
+<span class="material-symbols-outlined text-[20px]" data-icon="near_me">near_me</span>
+</button>
+<button class="w-10 h-10 glass-panel rounded-lg flex items-center justify-center hover:bg-surface-bright transition-colors text-on-surface-variant hover:text-primary">
+<span class="material-symbols-outlined text-[20px]" data-icon="add">add</span>
+</button>
+<button class="w-10 h-10 glass-panel rounded-lg flex items-center justify-center hover:bg-surface-bright transition-colors text-on-surface-variant hover:text-primary">
+<span class="material-symbols-outlined text-[20px]" data-icon="remove">remove</span>
+</button>
+</div>
+</main>
+</body></html>

@@ -1,0 +1,211 @@
+/**
+ * Database migrations for FloodAid
+ * Run: node src/db/migrations.js
+ */
+require('dotenv').config({ path: require('path').join(__dirname, '../../.env') });
+const { Pool } = require('pg');
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
+
+const migration001 = `
+-- Enable PostGIS
+CREATE EXTENSION IF NOT EXISTS postgis;
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Enum types
+DO $$ BEGIN
+  CREATE TYPE case_status AS ENUM ('pending', 'responding', 'on_scene', 'resolved');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE flag_type AS ENUM ('tree_down', 'bridge_collapsed', 'flooded_road');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE user_role AS ENUM ('victim', 'volunteer', 'admin');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- Bảng victims (Nạn nhân)
+CREATE TABLE IF NOT EXISTS victims (
+  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  phone_hash  VARCHAR(64) UNIQUE NOT NULL,
+  firebase_uid VARCHAR(128) UNIQUE,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Bảng volunteers (TNV)
+CREATE TABLE IF NOT EXISTS volunteers (
+  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  phone_hash      VARCHAR(64) UNIQUE NOT NULL,
+  firebase_uid    VARCHAR(128) UNIQUE,
+  full_name       VARCHAR(255),
+  cccd_verified   BOOLEAN DEFAULT FALSE,
+  admin_approved  BOOLEAN DEFAULT FALSE,
+  skills          JSONB DEFAULT '[]',
+  current_coords  GEOMETRY(POINT, 4326),
+  last_seen_at    TIMESTAMPTZ,
+  is_available    BOOLEAN DEFAULT FALSE,
+  fcm_token       TEXT,
+  flag_count      INT DEFAULT 0,
+  created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Bảng cases (Ca SOS)
+CREATE TABLE IF NOT EXISTS cases (
+  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  phone_hash      VARCHAR(64) NOT NULL,
+  coords          GEOMETRY(POINT, 4326) NOT NULL,
+  text_raw        TEXT,
+  urgency_level   SMALLINT NOT NULL CHECK (urgency_level BETWEEN 1 AND 5),
+  tags            JSONB DEFAULT '[]',
+  summary_1line   TEXT NOT NULL,
+  status          case_status DEFAULT 'pending',
+  tnv_distance_m  INT,
+  ai_source       VARCHAR(20),
+  created_at      TIMESTAMPTZ DEFAULT NOW(),
+  resolved_at     TIMESTAMPTZ
+);
+
+-- Bảng case_assignments (TNV nhận ca)
+CREATE TABLE IF NOT EXISTS case_assignments (
+  id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  case_id           UUID NOT NULL REFERENCES cases(id),
+  volunteer_id      UUID NOT NULL REFERENCES volunteers(id),
+  initial_distance_m INT,
+  assigned_at       TIMESTAMPTZ DEFAULT NOW(),
+  warned_at         TIMESTAMPTZ,
+  confirmed_en_route BOOLEAN DEFAULT TRUE,
+  arrived_at        TIMESTAMPTZ,
+  completed_at      TIMESTAMPTZ,
+  revoked_at        TIMESTAMPTZ,
+  notif_sent_300m   BOOLEAN DEFAULT FALSE,
+  notif_sent_100m   BOOLEAN DEFAULT FALSE,
+  UNIQUE(case_id, volunteer_id)
+);
+
+-- Bảng warning_flags (Cờ cảnh báo tuyến đường)
+CREATE TABLE IF NOT EXISTS warning_flags (
+  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  coords          GEOMETRY(POINT, 4326) NOT NULL,
+  type            flag_type NOT NULL,
+  created_by      UUID NOT NULL,
+  is_active       BOOLEAN DEFAULT TRUE,
+  created_at      TIMESTAMPTZ DEFAULT NOW(),
+  deactivated_at  TIMESTAMPTZ
+);
+
+-- Bảng admins
+CREATE TABLE IF NOT EXISTS admins (
+  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  email       VARCHAR(255) UNIQUE NOT NULL,
+  firebase_uid VARCHAR(128) UNIQUE,
+  full_name   VARCHAR(255),
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Bảng chống spam FCM cờ
+CREATE TABLE IF NOT EXISTS volunteer_flag_alerts (
+  volunteer_id UUID NOT NULL REFERENCES volunteers(id),
+  flag_id      UUID NOT NULL REFERENCES warning_flags(id),
+  alerted_at   TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (volunteer_id, flag_id, alerted_at)
+);
+`;
+
+const migration002 = `
+-- Cases
+CREATE INDEX IF NOT EXISTS idx_cases_coords ON cases USING GIST(coords);
+CREATE INDEX IF NOT EXISTS idx_cases_status ON cases (status) WHERE status != 'resolved';
+CREATE INDEX IF NOT EXISTS idx_cases_phone_hash ON cases (phone_hash);
+CREATE INDEX IF NOT EXISTS idx_cases_urgency ON cases (urgency_level) WHERE status != 'resolved';
+
+-- Volunteers
+CREATE INDEX IF NOT EXISTS idx_volunteers_coords ON volunteers USING GIST(current_coords);
+CREATE INDEX IF NOT EXISTS idx_volunteers_available ON volunteers (is_available, admin_approved) 
+  WHERE is_available = true AND admin_approved = true;
+
+-- Warning flags
+CREATE INDEX IF NOT EXISTS idx_flags_coords ON warning_flags USING GIST(coords) WHERE is_active = true;
+
+-- Case assignments
+CREATE INDEX IF NOT EXISTS idx_assignments_case ON case_assignments (case_id);
+CREATE INDEX IF NOT EXISTS idx_assignments_volunteer ON case_assignments (volunteer_id);
+`;
+
+const migration003 = `
+-- View: Active cases với thông tin đầy đủ cho Admin Dashboard
+CREATE OR REPLACE VIEW v_active_cases AS
+SELECT 
+  c.id,
+  c.coords,
+  ST_X(c.coords::geometry) AS lon,
+  ST_Y(c.coords::geometry) AS lat,
+  c.urgency_level,
+  c.tags,
+  c.summary_1line,
+  c.status,
+  c.tnv_distance_m,
+  c.created_at,
+  EXTRACT(EPOCH FROM (NOW() - c.created_at))/60 AS minutes_waiting,
+  COUNT(ca.id) FILTER (WHERE ca.revoked_at IS NULL AND ca.completed_at IS NULL) AS responding_count
+FROM cases c
+LEFT JOIN case_assignments ca ON ca.case_id = c.id
+WHERE c.status != 'resolved'
+GROUP BY c.id;
+
+-- View: Available volunteers với vị trí hiện tại
+CREATE OR REPLACE VIEW v_available_volunteers AS
+SELECT 
+  v.id,
+  v.full_name,
+  v.skills,
+  v.fcm_token,
+  v.flag_count,
+  v.is_available,
+  ST_X(v.current_coords::geometry) AS lon,
+  ST_Y(v.current_coords::geometry) AS lat,
+  v.last_seen_at,
+  EXTRACT(EPOCH FROM (NOW() - v.last_seen_at))/60 AS minutes_since_update
+FROM volunteers v
+WHERE v.admin_approved = true
+  AND v.current_coords IS NOT NULL;
+`;
+
+async function runMigrations() {
+  const client = await pool.connect();
+  try {
+    console.log('[Migration] Running migration 001: Extensions & Core Tables...');
+    await client.query(migration001);
+    console.log('[Migration] ✓ Migration 001 complete');
+
+    console.log('[Migration] Running migration 002: Indexes...');
+    await client.query(migration002);
+    console.log('[Migration] ✓ Migration 002 complete');
+
+    console.log('[Migration] Running migration 003: Views...');
+    await client.query(migration003);
+    console.log('[Migration] ✓ Migration 003 complete');
+
+    console.log('[Migration] All migrations completed successfully!');
+  } catch (err) {
+    console.error('[Migration] Error:', err.message);
+    throw err;
+  } finally {
+    client.release();
+    await pool.end();
+  }
+}
+
+// Run directly if called as script
+if (require.main === module) {
+  runMigrations()
+    .then(() => process.exit(0))
+    .catch(() => process.exit(1));
+}
+
+module.exports = { runMigrations };

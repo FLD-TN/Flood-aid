@@ -1,0 +1,3 @@
+Trước mỗi task: đọc .agent/DESIGN.md và .agent/RULES.md.
+Xác định Module (1-5), đọc skill file tương ứng trong .agent/skills/.
+Tuân thủ tuyệt đối naming convention và tech stack đã định nghĩa.
