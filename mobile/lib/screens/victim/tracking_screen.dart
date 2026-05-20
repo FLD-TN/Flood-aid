@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
+import '../../widgets/map_widget.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -36,6 +37,10 @@ class _TrackingScreenState extends State<TrackingScreen> {
   late double _victimLat;
   late double _victimLon;
 
+  // Draggable sheet controller
+  final DraggableScrollableController _sheetController =
+      DraggableScrollableController();
+
   @override
   void initState() {
     super.initState();
@@ -52,6 +57,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
   @override
   void dispose() {
     _pollTimer?.cancel();
+    _sheetController.dispose();
     super.dispose();
   }
 
@@ -87,83 +93,11 @@ class _TrackingScreenState extends State<TrackingScreen> {
     return getStatusConfig(_status, distanceM: _distanceM);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            Expanded(
-              child: Stack(
-                children: [
-                  _buildMap(),
-                  _buildSafeMapPill(),
-                  _buildBottomSheet(),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  void _centerOnVictim() {
+    _mapController.move(LatLng(_victimLat, _victimLon), 15.0);
   }
 
-  Widget _buildHeader() {
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
-          ),
-          const Spacer(),
-          Text(
-            'Theo dõi Ca SOS',
-            style: AppTypography.headingMedium.copyWith(
-              color: AppColors.alertRed,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const Spacer(),
-          // Live indicator
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.alertRed.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 6, height: 6,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.alertRed,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  'LIVE',
-                  style: AppTypography.caption.copyWith(
-                    color: AppColors.alertRed,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 10,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMap() {
+  List<Marker> _buildMarkers() {
     final markers = <Marker>[
       // Victim marker (red)
       Marker(
@@ -250,194 +184,273 @@ class _TrackingScreenState extends State<TrackingScreen> {
       );
     }
 
-    return FlutterMap(
-      mapController: _mapController,
-      options: MapOptions(
-        initialCenter: LatLng(_victimLat, _victimLon),
-        initialZoom: 15.0,
-      ),
-      children: [
-        TileLayer(
-          urlTemplate: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-          subdomains: const ['a', 'b', 'c', 'd'],
-        ),
-        MarkerLayer(markers: markers),
-      ],
-    );
+    return markers;
   }
 
-  Widget _buildSafeMapPill() {
-    return Positioned(
-      top: 16,
-      right: 16,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.layers_outlined, color: AppColors.primary, size: 16),
-            const SizedBox(width: 6),
-            Text(
-              'Bản đồ An toàn',
-              style: AppTypography.labelMedium.copyWith(color: AppColors.primary),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBottomSheet() {
-    final config = _statusConfig;
-
-    return Align(
-      alignment: Alignment.bottomCenter,
-      child: Container(
-        margin: const EdgeInsets.all(16),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.15),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
         child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Drag handle
-            Center(
-              child: Container(
-                width: 40, height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceBorder,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Status banner
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: config.color.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: config.color.withOpacity(0.3)),
-              ),
-              child: Row(
+            _buildHeader(),
+            Expanded(
+              child: Stack(
                 children: [
-                  Text(config.emoji, style: const TextStyle(fontSize: 22)),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      config.message,
-                      style: AppTypography.bodyMedium.copyWith(
-                        color: config.color,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                  // ── Map (full area) ──
+                  FloodAidMap(
+                    mapController: _mapController,
+                    initialCenter: LatLng(_victimLat, _victimLon),
+                    initialZoom: 15.0,
+                    markers: _buildMarkers(),
+                    onMyLocationTap: _centerOnVictim,
                   ),
+                  // ── Draggable Bottom Sheet ──
+                  _buildDraggableSheet(),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
 
-            // Distance info (only when volunteer assigned)
-            if (_hasVolunteer && _distanceM != null)
+  Widget _buildHeader() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+          ),
+          const Spacer(),
+          Text(
+            'Theo dõi Ca SOS',
+            style: AppTypography.headingMedium.copyWith(
+              color: AppColors.alertRed,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const Spacer(),
+          // Live indicator
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.alertRed.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 6, height: 6,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.alertRed,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  'LIVE',
+                  style: AppTypography.caption.copyWith(
+                    color: AppColors.alertRed,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 10,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDraggableSheet() {
+    final config = _statusConfig;
+
+    return DraggableScrollableSheet(
+      controller: _sheetController,
+      initialChildSize: 0.35,
+      minChildSize: 0.08,
+      maxChildSize: 0.65,
+      snap: true,
+      snapSizes: const [0.08, 0.35, 0.65],
+      builder: (context, scrollController) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 20,
+                offset: const Offset(0, -4),
+              ),
+            ],
+          ),
+          child: ListView(
+            controller: scrollController,
+            padding: EdgeInsets.zero,
+            children: [
+              // ── Drag handle ──
+              Center(
+                child: Container(
+                  margin: const EdgeInsets.only(top: 10, bottom: 6),
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceBorder,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+
+              // ── Collapsed mini-status (visible when minimized) ──
               Padding(
-                padding: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 child: Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.directions_walk, color: AppColors.primary, size: 20),
-                    ),
-                    const SizedBox(width: 12),
+                    Text(config.emoji, style: const TextStyle(fontSize: 18)),
+                    const SizedBox(width: 8),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Text(
+                        config.message,
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: config.color,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const Icon(Icons.keyboard_arrow_up, color: AppColors.textMuted, size: 20),
+                  ],
+                ),
+              ),
+
+              const Divider(height: 1),
+
+              // ── Full content ──
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Status banner
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: config.color.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: config.color.withOpacity(0.3)),
+                      ),
+                      child: Row(
                         children: [
-                          Text(
-                            _distanceM! >= 1000
-                                ? 'Cứu hộ cách bạn ~${(_distanceM! / 1000).toStringAsFixed(1)}km'
-                                : 'Cứu hộ cách bạn ~${_distanceM}m',
-                            style: AppTypography.bodyMedium.copyWith(
-                              color: AppColors.textPrimary,
-                              fontWeight: FontWeight.bold,
+                          Text(config.emoji, style: const TextStyle(fontSize: 22)),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              config.message,
+                              style: AppTypography.bodyMedium.copyWith(
+                                color: config.color,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
-                          Text(
-                            'Cập nhật mỗi 15 giây',
-                            style: AppTypography.caption,
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Distance info (only when volunteer assigned)
+                    if (_hasVolunteer && _distanceM != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withOpacity(0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.directions_walk, color: AppColors.primary, size: 20),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _distanceM! >= 1000
+                                        ? 'Cứu hộ cách bạn ~${(_distanceM! / 1000).toStringAsFixed(1)}km'
+                                        : 'Cứu hộ cách bạn ~${_distanceM}m',
+                                    style: AppTypography.bodyMedium.copyWith(
+                                      color: AppColors.textPrimary,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Cập nhật mỗi 15 giây',
+                                    style: AppTypography.caption,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                    // Case ID
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.background,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.tag, size: 14, color: AppColors.textMuted),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'Ca: ${widget.caseId.substring(0, widget.caseId.length > 8 ? 8 : widget.caseId.length).toUpperCase()}',
+                              style: AppTypography.mono.copyWith(fontSize: 12),
+                            ),
                           ),
                         ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Resolve button
+                    ElevatedButton.icon(
+                      onPressed: _handleResolve,
+                      icon: const Icon(Icons.check_circle_outline, color: Colors.white),
+                      label: Text(
+                        'Tôi đã được giúp đỡ / An toàn',
+                        style: AppTypography.labelLarge.copyWith(color: Colors.white),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-
-            // Case ID
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.background,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.tag, size: 14, color: AppColors.textMuted),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      'Ca: ${widget.caseId.substring(0, widget.caseId.length > 8 ? 8 : widget.caseId.length).toUpperCase()}',
-                      style: AppTypography.mono.copyWith(fontSize: 12),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Resolve button
-            ElevatedButton.icon(
-              onPressed: _handleResolve,
-              icon: const Icon(Icons.check_circle_outline, color: Colors.white),
-              label: Text(
-                'Tôi đã được giúp đỡ / An toàn',
-                style: AppTypography.labelLarge.copyWith(color: Colors.white),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

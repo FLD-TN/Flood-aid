@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
+import '../../widgets/map_widget.dart';
 import 'active_mission_screen.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -18,6 +19,9 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
   List<Map<String, dynamic>> _cases = [];
   bool _isLoading = true;
 
+  final DraggableScrollableController _sheetController =
+      DraggableScrollableController();
+
   @override
   void initState() {
     super.initState();
@@ -30,6 +34,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
   @override
   void dispose() {
     _pollTimer?.cancel();
+    _sheetController.dispose();
     super.dispose();
   }
 
@@ -71,74 +76,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            Expanded(
-              child: Stack(
-                children: [
-                  _buildMap(),
-                  _buildModePill(),
-                  _buildBottomSheet(),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
-          ),
-          const Spacer(),
-          Text(
-            'Cứu Hộ Miền Trung',
-            style: AppTypography.headingMedium.copyWith(
-              color: AppColors.alertRed,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const Spacer(),
-          Row(
-            children: [
-              Text(
-                'Live',
-                style: AppTypography.caption.copyWith(
-                  color: AppColors.alertRed,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(width: 4),
-              Container(
-                width: 8, height: 8,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.alertRed,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMap() {
-    // Build SOS markers from real data
+  List<Marker> _buildMarkers() {
     final markers = <Marker>[];
     for (final c in _activeCases) {
       final lat = c['lat'];
@@ -203,19 +141,79 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
         ),
       );
     }
+    return markers;
+  }
 
-    return FlutterMap(
-      options: MapOptions(
-        initialCenter: LatLng(16.0544, 108.2022),
-        initialZoom: 11.0,
-      ),
-      children: [
-        TileLayer(
-          urlTemplate: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-          subdomains: const ['a', 'b', 'c', 'd'],
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildHeader(),
+            Expanded(
+              child: Stack(
+                children: [
+                  // ── Map (full area) ──
+                  FloodAidMap(
+                    initialCenter: LatLng(16.0544, 108.2022),
+                    initialZoom: 11.0,
+                    markers: _buildMarkers(),
+                  ),
+                  // ── Mode Pill ──
+                  _buildModePill(),
+                  // ── Draggable Bottom Sheet ──
+                  _buildDraggableSheet(),
+                ],
+              ),
+            ),
+          ],
         ),
-        MarkerLayer(markers: markers),
-      ],
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+          ),
+          const Spacer(),
+          Text(
+            'Cứu Hộ Miền Trung',
+            style: AppTypography.headingMedium.copyWith(
+              color: AppColors.alertRed,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const Spacer(),
+          Row(
+            children: [
+              Text(
+                'Live',
+                style: AppTypography.caption.copyWith(
+                  color: AppColors.alertRed,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Container(
+                width: 8, height: 8,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.alertRed,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -252,92 +250,126 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
     );
   }
 
-  Widget _buildBottomSheet() {
+  Widget _buildDraggableSheet() {
     final pendingCases = _activeCases.where((c) => c['status'] == 'pending').toList();
 
-    return Align(
-      alignment: Alignment.bottomCenter,
-      child: Container(
-        height: 380,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.15),
-              blurRadius: 16,
-              offset: const Offset(0, -4),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            const SizedBox(height: 12),
-            Container(
-              width: 40, height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.surfaceBorder,
-                borderRadius: BorderRadius.circular(2),
+    return DraggableScrollableSheet(
+      controller: _sheetController,
+      initialChildSize: 0.42,
+      minChildSize: 0.08,
+      maxChildSize: 0.75,
+      snap: true,
+      snapSizes: const [0.08, 0.42, 0.75],
+      builder: (context, scrollController) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 20,
+                offset: const Offset(0, -4),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Yêu cầu cứu trợ',
-                    style: AppTypography.headingMedium.copyWith(
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppColors.alertRed,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      '${pendingCases.length} chờ xử lý',
-                      style: const TextStyle(
-                        color: Colors.white, fontSize: 10,
-                        fontWeight: FontWeight.bold,
+            ],
+          ),
+          child: CustomScrollView(
+            controller: scrollController,
+            slivers: [
+              // ── Header (always visible) ──
+              SliverToBoxAdapter(
+                child: Column(
+                  children: [
+                    const SizedBox(height: 10),
+                    // Drag handle
+                    Container(
+                      width: 40, height: 4,
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceBorder,
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-                  : _activeCases.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
+                    // Collapsed mini-header
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Yêu cầu cứu trợ',
+                            style: AppTypography.headingMedium.copyWith(
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          Row(
                             children: [
-                              Icon(Icons.check_circle_outline, size: 48, color: AppColors.success.withOpacity(0.5)),
-                              const SizedBox(height: 12),
-                              Text(
-                                'Chưa có ca SOS nào',
-                                style: AppTypography.bodyMedium.copyWith(color: AppColors.textMuted),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: AppColors.alertRed,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  '${pendingCases.length} chờ xử lý',
+                                  style: const TextStyle(
+                                    color: Colors.white, fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                               ),
+                              const SizedBox(width: 8),
+                              const Icon(Icons.keyboard_arrow_up, color: AppColors.textMuted, size: 20),
                             ],
                           ),
-                        )
-                      : ListView.separated(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          itemCount: _activeCases.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 12),
-                          itemBuilder: (context, index) {
-                            final c = _activeCases[index];
-                            return _buildRequestCard(c);
-                          },
+                        ],
+                      ),
+                    ),
+                    const Divider(height: 1),
+                  ],
+                ),
+              ),
+
+              // ── Case List ──
+              if (_isLoading)
+                const SliverFillRemaining(
+                  child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+                )
+              else if (_activeCases.isEmpty)
+                SliverFillRemaining(
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.check_circle_outline, size: 48, color: AppColors.success.withOpacity(0.5)),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Chưa có ca SOS nào',
+                          style: AppTypography.bodyMedium.copyWith(color: AppColors.textMuted),
                         ),
-            ),
-          ],
-        ),
-      ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final c = _activeCases[index];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _buildRequestCard(c),
+                        );
+                      },
+                      childCount: _activeCases.length,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 

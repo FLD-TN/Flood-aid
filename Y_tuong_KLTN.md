@@ -101,7 +101,7 @@ Thay vì gọi tuần tự (tổng timeout lên đến 5+ giây), hệ thống g
 
 **Chức năng chính:**
 
-**Geospatial Clustering (Gộp cụm):** Quét các ca SOS sinh ra trong cùng bán kính 20m, tự động gộp thành 1 cụm cảnh báo hiển thị trên bản đồ để tránh nhiễu. Nhãn cụm: *"[KHẨN CẤP] Cụm nạn nhân: ~5 người tại khu vực này"*.
+
 
 **Radar & Phát sóng có tối ưu:** Truy vấn `ST_DWithin` tìm TNV trong bán kính 2-5km. Ưu tiên gửi trước cho TNV có kỹ năng phù hợp với tags của ca SOS. Sau 2 phút không có TNV phù hợp nhận, broadcast đến toàn bộ TNV trong bán kính.
 
@@ -248,8 +248,7 @@ Sau khi gửi SOS thành công, Nạn nhân được chuyển đến màn hình 
 
 **1. Mô tả luồng:**
 
-Ngay khi có SOS, Backend (PostGIS) quét các ca SOS nằm gần nhau trong bán kính 20m và gộp cụm nếu cần.
-
+Ngay khi có SOS, Backend (PostGIS) quét các ca SOS nằm gần nhau trong bán kính 20m
 Truy vấn `ST_DWithin` tìm tất cả TNV đã eKYC trong bán kính 2-5km.
 
 Hệ thống phát sóng theo thứ tự ưu tiên:
@@ -265,7 +264,7 @@ Hệ thống phát sóng theo thứ tự ưu tiên:
 
 **3. Giải pháp / Cách khắc phục:**
 
-- **Gộp cụm:** PostGIS tự động gộp các ca trong bán kính 20m thành 1 chấm với nhãn *"[KHẨN CẤP] Cụm nạn nhân: ~5 người"*.
+
 - **Thiếu TNV:** Mở rộng bán kính động + cảnh báo "Ca mồ côi" cho Admin can thiệp ngoại tuyến. Về lâu dài, Admin cần phối hợp với Hội Chữ thập đỏ và tổ chức địa phương để vận động đăng ký TNV trong mùa khô.
 
 ---

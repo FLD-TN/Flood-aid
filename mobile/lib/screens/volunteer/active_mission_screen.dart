@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
+import '../../widgets/map_widget.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
@@ -28,6 +29,7 @@ class ActiveMissionScreen extends StatefulWidget {
 
 class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
   Timer? _locationTimer;
+  final MapController _mapController = MapController();
 
   // TNV (volunteer) location — realtime GPS
   double? _myLat;
@@ -39,6 +41,10 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
 
   // Case state
   bool _accepted = false;
+
+  // Draggable sheet controller
+  final DraggableScrollableController _sheetController =
+      DraggableScrollableController();
 
   @override
   void initState() {
@@ -56,6 +62,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
   @override
   void dispose() {
     _locationTimer?.cancel();
+    _sheetController.dispose();
     super.dispose();
   }
 
@@ -109,87 +116,17 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
     return m / 1000;
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildRecordingStatusBar(),
-            _buildHeader(),
-            Expanded(
-              child: Stack(
-                children: [
-                  _buildMap(),
-                  _buildFloatingControls(),
-                  _buildBottomSheet(),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  void _centerOnVictim() {
+    _mapController.move(LatLng(_victimLat, _victimLon), 14.0);
   }
 
-  Widget _buildRecordingStatusBar() {
-    return Container(
-      color: AppColors.alertRed,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 8, height: 8,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Text(
-                'Đang Ghi GPS — Cứu hộ',
-                style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: const Icon(Icons.close, color: Colors.white, size: 16),
-          ),
-        ],
-      ),
-    );
+  void _centerOnMe() {
+    if (_myLat != null && _myLon != null) {
+      _mapController.move(LatLng(_myLat!, _myLon!), 15.0);
+    }
   }
 
-  Widget _buildHeader() {
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
-          ),
-          Text(
-            'Nhiệm vụ Cứu hộ',
-            style: AppTypography.headingMedium.copyWith(
-              color: AppColors.alertRed,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(width: 24),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMap() {
+  List<Marker> _buildMarkers() {
     final markers = <Marker>[
       // Victim marker (red)
       Marker(
@@ -276,229 +213,321 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
       );
     }
 
-    return FlutterMap(
-      options: MapOptions(
-        initialCenter: LatLng(_victimLat, _victimLon),
-        initialZoom: 14.0,
-      ),
-      children: [
-        TileLayer(
-          urlTemplate: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-          subdomains: const ['a', 'b', 'c', 'd'],
+    return markers;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildRecordingStatusBar(),
+            _buildHeader(),
+            Expanded(
+              child: Stack(
+                children: [
+                  // ── Map (full area) ──
+                  FloodAidMap(
+                    mapController: _mapController,
+                    initialCenter: LatLng(_victimLat, _victimLon),
+                    initialZoom: 14.0,
+                    markers: _buildMarkers(),
+                    onMyLocationTap: _centerOnMe,
+                  ),
+                  // ── Draggable Bottom Sheet ──
+                  _buildDraggableSheet(),
+                ],
+              ),
+            ),
+          ],
         ),
-        MarkerLayer(markers: markers),
-      ],
+      ),
     );
   }
 
-  Widget _buildFloatingControls() {
-    return Positioned(
-      right: 16,
-      top: 16,
-      child: Column(
+  Widget _buildRecordingStatusBar() {
+    return Container(
+      color: AppColors.alertRed,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-              boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 6),
-              ],
-            ),
-            child: const Icon(Icons.my_location, color: AppColors.textPrimary, size: 20),
+          Row(
+            children: [
+              Container(
+                width: 8, height: 8,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'Đang Ghi GPS — Cứu hộ',
+                style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-              boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 6),
-              ],
-            ),
-            child: const Icon(Icons.layers_outlined, color: AppColors.textPrimary, size: 20),
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: const Icon(Icons.close, color: Colors.white, size: 16),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildBottomSheet() {
+  Widget _buildHeader() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+          ),
+          Text(
+            'Nhiệm vụ Cứu hộ',
+            style: AppTypography.headingMedium.copyWith(
+              color: AppColors.alertRed,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(width: 24),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDraggableSheet() {
     final urgency = widget.urgencyLevel ?? 3;
     final urgencyColor = getUrgencyColor(urgency);
     final distKm = _distanceKm;
 
-    return Align(
-      alignment: Alignment.bottomCenter,
-      child: Container(
-        margin: const EdgeInsets.all(16),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.15),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Handle
-            Center(
-              child: Container(
-                width: 40, height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceBorder,
-                  borderRadius: BorderRadius.circular(2),
+    return DraggableScrollableSheet(
+      controller: _sheetController,
+      initialChildSize: 0.35,
+      minChildSize: 0.08,
+      maxChildSize: 0.65,
+      snap: true,
+      snapSizes: const [0.08, 0.35, 0.65],
+      builder: (context, scrollController) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 20,
+                offset: const Offset(0, -4),
+              ),
+            ],
+          ),
+          child: ListView(
+            controller: scrollController,
+            padding: EdgeInsets.zero,
+            children: [
+              // ── Drag handle ──
+              Center(
+                child: Container(
+                  margin: const EdgeInsets.only(top: 10, bottom: 6),
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceBorder,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
 
-            // Urgency + summary
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: urgencyColor,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    'MỨC $urgency',
-                    style: const TextStyle(
-                      color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    widget.summary ?? 'Ca SOS',
-                    style: AppTypography.bodyLarge.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Distance
-            if (distKm != null)
+              // ── Mini summary (visible when collapsed) ──
               Padding(
-                padding: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 child: Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.1),
-                        shape: BoxShape.circle,
+                        color: urgencyColor,
+                        borderRadius: BorderRadius.circular(4),
                       ),
-                      child: const Icon(Icons.navigation, color: AppColors.primary, size: 18),
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      distKm >= 1
-                          ? 'Còn ${distKm.toStringAsFixed(1)}km đến nạn nhân'
-                          : 'Còn ${(distKm * 1000).toInt()}m đến nạn nhân',
-                      style: AppTypography.bodyMedium.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
+                      child: Text(
+                        'MỨC $urgency',
+                        style: const TextStyle(
+                          color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        widget.summary ?? 'Ca SOS',
+                        style: AppTypography.bodyMedium.copyWith(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const Icon(Icons.keyboard_arrow_up, color: AppColors.textMuted, size: 20),
                   ],
                 ),
               ),
 
-            // Case ID
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: AppColors.background,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.tag, size: 12, color: AppColors.textMuted),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Ca: ${widget.caseId.length > 8 ? widget.caseId.substring(0, 8).toUpperCase() : widget.caseId.toUpperCase()}',
-                    style: AppTypography.mono.copyWith(fontSize: 11),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
+              const Divider(height: 1),
 
-            // Action Buttons
-            Row(
-              children: [
-                if (!_accepted)
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: _handleAcceptCase,
-                      icon: const Icon(Icons.check, color: Colors.white, size: 18),
-                      label: const Text(
-                        'Nhận ca',
-                        style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
+              // ── Full content ──
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Urgency + summary
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: urgencyColor,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            'MỨC $urgency',
+                            style: const TextStyle(
+                              color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            widget.summary ?? 'Ca SOS',
+                            style: AppTypography.bodyLarge.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                if (_accepted) ...[
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () {},
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        side: const BorderSide(color: AppColors.alertRed),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: Text(
-                        'Báo chướng ngại',
-                        style: TextStyle(
-                          color: AppColors.alertRed, fontSize: 12, fontWeight: FontWeight.bold,
+                    const SizedBox(height: 16),
+
+                    // Distance
+                    if (distKm != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withOpacity(0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.navigation, color: AppColors.primary, size: 18),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              distKm >= 1
+                                  ? 'Còn ${distKm.toStringAsFixed(1)}km đến nạn nhân'
+                                  : 'Còn ${(distKm * 1000).toInt()}m đến nạn nhân',
+                              style: AppTypography.bodyMedium.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _handleResolve,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.success,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+
+                    // Case ID
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.background,
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Text(
-                        'Tiếp cận xong',
-                        style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                      child: Row(
+                        children: [
+                          Icon(Icons.tag, size: 12, color: AppColors.textMuted),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Ca: ${widget.caseId.length > 8 ? widget.caseId.substring(0, 8).toUpperCase() : widget.caseId.toUpperCase()}',
+                            style: AppTypography.mono.copyWith(fontSize: 11),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                ],
-              ],
-            ),
-          ],
-        ),
-      ),
+                    const SizedBox(height: 16),
+
+                    // Action Buttons
+                    Row(
+                      children: [
+                        if (!_accepted)
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: _handleAcceptCase,
+                              icon: const Icon(Icons.check, color: Colors.white, size: 18),
+                              label: const Text(
+                                'Nhận ca',
+                                style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                            ),
+                          ),
+                        if (_accepted) ...[
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () {},
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                side: const BorderSide(color: AppColors.alertRed),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              child: Text(
+                                'Báo chướng ngại',
+                                style: TextStyle(
+                                  color: AppColors.alertRed, fontSize: 12, fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: _handleResolve,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.success,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              child: const Text(
+                                'Tiếp cận xong',
+                                style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

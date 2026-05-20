@@ -5,8 +5,8 @@ import 'package:http/http.dart' as http;
 /// Dùng IP LAN thật khi chạy trên thiết bị thật
 /// Đổi sang 'http://10.0.2.2:3000' nếu dùng Android emulator
 class ApiService {
-  static const String _baseUrl = 'http://localhost:3000';
-  // static const String _baseUrl = 'http://10.0.2.2:3000';
+  // static const String _baseUrl = 'http://localhost:3000';
+  static const String _baseUrl = 'http://10.0.2.2:3000';
 
   /// POST /api/sos — Gửi SOS
   static Future<Map<String, dynamic>?> sendSos({
