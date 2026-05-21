@@ -243,4 +243,46 @@ async function resolveCase(req, res) {
   }
 }
 
-module.exports = { createSos, getCaseById, getTnvLocation, acceptCase, resolveCase };
+/**
+ * GET /api/sos/active?phone=xxx — Kiểm tra ca active của 1 SĐT
+ */
+async function getActiveByPhone(req, res) {
+  try {
+    const { phone } = req.query;
+    if (!phone) {
+      return res.status(400).json({ error: 'Missing phone' });
+    }
+
+    const phoneHash = hashPhone(phone);
+    const result = await db.query(
+      `SELECT id, urgency_level, tags, summary_1line, status,
+              ST_X(coords::geometry) AS lon, ST_Y(coords::geometry) AS lat,
+              created_at
+       FROM cases
+       WHERE phone_hash = $1 AND status != 'resolved'
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [phoneHash]
+    );
+
+    if (result.rows.length === 0) {
+      return res.json({ hasActive: false });
+    }
+
+    const row = result.rows[0];
+    res.json({
+      hasActive: true,
+      caseId: row.id,
+      status: row.status,
+      lat: row.lat,
+      lon: row.lon,
+      urgencyLevel: row.urgency_level,
+      summary: row.summary_1line,
+    });
+  } catch (err) {
+    console.error('[sosController][getActiveByPhone]', err.message);
+    res.status(500).json({ error: 'Internal error' });
+  }
+}
+
+module.exports = { createSos, getCaseById, getTnvLocation, acceptCase, resolveCase, getActiveByPhone };

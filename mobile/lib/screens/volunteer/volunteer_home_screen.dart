@@ -6,6 +6,7 @@ import '../../widgets/map_widget.dart';
 import 'active_mission_screen.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class VolunteerHomeScreen extends StatefulWidget {
   const VolunteerHomeScreen({super.key});
@@ -28,6 +29,9 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
     _fetchCases();
     _pollTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       _fetchCases();
+    });
+    _sheetController.addListener(() {
+      if (mounted) setState(() {});
     });
   }
 
@@ -58,21 +62,31 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
 
   Color _getUrgencyColor(int level) {
     switch (level) {
-      case 5: return AppColors.urgency5;
-      case 4: return AppColors.urgency4;
-      case 3: return AppColors.urgency3;
-      case 2: return AppColors.urgency2;
-      default: return AppColors.urgency1;
+      case 5:
+        return AppColors.urgency5;
+      case 4:
+        return AppColors.urgency4;
+      case 3:
+        return AppColors.urgency3;
+      case 2:
+        return AppColors.urgency2;
+      default:
+        return AppColors.urgency1;
     }
   }
 
   String _getUrgencyLabel(int level) {
     switch (level) {
-      case 5: return 'CỰC KỲ NGUY HIỂM';
-      case 4: return 'KHẨN CẤP';
-      case 3: return 'CẦN HỖ TRỢ';
-      case 2: return 'ƯU TIÊN THẤP';
-      default: return 'THÔNG TIN';
+      case 5:
+        return 'CỰC KỲ NGUY HIỂM';
+      case 4:
+        return 'KHẨN CẤP';
+      case 3:
+        return 'CẦN HỖ TRỢ';
+      case 2:
+        return 'ƯU TIÊN THẤP';
+      default:
+        return 'THÔNG TIN';
     }
   }
 
@@ -95,7 +109,8 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 32, height: 32,
+                width: 32,
+                height: 32,
                 decoration: BoxDecoration(
                   color: color,
                   shape: BoxShape.circle,
@@ -112,7 +127,8 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                   child: Text(
                     '!',
                     style: const TextStyle(
-                      color: Colors.white, fontSize: 16,
+                      color: Colors.white,
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -128,11 +144,13 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                 child: Text(
                   c['ai_summary'] != null
                       ? (c['ai_summary'] as String).length > 20
-                          ? '${(c['ai_summary'] as String).substring(0, 20)}...'
-                          : c['ai_summary'] as String
+                            ? '${(c['ai_summary'] as String).substring(0, 20)}...'
+                            : c['ai_summary'] as String
                       : 'SOS',
                   style: const TextStyle(
-                    color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
@@ -153,19 +171,73 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
           children: [
             _buildHeader(),
             Expanded(
-              child: Stack(
-                children: [
-                  // ── Map (full area) ──
-                  FloodAidMap(
-                    initialCenter: LatLng(16.0544, 108.2022),
-                    initialZoom: 11.0,
-                    markers: _buildMarkers(),
-                  ),
-                  // ── Mode Pill ──
-                  _buildModePill(),
-                  // ── Draggable Bottom Sheet ──
-                  _buildDraggableSheet(),
-                ],
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  double sheetSize = 0.42;
+                  if (_sheetController.isAttached) {
+                    sheetSize = _sheetController.size;
+                  }
+                  final isExpanded = sheetSize > 0.25;
+
+                  return Stack(
+                    children: [
+                      // ── Map (full area) ──
+                      FloodAidMap(
+                        initialCenter: LatLng(16.0544, 108.2022),
+                        initialZoom: 11.0,
+                        markers: _buildMarkers(),
+                      ),
+                      // ── Mode Pill ──
+                      _buildModePill(),
+                      // ── Floating Arrow Button ──
+                      Positioned(
+                        right: 16,
+                        bottom: constraints.maxHeight * sheetSize + 16,
+                        child: GestureDetector(
+                          onTap: () {
+                            if (isExpanded) {
+                              _sheetController.animateTo(
+                                0.08,
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeInOut,
+                              );
+                            } else {
+                              _sheetController.animateTo(
+                                0.75,
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeInOut,
+                              );
+                            }
+                          },
+                          child: Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.15),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              isExpanded
+                                  ? Icons.keyboard_arrow_down
+                                  : Icons.keyboard_arrow_up,
+                              color: AppColors.alertRed,
+                              size: 28,
+                            ),
+                          ),
+                        ),
+                      ),
+                      // ── Draggable Bottom Sheet ──
+                      _buildDraggableSheet(),
+                    ],
+                  );
+                },
               ),
             ),
           ],
@@ -204,7 +276,8 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
               ),
               const SizedBox(width: 4),
               Container(
-                width: 8, height: 8,
+                width: 8,
+                height: 8,
                 decoration: const BoxDecoration(
                   shape: BoxShape.circle,
                   color: AppColors.alertRed,
@@ -236,7 +309,11 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
         ),
         child: Row(
           children: [
-            const Icon(Icons.volunteer_activism, color: AppColors.primary, size: 16),
+            const Icon(
+              Icons.volunteer_activism,
+              color: AppColors.primary,
+              size: 16,
+            ),
             const SizedBox(width: 6),
             Text(
               'Chế độ: Tình nguyện viên',
@@ -251,7 +328,9 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
   }
 
   Widget _buildDraggableSheet() {
-    final pendingCases = _activeCases.where((c) => c['status'] == 'pending').toList();
+    final pendingCases = _activeCases
+        .where((c) => c['status'] == 'pending')
+        .toList();
 
     return DraggableScrollableSheet(
       controller: _sheetController,
@@ -283,7 +362,8 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                     const SizedBox(height: 10),
                     // Drag handle
                     Container(
-                      width: 40, height: 4,
+                      width: 40,
+                      height: 4,
                       decoration: BoxDecoration(
                         color: AppColors.surfaceBorder,
                         borderRadius: BorderRadius.circular(2),
@@ -291,7 +371,10 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                     ),
                     // Collapsed mini-header
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -304,7 +387,10 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                           Row(
                             children: [
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
                                 decoration: BoxDecoration(
                                   color: AppColors.alertRed,
                                   borderRadius: BorderRadius.circular(12),
@@ -312,13 +398,12 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                                 child: Text(
                                   '${pendingCases.length} chờ xử lý',
                                   style: const TextStyle(
-                                    color: Colors.white, fontSize: 10,
+                                    color: Colors.white,
+                                    fontSize: 10,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 8),
-                              const Icon(Icons.keyboard_arrow_up, color: AppColors.textMuted, size: 20),
                             ],
                           ),
                         ],
@@ -332,7 +417,9 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
               // ── Case List ──
               if (_isLoading)
                 const SliverFillRemaining(
-                  child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+                  child: Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  ),
                 )
               else if (_activeCases.isEmpty)
                 SliverFillRemaining(
@@ -340,11 +427,17 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.check_circle_outline, size: 48, color: AppColors.success.withOpacity(0.5)),
+                        Icon(
+                          Icons.check_circle_outline,
+                          size: 48,
+                          color: AppColors.success.withOpacity(0.5),
+                        ),
                         const SizedBox(height: 12),
                         Text(
                           'Chưa có ca SOS nào',
-                          style: AppTypography.bodyMedium.copyWith(color: AppColors.textMuted),
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: AppColors.textMuted,
+                          ),
                         ),
                       ],
                     ),
@@ -352,18 +445,18 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                 )
               else
                 SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final c = _activeCases[index];
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: _buildRequestCard(c),
-                        );
-                      },
-                      childCount: _activeCases.length,
-                    ),
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      final c = _activeCases[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _buildRequestCard(c),
+                      );
+                    }, childCount: _activeCases.length),
                   ),
                 ),
             ],
@@ -377,15 +470,32 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
     final urgency = (caseData['urgency_level'] as num?)?.toInt() ?? 2;
     final color = _getUrgencyColor(urgency);
     final label = _getUrgencyLabel(urgency);
-    final summary = caseData['ai_summary'] as String? ?? caseData['description'] as String? ?? 'Yêu cầu cứu trợ';
-    final status = caseData['status'] as String? ?? 'pending';
+    final summary =
+        caseData['ai_summary'] as String? ??
+        caseData['description'] as String? ??
+        'Yêu cầu cứu trợ';
     final caseId = caseData['id']?.toString() ?? '';
     final createdAt = caseData['created_at'] as String?;
 
-    String timeAgo = '';
+    // Default placeholders if data is missing, matching the requested UI
+    final tagsRaw = caseData['tags'];
+    final String tagsStr;
+    if (tagsRaw is List) {
+      tagsStr = tagsRaw.join(', ');
+    } else {
+      tagsStr = 'trẻ em, người già, y tế'; // Default placeholder as requested
+    }
+
+    final responderCount = caseData['responder_count'] ?? 0;
+    final distanceStr = '~1.2 km'; // Placeholder as requested
+
+    String timeAgo = '8 phút trước';
+    String timeSent = '14:32';
     if (createdAt != null) {
       try {
-        final dt = DateTime.parse(createdAt);
+        final dt = DateTime.parse(createdAt).toLocal();
+        timeSent =
+            '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
         final diff = DateTime.now().difference(dt);
         if (diff.inMinutes < 60) {
           timeAgo = '${diff.inMinutes} phút trước';
@@ -405,86 +515,174 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Row 1: Mức khẩn cấp
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
+              Text(
+                'MỨC $urgency — $label',
+                style: AppTypography.headingMedium.copyWith(
                   color: color,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  label,
-                  style: const TextStyle(
-                    color: Colors.white, fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              if (timeAgo.isNotEmpty) ...[
-                const SizedBox(width: 8),
-                Icon(Icons.schedule, size: 12, color: AppColors.textSecondary),
-                const SizedBox(width: 4),
-                Text(timeAgo, style: AppTypography.caption),
-              ],
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: status == 'pending'
-                      ? AppColors.statusPending.withOpacity(0.1)
-                      : AppColors.statusResponding.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  status == 'pending' ? 'Chờ' : 'Đang xử lý',
-                  style: AppTypography.caption.copyWith(
-                    color: status == 'pending'
-                        ? AppColors.statusPending
-                        : AppColors.statusResponding,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 10,
-                  ),
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
+
+          // Row 2: Summary
           Text(
-            summary,
+            '"$summary"',
             style: AppTypography.bodyLarge.copyWith(
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w700,
               color: AppColors.textPrimary,
             ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 12),
+
+          // Row 3: Details
+          Row(
+            children: [
+              const Icon(
+                Icons.location_on,
+                size: 16,
+                color: AppColors.textSecondary,
+              ),
+              const SizedBox(width: 8),
+              Text('Cách bạn: $distanceStr', style: AppTypography.bodyMedium),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              const Icon(
+                Icons.local_offer,
+                size: 16,
+                color: AppColors.textSecondary,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Tags: $tagsStr',
+                  style: AppTypography.bodyMedium,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              const Icon(
+                Icons.schedule,
+                size: 16,
+                color: AppColors.textSecondary,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Gửi lúc: $timeSent ($timeAgo)',
+                style: AppTypography.bodyMedium,
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              const Icon(Icons.group, size: 16, color: AppColors.textSecondary),
+              const SizedBox(width: 8),
+              Text(
+                'TNV đang đến: $responderCount người',
+                style: AppTypography.bodyMedium,
+              ),
+            ],
           ),
           const SizedBox(height: 16),
+
+          // Buttons
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ActiveMissionScreen(
+                      caseId: caseId,
+                      victimLat: (caseData['lat'] as num?)?.toDouble(),
+                      victimLon: (caseData['lon'] as num?)?.toDouble(),
+                      summary: summary,
+                      urgencyLevel: urgency,
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(
+                Icons.check_circle,
+                color: Colors.white,
+                size: 18,
+              ),
+              label: const Text(
+                'Nhận ca',
+                style: TextStyle(color: Colors.white, fontSize: 14),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
           Row(
             children: [
               Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ActiveMissionScreen(
-                          caseId: caseId,
-                          victimLat: (caseData['lat'] as num?)?.toDouble(),
-                          victimLon: (caseData['lon'] as num?)?.toDouble(),
-                          summary: summary,
-                          urgencyLevel: urgency,
-                        ),
-                      ),
-                    );
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final phone = caseData['victim_phone'] ?? '0123456789';
+                    final Uri url = Uri(scheme: 'tel', path: phone.toString());
+                    if (await canLaunchUrl(url)) {
+                      await launchUrl(url);
+                    }
                   },
-                  icon: const Icon(Icons.person, color: Colors.white, size: 18),
+                  icon: const Icon(Icons.phone, color: Colors.green, size: 16),
                   label: const Text(
-                    'Tôi sẽ đi cứu',
-                    style: TextStyle(color: Colors.white, fontSize: 13),
+                    'Gọi thẳng GSM',
+                    style: TextStyle(color: Colors.green, fontSize: 12),
                   ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.green),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final lat = caseData['lat']?.toString() ?? '16.0544';
+                    final lon = caseData['lon']?.toString() ?? '108.2022';
+                    final Uri url = Uri.parse(
+                      'https://www.google.com/maps/search/?api=1&query=$lat,$lon',
+                    );
+                    if (await canLaunchUrl(url)) {
+                      await launchUrl(
+                        url,
+                        mode: LaunchMode.externalApplication,
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.map, color: Colors.blue, size: 16),
+                  label: const Text(
+                    'Google Maps',
+                    style: TextStyle(color: Colors.blue, fontSize: 12),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.blue),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),

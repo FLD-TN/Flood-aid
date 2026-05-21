@@ -47,6 +47,10 @@ class _TrackingScreenState extends State<TrackingScreen> {
     _victimLat = widget.victimLat ?? 16.0544;
     _victimLon = widget.victimLon ?? 108.2022;
 
+    _sheetController.addListener(() {
+      if (mounted) setState(() {});
+    });
+
     // Start polling every 15s
     _pollTnvLocation();
     _pollTimer = Timer.periodic(const Duration(seconds: 15), (_) {
@@ -108,7 +112,8 @@ class _TrackingScreenState extends State<TrackingScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 36, height: 36,
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
                 color: AppColors.alertRed,
                 shape: BoxShape.circle,
@@ -132,7 +137,11 @@ class _TrackingScreenState extends State<TrackingScreen> {
               ),
               child: const Text(
                 'Bạn',
-                style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],
@@ -151,7 +160,8 @@ class _TrackingScreenState extends State<TrackingScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 36, height: 36,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
                   color: AppColors.primary,
                   shape: BoxShape.circle,
@@ -164,7 +174,11 @@ class _TrackingScreenState extends State<TrackingScreen> {
                     ),
                   ],
                 ),
-                child: const Icon(Icons.directions_boat, color: Colors.white, size: 18),
+                child: const Icon(
+                  Icons.directions_boat,
+                  color: Colors.white,
+                  size: 18,
+                ),
               ),
               const SizedBox(height: 4),
               Container(
@@ -175,7 +189,11 @@ class _TrackingScreenState extends State<TrackingScreen> {
                 ),
                 child: const Text(
                   'Cứu hộ',
-                  style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
@@ -196,19 +214,74 @@ class _TrackingScreenState extends State<TrackingScreen> {
           children: [
             _buildHeader(),
             Expanded(
-              child: Stack(
-                children: [
-                  // ── Map (full area) ──
-                  FloodAidMap(
-                    mapController: _mapController,
-                    initialCenter: LatLng(_victimLat, _victimLon),
-                    initialZoom: 15.0,
-                    markers: _buildMarkers(),
-                    onMyLocationTap: _centerOnVictim,
-                  ),
-                  // ── Draggable Bottom Sheet ──
-                  _buildDraggableSheet(),
-                ],
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  double sheetSize = 0.35;
+                  if (_sheetController.isAttached) {
+                    sheetSize = _sheetController.size;
+                  }
+
+                  final isExpanded = sheetSize > 0.2;
+
+                  return Stack(
+                    children: [
+                      // ── Map (full area) ──
+                      FloodAidMap(
+                        mapController: _mapController,
+                        initialCenter: LatLng(_victimLat, _victimLon),
+                        initialZoom: 15.0,
+                        markers: _buildMarkers(),
+                        onMyLocationTap: _centerOnVictim,
+                      ),
+                      // ── Floating Arrow Button ──
+                      Positioned(
+                        right: 16,
+                        bottom: constraints.maxHeight * sheetSize + 16,
+                        child: GestureDetector(
+                          onTap: () {
+                            if (isExpanded) {
+                              _sheetController.animateTo(
+                                0.08,
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeInOut,
+                              );
+                            } else {
+                              _sheetController.animateTo(
+                                0.65,
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeInOut,
+                              );
+                            }
+                          },
+                          child: Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.15),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              isExpanded
+                                  ? Icons.keyboard_arrow_down
+                                  : Icons.keyboard_arrow_up,
+                              color: AppColors.alertRed,
+                              size: 28,
+                            ),
+                          ),
+                        ),
+                      ),
+                      // ── Draggable Bottom Sheet ──
+                      _buildDraggableSheet(),
+                    ],
+                  );
+                },
               ),
             ),
           ],
@@ -247,7 +320,8 @@ class _TrackingScreenState extends State<TrackingScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  width: 6, height: 6,
+                  width: 6,
+                  height: 6,
                   decoration: const BoxDecoration(
                     shape: BoxShape.circle,
                     color: AppColors.alertRed,
@@ -301,7 +375,8 @@ class _TrackingScreenState extends State<TrackingScreen> {
               Center(
                 child: Container(
                   margin: const EdgeInsets.only(top: 10, bottom: 6),
-                  width: 40, height: 4,
+                  width: 40,
+                  height: 4,
                   decoration: BoxDecoration(
                     color: AppColors.surfaceBorder,
                     borderRadius: BorderRadius.circular(2),
@@ -311,7 +386,10 @@ class _TrackingScreenState extends State<TrackingScreen> {
 
               // ── Collapsed mini-status (visible when minimized) ──
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
                 child: Row(
                   children: [
                     Text(config.emoji, style: const TextStyle(fontSize: 18)),
@@ -328,7 +406,6 @@ class _TrackingScreenState extends State<TrackingScreen> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const Icon(Icons.keyboard_arrow_up, color: AppColors.textMuted, size: 20),
                   ],
                 ),
               ),
@@ -347,11 +424,16 @@ class _TrackingScreenState extends State<TrackingScreen> {
                       decoration: BoxDecoration(
                         color: config.color.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: config.color.withOpacity(0.3)),
+                        border: Border.all(
+                          color: config.color.withOpacity(0.3),
+                        ),
                       ),
                       child: Row(
                         children: [
-                          Text(config.emoji, style: const TextStyle(fontSize: 22)),
+                          Text(
+                            config.emoji,
+                            style: const TextStyle(fontSize: 22),
+                          ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
@@ -379,7 +461,11 @@ class _TrackingScreenState extends State<TrackingScreen> {
                                 color: AppColors.primary.withOpacity(0.1),
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(Icons.directions_walk, color: AppColors.primary, size: 20),
+                              child: const Icon(
+                                Icons.directions_walk,
+                                color: AppColors.primary,
+                                size: 20,
+                              ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -431,10 +517,15 @@ class _TrackingScreenState extends State<TrackingScreen> {
                     // Resolve button
                     ElevatedButton.icon(
                       onPressed: _handleResolve,
-                      icon: const Icon(Icons.check_circle_outline, color: Colors.white),
+                      icon: const Icon(
+                        Icons.check_circle_outline,
+                        color: Colors.white,
+                      ),
                       label: Text(
                         'Tôi đã được giúp đỡ / An toàn',
-                        style: AppTypography.labelLarge.copyWith(color: Colors.white),
+                        style: AppTypography.labelLarge.copyWith(
+                          color: Colors.white,
+                        ),
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,

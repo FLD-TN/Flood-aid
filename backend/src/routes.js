@@ -13,6 +13,7 @@ const adminController = require('./controllers/adminController');
 const flagController = require('./controllers/flagController');
 
 // ====== Module 1: SOS ======
+router.get('/sos/active', sosController.getActiveByPhone);
 router.post('/sos', sosController.createSos);
 router.get('/case/:id', sosController.getCaseById);
 router.get('/case/:id/tnv-location', sosController.getTnvLocation);

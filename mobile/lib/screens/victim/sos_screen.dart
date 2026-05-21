@@ -12,31 +12,54 @@ class SosScreen extends StatefulWidget {
   State<SosScreen> createState() => _SosScreenState();
 }
 
-class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMixin {
+class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
   final _textController = TextEditingController();
   bool _isSending = false;
   String _phone = '0900000000';
 
+  // _hasActiveCase để kiểm tra xem nạn nhân có ca đang chờ/xử lý không
+  bool _hasActiveCase = false;
+  String? _activeCaseId;
+  double? _activeLat;
+  double? _activeLon;
+
   late AnimationController _pulseCtrl;
   late Animation<double> _pulseAnim;
+
+  late AnimationController _shakeCtrl;
+  late Animation<double> _shakeAnim;
 
   @override
   void initState() {
     super.initState();
-    _loadPhone();
+    _loadPhone().then((_) => _checkActiveCase());
     _pulseCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     )..repeat(reverse: true);
-    _pulseAnim = Tween<double>(begin: 1.0, end: 1.05).animate(
-      CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
+    _pulseAnim = Tween<double>(
+      begin: 1.0,
+      end: 1.05,
+    ).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
+
+    _shakeCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
     );
+    // Lắc từ -10 đến 10 pixels
+    _shakeAnim = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0, end: 10), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: 10, end: -10), weight: 2),
+      TweenSequenceItem(tween: Tween(begin: -10, end: 10), weight: 2),
+      TweenSequenceItem(tween: Tween(begin: 10, end: 0), weight: 1),
+    ]).animate(CurvedAnimation(parent: _shakeCtrl, curve: Curves.easeInOut));
   }
 
   @override
   void dispose() {
     _textController.dispose();
     _pulseCtrl.dispose();
+    _shakeCtrl.dispose();
     super.dispose();
   }
 
@@ -48,7 +71,33 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
     }
   }
 
+  Future<void> _checkActiveCase() async {
+    if (_phone.isEmpty) return;
+    
+    final result = await ApiService.checkActiveCaseByPhone(_phone);
+    if (result != null && result['hasActive'] == true) {
+      setState(() {
+        _hasActiveCase = true;
+        _activeCaseId = result['caseId']?.toString();
+        _activeLat = (result['lat'] as num?)?.toDouble();
+        _activeLon = (result['lon'] as num?)?.toDouble();
+      });
+      _pulseCtrl.stop(); // Ngừng đập nếu có ca
+    } else {
+      setState(() {
+        _hasActiveCase = false;
+        _activeCaseId = null;
+      });
+      _pulseCtrl.repeat(reverse: true);
+    }
+  }
+
   Future<void> _handleSend() async {
+    if (_hasActiveCase) {
+      _shakeCtrl.forward(from: 0);
+      return;
+    }
+
     if (_isSending) return;
     setState(() => _isSending = true);
 
@@ -66,7 +115,8 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
         if (permission == LocationPermission.denied) {
           permission = await Geolocator.requestPermission();
         }
-        if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
+        if (permission == LocationPermission.whileInUse ||
+            permission == LocationPermission.always) {
           Position position = await Geolocator.getCurrentPosition();
           currentLat = position.latitude;
           currentLon = position.longitude;
@@ -86,7 +136,7 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
     if (!mounted) return;
 
     if (result != null && result['error'] != 'ACTIVE_CASE_EXISTS') {
-      Navigator.pushReplacement(
+      Navigator.push(
         context,
         MaterialPageRoute(
           builder: (_) => TrackingScreen(
@@ -95,11 +145,19 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
             victimLon: currentLon,
           ),
         ),
-      );
+      ).then((_) => _checkActiveCase());
+
+      setState(() {
+        _isSending = false;
+        _textController.clear();
+      });
     } else {
       setState(() => _isSending = false);
+      _checkActiveCase();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Tín hiệu đã được gửi hoặc đang có ca xử lý.')),
+        const SnackBar(
+          content: Text('Tín hiệu đã được gửi hoặc đang có ca xử lý.'),
+        ),
       );
     }
   }
@@ -139,7 +197,10 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Icon(Icons.menu, color: AppColors.alertRed),
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: const Icon(Icons.menu, color: AppColors.alertRed),
+          ),
           Text(
             'Cứu Hộ Miền Trung',
             style: AppTypography.headingMedium.copyWith(
@@ -147,7 +208,10 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
               fontWeight: FontWeight.bold,
             ),
           ),
-          Icon(Icons.map_outlined, color: AppColors.textPrimary),
+          const Icon(
+            Icons.map_outlined,
+            color: Colors.transparent,
+          ), // Placeholder for balance
         ],
       ),
     );
@@ -174,12 +238,14 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
   }
 
   Widget _buildGiantSosButton() {
+    final bgColor = _hasActiveCase ? Colors.grey : AppColors.alertRed;
+
     return GestureDetector(
       onTap: _isSending ? null : _handleSend,
       child: AnimatedBuilder(
         animation: _pulseAnim,
         builder: (context, child) => Transform.scale(
-          scale: _pulseAnim.value,
+          scale: _hasActiveCase ? 1.0 : _pulseAnim.value,
           child: child,
         ),
         child: Container(
@@ -187,13 +253,14 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
           height: 260,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: AppColors.alertRed,
+            color: bgColor,
             boxShadow: [
-              BoxShadow(
-                color: AppColors.alertRed.withOpacity(0.3),
-                blurRadius: 40,
-                spreadRadius: 10,
-              ),
+              if (!_hasActiveCase)
+                BoxShadow(
+                  color: AppColors.alertRed.withOpacity(0.3),
+                  blurRadius: 40,
+                  spreadRadius: 10,
+                ),
             ],
           ),
           child: Column(
@@ -212,7 +279,7 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'NHẤN ĐỂ GỬI',
+                  _hasActiveCase ? 'ĐÃ GỬI' : 'NHẤN ĐỂ GỬI',
                   style: AppTypography.labelMedium.copyWith(
                     color: Colors.white,
                     letterSpacing: 1.2,
@@ -247,10 +314,14 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
             child: TextField(
               controller: _textController,
               maxLines: 2,
+              enabled: !_hasActiveCase,
               style: AppTypography.bodyMedium,
               decoration: InputDecoration(
-                hintText: 'Nhập tình trạng hoặc bấm mic để nói...\n(VD: Nước ngập nóc, có trẻ em)',
-                hintStyle: AppTypography.bodyMedium.copyWith(color: AppColors.textMuted),
+                hintText:
+                    'Nhập tình trạng hoặc bấm mic để nói...\n(VD: Nước ngập nóc, có trẻ em)',
+                hintStyle: AppTypography.bodyMedium.copyWith(
+                  color: AppColors.textMuted,
+                ),
                 border: InputBorder.none,
                 enabledBorder: InputBorder.none,
                 focusedBorder: InputBorder.none,
@@ -264,7 +335,7 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
             height: 48,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: AppColors.primary,
+              color: _hasActiveCase ? Colors.grey : AppColors.primary,
             ),
             child: const Icon(Icons.mic, color: Colors.white),
           ),
@@ -333,38 +404,114 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
 
   Widget _buildMockBottomNav() {
     return Container(
-      height: 64,
+      height: 80, // Tăng nhẹ để chứa thông báo
       decoration: BoxDecoration(
         color: AppColors.surfaceCard,
         border: const Border(top: BorderSide(color: AppColors.surfaceBorder)),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+      child: Stack(
+        clipBehavior: Clip.none,
         children: [
-          _navItem(Icons.map_outlined, 'Bản đồ', false),
-          _navItem(Icons.list_alt_rounded, 'Yêu cầu', false),
-          _navItemSos(),
-          _navItem(Icons.assignment_outlined, 'Nhiệm vụ', false),
-          _navItem(Icons.person_outline, 'Cá nhân', false),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              GestureDetector(
+                onTap: () {
+                  if (_activeCaseId != null) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => TrackingScreen(
+                          caseId: _activeCaseId!,
+                          victimLat: _activeLat,
+                          victimLon: _activeLon,
+                        ),
+                      ),
+                    ).then((_) => _checkActiveCase());
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Bạn chưa có ca SOS nào.')),
+                    );
+                  }
+                },
+                child: _navItem(Icons.map_outlined, 'Bản đồ', false),
+              ),
+              _navItemSos(),
+              _navItem(Icons.person_outline, 'Cá nhân', false),
+            ],
+          ),
+
+          if (_hasActiveCase)
+            Positioned(
+              left: 10,
+              top: -30,
+              child: AnimatedBuilder(
+                animation: _shakeAnim,
+                builder: (context, child) {
+                  return Transform.translate(
+                    offset: Offset(_shakeAnim.value, 0),
+                    child: child,
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.alertRed,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.alertRed.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: const [
+                      Icon(Icons.info_outline, color: Colors.white, size: 14),
+                      SizedBox(width: 6),
+                      Text(
+                        'Bạn đang có 1 ca SOS',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
   }
 
   Widget _navItem(IconData icon, String label, bool isActive) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(icon, color: isActive ? AppColors.alertRed : AppColors.textMuted),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: AppTypography.caption.copyWith(
+    return Container(
+      width: 60,
+      color: Colors.transparent, // expand touch area
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            icon,
             color: isActive ? AppColors.alertRed : AppColors.textMuted,
-            fontSize: 10,
           ),
-        ),
-      ],
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: AppTypography.caption.copyWith(
+              color: isActive ? AppColors.alertRed : AppColors.textMuted,
+              fontSize: 10,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -376,11 +523,15 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: AppColors.alertRed,
-            borderRadius: BorderRadius.circular(8), // Hexagon-like proxy
+            borderRadius: BorderRadius.circular(8),
           ),
           child: const Text(
             'SOS',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+            ),
           ),
         ),
       ],

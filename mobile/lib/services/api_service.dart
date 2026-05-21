@@ -42,6 +42,23 @@ class ApiService {
     }
   }
 
+  /// GET /api/sos/active?phone=xxx — Kiểm tra ca SOS active
+  static Future<Map<String, dynamic>?> checkActiveCaseByPhone(String phone) async {
+    try {
+      final response = await http
+          .get(Uri.parse('$_baseUrl/api/sos/active?phone=$phone'))
+          .timeout(const Duration(seconds: 5));
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+      return null;
+    } catch (e) {
+      print('[ApiService] checkActiveCaseByPhone error: $e');
+      return null;
+    }
+  }
+
   /// GET /api/case/:id/tnv-location — Polling vị trí TNV
   static Future<Map<String, dynamic>?> getTnvLocation(String caseId) async {
     try {
