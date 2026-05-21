@@ -241,7 +241,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
                           onTap: () {
                             if (isExpanded) {
                               _sheetController.animateTo(
-                                0.08,
+                                0.15,
                                 duration: const Duration(milliseconds: 300),
                                 curve: Curves.easeInOut,
                               );
@@ -350,10 +350,10 @@ class _TrackingScreenState extends State<TrackingScreen> {
     return DraggableScrollableSheet(
       controller: _sheetController,
       initialChildSize: 0.35,
-      minChildSize: 0.08,
+      minChildSize: 0.15,
       maxChildSize: 0.65,
       snap: true,
-      snapSizes: const [0.08, 0.35, 0.65],
+      snapSizes: const [0.15, 0.35, 0.65],
       builder: (context, scrollController) {
         return Container(
           decoration: BoxDecoration(
@@ -383,34 +383,6 @@ class _TrackingScreenState extends State<TrackingScreen> {
                   ),
                 ),
               ),
-
-              // ── Collapsed mini-status (visible when minimized) ──
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 4,
-                ),
-                child: Row(
-                  children: [
-                    Text(config.emoji, style: const TextStyle(fontSize: 18)),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        config.message,
-                        style: AppTypography.bodyMedium.copyWith(
-                          color: config.color,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const Divider(height: 1),
 
               // ── Full content ──
               Padding(
