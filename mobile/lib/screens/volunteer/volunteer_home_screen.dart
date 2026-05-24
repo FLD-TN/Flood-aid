@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
 import '../../widgets/map_widget.dart';
+import '../../widgets/sos_legend_widget.dart';
 import 'active_mission_screen.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -22,6 +23,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
 
   final DraggableScrollableController _sheetController =
       DraggableScrollableController();
+  final MapController _mapController = MapController();
 
   @override
   void initState() {
@@ -183,9 +185,16 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                     children: [
                       // ── Map (full area) ──
                       FloodAidMap(
+                        mapController: _mapController,
                         initialCenter: LatLng(16.0544, 108.2022),
                         initialZoom: 11.0,
                         markers: _buildMarkers(),
+                      ),
+                      // ── SOS Legend ──
+                      Positioned(
+                        left: 16,
+                        top: 70,
+                        child: const SosLegendWidget(),
                       ),
                       // ── Mode Pill ──
                       _buildModePill(),
@@ -517,12 +526,51 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
         children: [
           // Row 1: Mức khẩn cấp
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'MỨC $urgency — $label',
-                style: AppTypography.headingMedium.copyWith(
-                  color: color,
-                  fontWeight: FontWeight.bold,
+              Expanded(
+                child: Text(
+                  'MỨC $urgency — $label',
+                  style: AppTypography.headingMedium.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              GestureDetector(
+                onTap: () {
+                  final lat = (caseData['lat'] as num?)?.toDouble();
+                  final lon = (caseData['lon'] as num?)?.toDouble();
+                  if (lat != null && lon != null) {
+                    _mapController.move(LatLng(lat, lon), 15.0);
+                    _sheetController.animateTo(
+                      0.08,
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                    );
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(Icons.location_searching, size: 14, color: AppColors.primary),
+                      SizedBox(width: 4),
+                      Text(
+                        'Xem vị trí',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],

@@ -71,13 +71,13 @@ export default {
         "gutter": "16px"
       },
       fontFamily: {
-        "h2": ["Instrument Serif", "serif"],
+        "h2": ["Inter", "sans-serif"],
         "body-lg": ["Inter", "sans-serif"],
-        "display": ["Instrument Serif", "serif"],
+        "display": ["Inter", "sans-serif"],
         "body-md": ["Inter", "sans-serif"],
-        "label-sm": ["JetBrains Mono", "monospace"],
-        "display-mobile": ["Instrument Serif", "serif"],
-        "h1": ["Instrument Serif", "serif"]
+        "label-sm": ["Roboto Mono", "monospace"],
+        "display-mobile": ["Inter", "sans-serif"],
+        "h1": ["Inter", "sans-serif"]
       },
       fontSize: {
         "h2": ["2rem", {"lineHeight": "1.3", "fontWeight": "400"}],

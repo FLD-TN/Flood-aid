@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
 import '../../widgets/map_widget.dart';
+import '../../widgets/sos_legend_widget.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
@@ -235,6 +236,12 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                     initialZoom: 14.0,
                     markers: _buildMarkers(),
                     onMyLocationTap: _centerOnMe,
+                  ),
+                  // ── SOS Legend ──
+                  Positioned(
+                    left: 16,
+                    top: 16,
+                    child: const SosLegendWidget(),
                   ),
                   // ── Draggable Bottom Sheet ──
                   _buildDraggableSheet(),

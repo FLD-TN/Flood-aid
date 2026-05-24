@@ -26,11 +26,11 @@ class AppColors {
   static const statusResolved = Color(0xFF6B7280); // Xám - Đã xử lý
 
   // ── Urgency Colors ──
-  static const urgency1 = Color(0xFF1E88E5); // Trust Blue
-  static const urgency2 = Color(0xFF43A047); // Success Green
-  static const urgency3 = Color(0xFFFB8C00); // Status Orange
-  static const urgency4 = Color(0xFFF97316); // Cam
-  static const urgency5 = Color(0xFFE53935); // Alert Red
+  static const urgency1 = Color(0xFF86EFAC); // Mức 1 - Rất thấp
+  static const urgency2 = Color(0xFFFDE047); // Mức 2 - Thấp
+  static const urgency3 = Color(0xFFFBBF24); // Mức 3 - Trung bình
+  static const urgency4 = Color(0xFFFCA5A5); // Mức 4 - Cao
+  static const urgency5 = Color(0xFFEF4444); // Mức 5 - Rất cao
 
   // ── Text ──
   static const textPrimary = Color(0xFF191C1D); // Dark gray
@@ -45,12 +45,12 @@ class AppColors {
 }
 
 // ══════════════════════════════════════════════════════
-// TYPOGRAPHY — Rajdhani (display) + Noto Sans (body)
+// TYPOGRAPHY — Inter (display & body) + Roboto Mono
 // ══════════════════════════════════════════════════════
 
 class AppTypography {
   // Display — số lớn, tiêu đề màn hình
-  static TextStyle get displayLarge => GoogleFonts.rajdhani(
+  static TextStyle get displayLarge => GoogleFonts.inter(
         fontSize: 40,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.5,
@@ -58,7 +58,7 @@ class AppTypography {
         height: 1.1,
       );
 
-  static TextStyle get displayMedium => GoogleFonts.rajdhani(
+  static TextStyle get displayMedium => GoogleFonts.inter(
         fontSize: 28,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.3,
@@ -67,14 +67,14 @@ class AppTypography {
       );
 
   // Heading — section title, card header
-  static TextStyle get headingLarge => GoogleFonts.rajdhani(
+  static TextStyle get headingLarge => GoogleFonts.inter(
         fontSize: 22,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.2,
         color: AppColors.textPrimary,
       );
 
-  static TextStyle get headingMedium => GoogleFonts.rajdhani(
+  static TextStyle get headingMedium => GoogleFonts.inter(
         fontSize: 18,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.1,
@@ -82,14 +82,14 @@ class AppTypography {
       );
 
   // Label — button text, tag, badge
-  static TextStyle get labelLarge => GoogleFonts.rajdhani(
+  static TextStyle get labelLarge => GoogleFonts.inter(
         fontSize: 18,
         fontWeight: FontWeight.w600,
         letterSpacing: 1.5,
         color: AppColors.textPrimary,
       );
 
-  static TextStyle get labelMedium => GoogleFonts.rajdhani(
+  static TextStyle get labelMedium => GoogleFonts.inter(
         fontSize: 14,
         fontWeight: FontWeight.w600,
         letterSpacing: 1.0,
@@ -97,21 +97,21 @@ class AppTypography {
       );
 
   // Body — mô tả, nội dung SOS text
-  static TextStyle get bodyLarge => GoogleFonts.notoSans(
+  static TextStyle get bodyLarge => GoogleFonts.inter(
         fontSize: 16,
         fontWeight: FontWeight.w400,
         color: AppColors.textPrimary,
         height: 1.6,
       );
 
-  static TextStyle get bodyMedium => GoogleFonts.notoSans(
+  static TextStyle get bodyMedium => GoogleFonts.inter(
         fontSize: 14,
         fontWeight: FontWeight.w400,
         color: AppColors.textSecondary,
         height: 1.5,
       );
 
-  static TextStyle get bodySmall => GoogleFonts.notoSans(
+  static TextStyle get bodySmall => GoogleFonts.inter(
         fontSize: 13,
         fontWeight: FontWeight.w400,
         color: AppColors.textSecondary,
@@ -119,7 +119,7 @@ class AppTypography {
       );
 
   // Caption — timestamp, metadata
-  static TextStyle get caption => GoogleFonts.notoSans(
+  static TextStyle get caption => GoogleFonts.inter(
         fontSize: 12,
         fontWeight: FontWeight.w400,
         color: AppColors.textMuted,
@@ -127,7 +127,7 @@ class AppTypography {
       );
 
   // Mono — tọa độ GPS, ID, số kỹ thuật
-  static TextStyle get mono => GoogleFonts.jetBrainsMono(
+  static TextStyle get mono => GoogleFonts.robotoMono(
         fontSize: 13,
         fontWeight: FontWeight.w400,
         color: AppColors.textSecondary,
@@ -199,7 +199,7 @@ ThemeData buildAppTheme() {
         borderRadius: BorderRadius.circular(AppRadius.md),
         borderSide: const BorderSide(color: AppColors.primary, width: 2),
       ),
-      hintStyle: GoogleFonts.notoSans(
+      hintStyle: GoogleFonts.inter(
         color: AppColors.textMuted,
         fontSize: 14,
       ),
@@ -212,8 +212,8 @@ ThemeData buildAppTheme() {
       titleTextStyle: AppTypography.headingLarge,
       iconTheme: const IconThemeData(color: AppColors.textPrimary),
     ),
-    // Text theme base — Noto Sans
-    textTheme: GoogleFonts.notoSansTextTheme(ThemeData.light().textTheme)
+    // Text theme base — Inter
+    textTheme: GoogleFonts.interTextTheme(ThemeData.light().textTheme)
         .copyWith(
       displayLarge: AppTypography.displayLarge,
       displayMedium: AppTypography.displayMedium,

@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:speech_to_text/speech_to_text.dart';
+import 'package:flutter_map/flutter_map.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
 import 'tracking_screen.dart';
+import 'location_picker_screen.dart';
 
 class SosScreen extends StatefulWidget {
   const SosScreen({super.key});
@@ -13,7 +17,6 @@ class SosScreen extends StatefulWidget {
 }
 
 class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
-  final _textController = TextEditingController();
   bool _isSending = false;
   String _phone = '0900000000';
 
@@ -57,7 +60,6 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
-    _textController.dispose();
     _pulseCtrl.dispose();
     _shakeCtrl.dispose();
     super.dispose();
@@ -92,45 +94,50 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
     }
   }
 
-  Future<void> _handleSend() async {
+  void _showSosForm() {
     if (_hasActiveCase) {
       _shakeCtrl.forward(from: 0);
       return;
     }
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.background,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (BuildContext context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: _SosFormSheet(
+            onSubmit: (adults, children, elderly, location, text) {
+              Navigator.pop(context); // close modal
+              _handleSendActual(adults, children, elderly, location, text);
+            },
+          ),
+        );
+      },
+    );
+  }
 
+  Future<void> _handleSendActual(
+      int adults, int children, int elderly, LatLng location, String text) async {
     if (_isSending) return;
     setState(() => _isSending = true);
 
-    final sosText = _textController.text.isNotEmpty
-        ? _textController.text
-        : 'SOS - Cần cứu hộ khẩn cấp';
-
-    double currentLat = 16.0544;
-    double currentLon = 108.2022;
-
-    try {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (serviceEnabled) {
-        LocationPermission permission = await Geolocator.checkPermission();
-        if (permission == LocationPermission.denied) {
-          permission = await Geolocator.requestPermission();
-        }
-        if (permission == LocationPermission.whileInUse ||
-            permission == LocationPermission.always) {
-          Position position = await Geolocator.getCurrentPosition();
-          currentLat = position.latitude;
-          currentLon = position.longitude;
-        }
-      }
-    } catch (e) {
-      // Ignore and fallback
-    }
+    final sosText = text.isNotEmpty ? text : 'SOS - Cần cứu hộ khẩn cấp';
 
     final result = await ApiService.sendSos(
       text: sosText,
-      lat: currentLat,
-      lon: currentLon,
+      lat: location.latitude,
+      lon: location.longitude,
       phone: _phone,
+      adults: adults,
+      children: children,
+      elderly: elderly,
     );
 
     if (!mounted) return;
@@ -141,15 +148,14 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
         MaterialPageRoute(
           builder: (_) => TrackingScreen(
             caseId: result['caseId'],
-            victimLat: currentLat,
-            victimLon: currentLon,
+            victimLat: location.latitude,
+            victimLon: location.longitude,
           ),
         ),
       ).then((_) => _checkActiveCase());
 
       setState(() {
         _isSending = false;
-        _textController.clear();
       });
     } else {
       setState(() => _isSending = false);
@@ -174,12 +180,12 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     _buildTitle(),
+                    const SizedBox(height: 64),
                     _buildGiantSosButton(),
-                    _buildInputArea(),
-                    _buildLocationCard(),
+                    const SizedBox(height: 64),
                   ],
                 ),
               ),
@@ -241,7 +247,7 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
     final bgColor = _hasActiveCase ? Colors.grey : AppColors.alertRed;
 
     return GestureDetector(
-      onTap: _isSending ? null : _handleSend,
+      onTap: _isSending ? null : _showSosForm,
       child: AnimatedBuilder(
         animation: _pulseAnim,
         builder: (context, child) => Transform.scale(
@@ -279,7 +285,7 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  _hasActiveCase ? 'ĐÃ GỬI' : 'NHẤN ĐỂ GỬI',
+                  _hasActiveCase ? 'ĐÃ GỬI' : 'NHẤN ĐỂ TẠO SOS',
                   style: AppTypography.labelMedium.copyWith(
                     color: Colors.white,
                     letterSpacing: 1.2,
@@ -293,118 +299,9 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildInputArea() {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surfaceCard,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.surfaceBorder),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.only(left: 16, right: 8, top: 4, bottom: 4),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _textController,
-              maxLines: 2,
-              enabled: !_hasActiveCase,
-              style: AppTypography.bodyMedium,
-              decoration: InputDecoration(
-                hintText:
-                    'Nhập tình trạng hoặc bấm mic để nói...\n(VD: Nước ngập nóc, có trẻ em)',
-                hintStyle: AppTypography.bodyMedium.copyWith(
-                  color: AppColors.textMuted,
-                ),
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                filled: false,
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-          ),
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: _hasActiveCase ? Colors.grey : AppColors.primary,
-            ),
-            child: const Icon(Icons.mic, color: Colors.white),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLocationCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceCard,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'VỊ TRÍ HIỆN TẠI',
-                  style: AppTypography.caption.copyWith(
-                    color: AppColors.textMuted,
-                    letterSpacing: 1.0,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(Icons.location_on, size: 16, color: AppColors.primary),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        'Vị trí GPS đang lấy...',
-                        style: AppTypography.bodyMedium.copyWith(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppColors.alertRed.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              'Sửa thủ công',
-              style: AppTypography.labelMedium.copyWith(
-                color: AppColors.alertRed,
-                letterSpacing: 0,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildMockBottomNav() {
     return Container(
-      height: 80, // Tăng nhẹ để chứa thông báo
+      height: 80,
       decoration: BoxDecoration(
         color: AppColors.surfaceCard,
         border: const Border(top: BorderSide(color: AppColors.surfaceBorder)),
@@ -538,3 +435,360 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
     );
   }
 }
+
+class _SosFormSheet extends StatefulWidget {
+  final Function(int adults, int children, int elderly, LatLng location, String text) onSubmit;
+
+  const _SosFormSheet({Key? key, required this.onSubmit}) : super(key: key);
+
+  @override
+  State<_SosFormSheet> createState() => _SosFormSheetState();
+}
+
+class _SosFormSheetState extends State<_SosFormSheet> {
+  LatLng? _currentLocation;
+  bool _isFetchingLocation = false;
+  final _textController = TextEditingController();
+
+  // Speech to text
+  final SpeechToText _speech = SpeechToText();
+  bool _isListening = false;
+  bool _speechAvailable = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchCurrentLocation();
+    _initSpeech();
+  }
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    _speech.stop();
+    super.dispose();
+  }
+
+  Future<void> _initSpeech() async {
+    _speechAvailable = await _speech.initialize(
+      onStatus: (status) {
+        if (status == 'notListening' && mounted) {
+          setState(() => _isListening = false);
+        }
+      },
+      onError: (error) {
+        if (mounted) setState(() => _isListening = false);
+      },
+    );
+    if (mounted) setState(() {});
+  }
+
+  void _toggleListening() async {
+    if (_isListening) {
+      await _speech.stop();
+      setState(() => _isListening = false);
+    } else {
+      if (_speechAvailable) {
+        setState(() => _isListening = true);
+        await _speech.listen(
+          onResult: (result) {
+            if (mounted) {
+              setState(() {
+                _textController.text = result.recognizedWords;
+                _textController.selection = TextSelection.fromPosition(
+                  TextPosition(offset: _textController.text.length),
+                );
+              });
+            }
+          },
+          localeId: 'vi_VN',
+          listenMode: ListenMode.dictation,
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Không thể khởi tạo nhận dạng giọng nói.')),
+        );
+      }
+    }
+  }
+
+  Future<void> _fetchCurrentLocation() async {
+    setState(() => _isFetchingLocation = true);
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (mounted) setState(() => _isFetchingLocation = false);
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.deniedForever) {
+        if (mounted) setState(() => _isFetchingLocation = false);
+        return;
+      }
+
+      if (permission == LocationPermission.whileInUse ||
+          permission == LocationPermission.always) {
+        // Thử lấy vị trí cached trước (nhanh, không timeout)
+        final lastKnown = await Geolocator.getLastKnownPosition();
+        if (lastKnown != null && mounted) {
+          setState(() {
+            _currentLocation = LatLng(lastKnown.latitude, lastKnown.longitude);
+          });
+        }
+
+        // Sau đó lấy vị trí chính xác hơn (có thể chậm hơn)
+        try {
+          Position position = await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.high,
+              timeLimit: Duration(seconds: 10),
+            ),
+          );
+          if (mounted) {
+            setState(() {
+              _currentLocation = LatLng(position.latitude, position.longitude);
+            });
+          }
+        } catch (e) {
+          // Nếu getCurrentPosition timeout, vẫn có lastKnown
+        }
+      }
+    } catch (e) {
+      // Ignore
+    } finally {
+      if (mounted) {
+        setState(() => _isFetchingLocation = false);
+      }
+    }
+  }
+
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.only(left: 20, right: 20, top: 24, bottom: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceBorder,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Thông tin khẩn cấp',
+              style: AppTypography.headingLarge,
+            ),
+            const SizedBox(height: 24),
+            Text('Vị trí *', style: AppTypography.labelMedium),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceCard,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.surfaceBorder),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.location_on, color: AppColors.primary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _isFetchingLocation
+                        ? Row(
+                            children: [
+                              const SizedBox(
+                                width: 14, height: 14,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                              const SizedBox(width: 8),
+                              Text('Đang lấy vị trí...', style: AppTypography.bodyMedium),
+                            ],
+                          )
+                        : _currentLocation != null
+                            ? Text(
+                                '${_currentLocation!.latitude.toStringAsFixed(4)}, ${_currentLocation!.longitude.toStringAsFixed(4)}',
+                                style: AppTypography.bodyMedium.copyWith(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              )
+                            : Text('Chưa có vị trí',
+                                style: AppTypography.bodyMedium.copyWith(color: AppColors.danger)),
+                  ),
+                  TextButton(
+                    onPressed: () async {
+                      final LatLng? picked = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => LocationPickerScreen(
+                            initialLat: _currentLocation?.latitude,
+                            initialLon: _currentLocation?.longitude,
+                          ),
+                        ),
+                      );
+                      if (picked != null) {
+                        setState(() {
+                          _currentLocation = picked;
+                        });
+                      }
+                    },
+                    child: const Text('Chọn thủ công'),
+                  )
+                ],
+              ),
+            ),
+            if (_currentLocation != null) ...[
+              const SizedBox(height: 12),
+              Container(
+                height: 150,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.surfaceBorder),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: FlutterMap(
+                  options: MapOptions(
+                    initialCenter: _currentLocation!,
+                    initialZoom: 15.0,
+                    interactionOptions: const InteractionOptions(
+                      flags: InteractiveFlag.none, // Map nhỏ chỉ xem, muốn đổi thì bấm "Chọn thủ công"
+                    ),
+                  ),
+                  children: [
+                    TileLayer(
+                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      userAgentPackageName: 'com.example.mobile',
+                    ),
+                    MarkerLayer(
+                      markers: [
+                        Marker(
+                          point: _currentLocation!,
+                          width: 40,
+                          height: 40,
+                          child: const Icon(
+                            Icons.location_on,
+                            color: AppColors.alertRed,
+                            size: 32,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 24),
+            Text('Ghi chú', style: AppTypography.labelMedium),
+            const SizedBox(height: 8),
+            Container(
+              decoration: BoxDecoration(
+                color: AppColors.surfaceCard,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.surfaceBorder),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _textController,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        hintText: 'Tình trạng của bạn...\n(VD: Nước ngập nóc, có trẻ em)',
+                        hintStyle: AppTypography.bodyMedium.copyWith(color: AppColors.textMuted),
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        filled: false,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: _toggleListening,
+                    child: Container(
+                      width: 48,
+                      height: 48,
+                      margin: const EdgeInsets.only(bottom: 4),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: _isListening ? AppColors.alertRed : AppColors.primary,
+                      ),
+                      child: Icon(
+                        _isListening ? Icons.stop : Icons.mic,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (_isListening)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 8, height: 8,
+                      decoration: const BoxDecoration(
+                        color: AppColors.alertRed,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text('Đang nghe...', style: AppTypography.bodySmall.copyWith(color: AppColors.alertRed)),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.alertRed,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                onPressed: () {
+                  if (_currentLocation == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Vui lòng cung cấp vị trí của bạn.')),
+                    );
+                    return;
+                  }
+                  widget.onSubmit(
+                    0,
+                    0,
+                    0,
+                    _currentLocation!,
+                    _textController.text,
+                  );
+                },
+                child: Text('GỬI SOS',
+                    style: AppTypography.labelLarge.copyWith(color: Colors.white)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+}
+

@@ -7,7 +7,6 @@ const URGENCY_KEYWORDS = {
   4: ['trẻ em', 'em bé', 'người già', 'ngập nóc', 'mái nhà', 'bị thương', 'gãy', 'cấp cứu'],
   3: ['ngập sâu', 'nước dâng', 'kẹt', 'không thoát được', 'mắc kẹt', 'cô lập'],
   2: ['ngập', 'cần xuồng', 'cần giúp', 'nước lên', 'cần hỗ trợ'],
-  1: ['sơ tán', 'chỗ trú ẩn', 'điểm tập kết', 'thực phẩm', 'nước uống']
 };
 
 const TAG_KEYWORDS = {

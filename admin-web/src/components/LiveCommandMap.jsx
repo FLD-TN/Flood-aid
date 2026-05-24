@@ -15,7 +15,7 @@ L.Icon.Default.mergeOptions({
 
 // Urgency → color theo design system
 const URGENCY_COLORS = {
-  5: '#EF4444', 4: '#F97316', 3: '#F59E0B', 2: '#22C55E', 1: '#3B82F6',
+  5: '#EF4444', 4: '#FCA5A5', 3: '#FBBF24', 2: '#FDE047', 1: '#86EFAC',
 };
 
 const FLAG_TYPES = [
@@ -164,6 +164,7 @@ function MapClickHandler({ flagType, onPlace }) {
 
 export default function LiveCommandMap({ onCaseSelect, selectedCaseId }) {
   const [activeFlagType, setActiveFlagType] = useState(null);
+  const [isLegendExpanded, setIsLegendExpanded] = useState(false);
 
   const { data: caseClusters } = usePolling('/api/admin/case-clusters', 15000);
   const { data: volunteerLocations } = usePolling('/api/volunteers/locations', 15000);
@@ -279,20 +280,62 @@ export default function LiveCommandMap({ onCaseSelect, selectedCaseId }) {
       </div>
 
       {/* Map Legend — bottom left */}
-      <div className="map-legend">
-        <div className="legend-card">
-          <div className="legend-item">
-            <div className="legend-dot" style={{ background: '#EF4444' }} />
-            SOS Nạn nhân
+      <div className="map-legend" style={{ position: 'absolute', bottom: 20, left: 20, zIndex: 1000 }}>
+        <div style={{
+          background: 'white',
+          borderRadius: 8,
+          padding: 12,
+          boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+          fontFamily: 'sans-serif',
+          color: '#333',
+          minWidth: 200,
+          cursor: 'pointer'
+        }} onClick={() => setIsLegendExpanded(!isLegendExpanded)}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 13, fontWeight: 500 }}>Mức 1</span>
+            <div style={{
+              width: 60, height: 16, borderRadius: 8,
+              background: 'linear-gradient(to right, #86EFAC, #FDE047, #FBBF24, #FCA5A5, #EF4444)'
+            }} />
+            <span style={{ fontSize: 13, fontWeight: 500 }}>Mức 5</span>
+            <span style={{ marginLeft: 8 }}>
+              {isLegendExpanded ? '⌄' : '⌃'}
+            </span>
           </div>
-          <div className="legend-item">
-            <div className="legend-dot" style={{ background: '#34D399' }} />
-            TNV
-          </div>
-          <div className="legend-item">
-            <div className="legend-dot" style={{ background: '#F59E0B', borderRadius: 3 }} />
-            Cảnh báo
-          </div>
+
+          {isLegendExpanded && (
+            <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 16, height: 16, borderRadius: 4, background: '#EF4444' }} />
+                <span style={{ fontSize: 13 }}>Mức 5 - Rất cao</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 16, height: 16, borderRadius: 4, background: '#FCA5A5' }} />
+                <span style={{ fontSize: 13 }}>Mức 4 - Cao</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 16, height: 16, borderRadius: 4, background: '#FBBF24' }} />
+                <span style={{ fontSize: 13 }}>Mức 3 - Trung bình</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 16, height: 16, borderRadius: 4, background: '#FDE047' }} />
+                <span style={{ fontSize: 13 }}>Mức 2 - Thấp</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 16, height: 16, borderRadius: 4, background: '#86EFAC' }} />
+                <span style={{ fontSize: 13 }}>Mức 1 - Rất thấp</span>
+              </div>
+              <div style={{ height: 1, background: '#eee', margin: '4px 0' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#34D399' }} />
+                <span style={{ fontSize: 13 }}>Tình nguyện viên</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 12, height: 12, borderRadius: 3, background: '#F59E0B' }} />
+                <span style={{ fontSize: 13 }}>Cảnh báo</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

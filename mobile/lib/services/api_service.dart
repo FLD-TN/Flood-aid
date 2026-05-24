@@ -11,6 +11,9 @@ class ApiService {
     required double lat,
     required double lon,
     required String phone,
+    int adults = 0,
+    int children = 0,
+    int elderly = 0,
   }) async {
     try {
       final response = await http
@@ -22,6 +25,9 @@ class ApiService {
               'lat': lat,
               'lon': lon,
               'phone': phone,
+              'adults': adults,
+              'children': children,
+              'elderly': elderly,
             }),
           )
           .timeout(const Duration(seconds: 10));

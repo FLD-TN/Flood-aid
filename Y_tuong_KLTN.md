@@ -12,7 +12,7 @@
 - App được cài đặt và đăng ký OTP **một lần trước mùa bão** trong điều kiện bình thường. Khi thiên tai xảy ra, Nạn nhân chỉ cần mở app và bấm SOS — không phải thực hiện bất kỳ bước đăng ký nào nữa. SĐT đã xác thực giúp TNV và Admin có thể gọi GSM trực tiếp khi mất 4G, và là cơ sở để hệ thống chống spam hiệu quả.
 
 - **Hoạt động chính của Nạn nhân:**
-Nạn nhân nhập một dòng text ngắn gọn (VD: "Nhà cấp 4 ngập tới nóc, có trẻ em") hoặc nhấn giữ nút mic để nói — Android `SpeechRecognizer` (gói Flutter `speech_to_text`) nhận dạng giọng nói thành text ngay trên thiết bị và hiển thị vào ô nhập liệu. Nạn nhân xem lại, sửa nếu cần, rồi bấm Gửi. **Chỉ có text được gửi lên server — không upload file audio.** AI sẽ tóm tắt nội dung text thành một dòng duy nhất hiển thị trên notification của TNV để giúp TNV ra quyết định nhanh mà không cần đọc text dài.
+Khi nạn nhân nhấn nút "Tạo SOS", một form điền thông tin sẽ hiện ra. Nạn nhân có thể điền thông tin về số lượng người (người lớn, trẻ em, người già), kiểm tra vị trí hiện tại hoặc chọn vị trí thủ công trên bản đồ (có hỗ trợ tìm kiếm). Nạn nhân cũng có thể nhập một dòng text ngắn gọn hoặc nhấn giữ nút mic để nói — Android `SpeechRecognizer` (gói Flutter `speech_to_text`) nhận dạng giọng nói thành text ngay trên thiết bị và hiển thị vào ô nhập liệu. Nạn nhân xem lại, sửa nếu cần, rồi bấm Gửi SOS. **Chỉ có text và các siêu dữ liệu (tọa độ, số người) được gửi lên server — không upload file audio.** AI sẽ tóm tắt nội dung text thành một dòng duy nhất hiển thị trên notification của TNV để giúp TNV ra quyết định nhanh mà không cần đọc text dài.
 
 - **Màn hình bản đồ SOS dành cho Nạn nhân:**
 Bản đồ SOS hiển thị **2 marker**:
@@ -65,7 +65,7 @@ Trong quá trình đăng ký, TNV có thể khai báo kỹ năng chuyên môn (k
 
 **Chức năng chính:**
 
-**UI & Định vị:** Xử lý giao diện nút bấm SOS với hai phương thức nhập liệu: (1) nhập text thủ công — phương thức chính, (2) nhấn giữ nút mic → Android `SpeechRecognizer` chuyển giọng nói thành text ngay trên thiết bị (client-side STT, không upload audio lên server). Cung cấp tùy chọn kéo thả ghim tọa độ/nhập text địa chỉ thủ công để chống sai số GPS. Tuyệt đối không phó mặc 100% cho GPS tự động.
+**UI & Định vị:** Xử lý giao diện nút bấm SOS với form nhập liệu chi tiết. Nạn nhân nhập số lượng người (người lớn, trẻ em, người già) và có hai phương thức nhập text ghi chú: (1) nhập text thủ công — phương thức chính, (2) nhấn giữ nút mic → Android `SpeechRecognizer` chuyển giọng nói thành text ngay trên thiết bị (client-side STT, không upload audio lên server). Cung cấp tùy chọn mở bản đồ để kéo thả ghim tọa độ hoặc tìm kiếm địa chỉ thủ công để chống sai số GPS. Tuyệt đối không phó mặc 100% cho GPS tự động.
 
 **Xử lý GPS Cold Start (3 lớp):** Android GPS cold start có thể mất 30–60 giây — nguy hiểm nếu user bấm SOS ngay khi mở app. Ba lớp kết hợp giải quyết vấn đề này:
 - *Lớp 1 — Buffer tự nhiên:* Khi user đang gõ text hoặc nói vào mic (5–15 giây), GPS Fused Location Provider đã warm up song song trong nền và thường có fix từ cell tower/WiFi sau 3–8 giây. Đến lúc bấm "Gửi SOS", tọa độ đã sẵn sàng.
@@ -213,7 +213,7 @@ Nếu GPS TNV vẫn còn trong khu vực → không đóng ca, vì nhiều khả
 
 Nạn nhân mở App — session OTP đã lưu từ trước, không cần đăng nhập lại.
   
-Khi bấm nút SOS, App đồng thời chộp tọa độ GPS hiện tại (xem phần GPS Cold Start) và hiển thị ô nhập liệu. Nạn nhân nhập text thủ công hoặc nhấn giữ nút mic → Android `SpeechRecognizer` chuyển giọng nói thành text ngay trên thiết bị → text hiện ra trong ô → nạn nhân xem và sửa nếu cần → bấm Gửi. **Chỉ text được gửi lên server.**
+Khi bấm nút tạo SOS, App mở ra một form nhập liệu gồm số lượng người lớn, trẻ em, người già, và hiển thị vị trí (đồng thời chộp tọa độ GPS hiện tại - xem phần GPS Cold Start). Nạn nhân có thể chọn tọa độ thủ công trên bản đồ nếu muốn. Sau đó nhập text thủ công hoặc nhấn giữ nút mic → Android `SpeechRecognizer` chuyển giọng nói thành text ngay trên thiết bị → text hiện ra trong ô ghi chú → nạn nhân xem và sửa nếu cần → bấm Gửi. **Chỉ text và siêu dữ liệu được gửi lên server.**
 
 App kiểm tra chất lượng mạng ngay lập tức để quyết định chiến lược gửi:
 - Mạng ổn: gửi full payload (text + GPS + metadata).
@@ -340,4 +340,3 @@ Sau khi ca `resolved`: ping xanh và ping đỏ biến khỏi bản đồ, ca SO
 
 **GPS lệch:** Notification chỉ là gợi ý, không phải trigger đóng ca — nên dù lệch cũng không gây hậu quả nghiêm trọng. Đóng ca thật sự luôn do con người xác nhận (nạn nhân, TNV, hoặc Admin).
 
-token phone verify : AdpetEZL1b74O3s9Mbb96zmMyUyJa4pfeFCYqTcNB3wP8liSxX3mZlH64xsaArLXd8iBhiqI8a2UCYbruZX7YmeXvYCetaDWGYqF40m_rYARAaYanPQW8E1yZpYbm2vedBjAU4T2DPU5P5-VtXzlf26RIg
