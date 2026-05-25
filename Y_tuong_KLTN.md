@@ -340,3 +340,33 @@ Sau khi ca `resolved`: ping xanh và ping đỏ biến khỏi bản đồ, ca SO
 
 **GPS lệch:** Notification chỉ là gợi ý, không phải trigger đóng ca — nên dù lệch cũng không gây hậu quả nghiêm trọng. Đóng ca thật sự luôn do con người xác nhận (nạn nhân, TNV, hoặc Admin).
 
+---
+
+### PHỤ LỤC: CẬP NHẬT GIAO DIỆN & TÍNH NĂNG MỚI CHO TNV
+
+**1. Phân loại 5 cấp độ và Bảng chú thích SOS:**
+Hệ thống SOS được phân loại thành 5 mức độ ưu tiên với màu sắc nhận diện trực quan:
+- **Mức 1 (Ít khẩn cấp):** Xanh lá cây (Cần lương thực, nước uống)
+- **Mức 2 (Khẩn cấp thấp):** Vàng (Ngập nhẹ, cần di dời)
+- **Mức 3 (Khẩn cấp TB):** Cam (Nước dâng cao, cô lập)
+- **Mức 4 (Khẩn cấp cao):** Đỏ (Trẻ em/người già, ngập nóc)
+- **Mức 5 (Cực kỳ nguy hiểm):** Đỏ sậm (Bất tỉnh, đuối nước, nguy hiểm tính mạng)
+*Bảng chú thích màu sắc này có thể thu phóng và xuất hiện trên Bản đồ SOS của cả Nạn nhân, TNV và Admin Dashboard.*
+
+**2. Tối ưu hóa UI/UX Thẻ thông tin ca SOS (Case Card):**
+- Hiển thị rõ **khoảng cách thực tế** từ TNV đến nạn nhân (VD: 800m, 1.2km) bằng cách sử dụng `ST_Distance` của PostGIS thông qua API `GET /api/cases/nearby`.
+- Tự động đếm và hiển thị **số lượng TNV đang đến** hỗ trợ.
+- Hiển thị linh hoạt **thời gian chờ** (VD: 3 phút trước).
+- Các **thẻ phân loại (Tags)** được trích xuất từ AI Pipeline sẽ hiển thị nổi bật với màu sắc tương ứng (VD: 'Trẻ em', 'Người già' tô viền đỏ; 'Y tế' viền xanh biển).
+- Nút bấm action: **Nhận ca**, **Gọi thẳng GSM** (màu xanh lá), **Google Maps** (màu vàng cam) được thiết kế bo tròn, trực quan để thao tác nhanh nhất trên thực địa.
+
+**3. Xem nhanh vị trí (Quick View):**
+Ở mỗi thẻ ca SOS của TNV, cung cấp nút **"Xem vị trí"**. Khi bấm, bản đồ sẽ lập tức di chuyển camera (fly-to) đến đúng tọa độ của nạn nhân, giúp TNV không cần phải lướt map thủ công để tìm kiếm vị trí của ca đó.
+
+**4. Bộ lọc thông minh (Smart Filter Bottom Sheet):**
+TNV có khả năng thu hẹp danh sách tìm kiếm thông qua màn hình bộ lọc:
+- Lọc theo **Mức độ khẩn cấp** (Từ 1 đến 5).
+- Lọc theo **Khoảng cách** (giới hạn bán kính tối đa lên đến 10km qua thanh trượt Slider).
+- Sắp xếp ưu tiên: **Gần đến xa / Xa đến gần** và **Mới nhất / Đợi lâu nhất**.
+- Lọc theo **Tags đặc biệt** (Trẻ em, Người già, Y tế, Ngập nóc, Cần thuyền).
+Tất cả các tuỳ chọn lọc này gọi trực tiếp xuống database qua API để trả về kết quả thời gian thực.

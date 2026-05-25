@@ -4,10 +4,12 @@ import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
 import '../../widgets/map_widget.dart';
 import '../../widgets/sos_legend_widget.dart';
+import '../../widgets/filter_bottom_sheet.dart';
 import 'active_mission_screen.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:geolocator/geolocator.dart';
 
 class VolunteerHomeScreen extends StatefulWidget {
   const VolunteerHomeScreen({super.key});
@@ -20,6 +22,11 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
   Timer? _pollTimer;
   List<Map<String, dynamic>> _cases = [];
   bool _isLoading = true;
+  FilterParams? _currentFilter;
+
+  // Tọa độ TNV hiện tại (mặc định Đà Nẵng nếu chưa có GPS)
+  double _currentLat = 16.0544;
+  double _currentLon = 108.2022;
 
   final DraggableScrollableController _sheetController =
       DraggableScrollableController();
@@ -45,7 +52,38 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
   }
 
   Future<void> _fetchCases() async {
-    final cases = await ApiService.getCases();
+    // 1. Lấy vị trí GPS thật của TNV trước khi gọi API
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (serviceEnabled) {
+        LocationPermission permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.denied) {
+          permission = await Geolocator.requestPermission();
+        }
+        if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
+          Position position = await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.medium,
+              timeLimit: Duration(seconds: 5),
+            ),
+          );
+          _currentLat = position.latitude;
+          _currentLon = position.longitude;
+        }
+      }
+    } catch (e) {
+      print("[VolunteerHomeScreen] Lỗi lấy GPS: $e");
+    }
+
+    // 2. Gọi API với vị trí mới nhất
+    final cases = await ApiService.getNearbyCases(
+      lat: _currentLat,
+      lon: _currentLon,
+      maxDistance: _currentFilter?.maxDistance ?? 10.0,
+      urgencyLevels: _currentFilter?.urgencyLevels,
+      tags: _currentFilter?.tags,
+      sortBy: _currentFilter?.sortByDistance ?? 'distance_asc',
+    );
     if (mounted) {
       setState(() {
         _cases = cases;
@@ -60,6 +98,26 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
       final status = c['status'] ?? '';
       return status == 'pending' || status == 'responding';
     }).toList();
+  }
+
+  void _showFilterBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => SizedBox(
+        height: MediaQuery.of(context).size.height * 0.85,
+        child: FilterBottomSheet(
+          initialParams: _currentFilter,
+          onApply: (params) {
+            setState(() {
+              _currentFilter = params;
+            });
+            _fetchCases();
+          },
+        ),
+      ),
+    );
   }
 
   Color _getUrgencyColor(int level) {
@@ -397,24 +455,70 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                             children: [
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
+                                  horizontal: 10,
+                                  vertical: 6,
                                 ),
                                 decoration: BoxDecoration(
                                   color: AppColors.alertRed,
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(16),
                                 ),
                                 child: Text(
                                   '${pendingCases.length} chờ xử lý',
                                   style: const TextStyle(
                                     color: Colors.white,
-                                    fontSize: 10,
+                                    fontSize: 11,
                                     fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              GestureDetector(
+                                onTap: _showFilterBottomSheet,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    border: Border.all(color: AppColors.alertRed),
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: Row(
+                                    children: const [
+                                      Icon(Icons.tune, size: 14, color: AppColors.alertRed),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        '2 bộ lọc',
+                                        style: TextStyle(
+                                          color: AppColors.alertRed,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
                             ],
                           ),
+                        ],
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    // Quick Filters Row
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      child: Row(
+                        children: [
+                          _buildQuickFilter(5, '0.8km', true),
+                          const SizedBox(width: 8),
+                          _buildQuickFilter(5, '1.5km', false),
+                          const SizedBox(width: 8),
+                          _buildQuickFilter(4, '1.2km', false),
+                          const SizedBox(width: 8),
+                          _buildQuickFilter(1, '2.1km', false),
                         ],
                       ),
                     ),
@@ -475,270 +579,315 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
     );
   }
 
+  Widget _buildQuickFilter(int urgency, String distance, bool isSelected) {
+    final color = _getUrgencyColor(urgency);
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.15),
+            border: Border.all(color: color.withOpacity(0.8), width: 1.5),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            children: [
+              Text(
+                'Mức $urgency',
+                style: TextStyle(color: color.withOpacity(0.9), fontWeight: FontWeight.bold, fontSize: 12),
+              ),
+              Text(
+                distance,
+                style: TextStyle(color: color.withOpacity(0.9), fontSize: 10),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 4),
+        if (isSelected)
+          Container(
+            width: 4,
+            height: 4,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          )
+        else
+          Container(
+            width: 4,
+            height: 4,
+            decoration: BoxDecoration(color: Colors.grey.shade300, shape: BoxShape.circle),
+          ),
+      ],
+    );
+  }
+
   Widget _buildRequestCard(Map<String, dynamic> caseData) {
     final urgency = (caseData['urgency_level'] as num?)?.toInt() ?? 2;
     final color = _getUrgencyColor(urgency);
     final label = _getUrgencyLabel(urgency);
     final summary =
         caseData['ai_summary'] as String? ??
+        caseData['summary_1line'] as String? ??
         caseData['description'] as String? ??
         'Yêu cầu cứu trợ';
     final caseId = caseData['id']?.toString() ?? '';
     final createdAt = caseData['created_at'] as String?;
 
-    // Default placeholders if data is missing, matching the requested UI
-    final tagsRaw = caseData['tags'];
-    final String tagsStr;
-    if (tagsRaw is List) {
-      tagsStr = tagsRaw.join(', ');
-    } else {
-      tagsStr = 'trẻ em, người già, y tế'; // Default placeholder as requested
-    }
+    // Real tags from backend
+    final List<dynamic> rawTags = caseData['tags_vi'] ?? [];
+    final List<String> tags = rawTags.map((e) => e.toString()).toList();
 
     final responderCount = caseData['responder_count'] ?? 0;
-    final distanceStr = '~1.2 km'; // Placeholder as requested
+    
+    // Real distance
+    final distM = caseData['distance_m'] ?? 0;
+    final distanceStr = distM > 1000 ? '${(distM / 1000).toStringAsFixed(1)} km' : '${distM}m';
 
-    String timeAgo = '8 phút trước';
-    String timeSent = '14:32';
+    // Real time
+    final mins = caseData['time_ago_minutes'] ?? 0;
+    String timeAgo = mins < 60 ? '$mins phút trước' : '${(mins / 60).floor()} giờ trước';
+    
+    String timeSent = '';
     if (createdAt != null) {
-      try {
-        final dt = DateTime.parse(createdAt).toLocal();
-        timeSent =
-            '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-        final diff = DateTime.now().difference(dt);
-        if (diff.inMinutes < 60) {
-          timeAgo = '${diff.inMinutes} phút trước';
-        } else {
-          timeAgo = '${diff.inHours} giờ trước';
-        }
-      } catch (_) {}
+      final dt = DateTime.tryParse(createdAt)?.toLocal();
+      if (dt != null) {
+        timeSent = '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+      }
     }
 
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color, width: 2),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Row 1: Mức khẩn cấp
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  'MỨC $urgency — $label',
-                  style: AppTypography.headingMedium.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              GestureDetector(
-                onTap: () {
-                  final lat = (caseData['lat'] as num?)?.toDouble();
-                  final lon = (caseData['lon'] as num?)?.toDouble();
-                  if (lat != null && lon != null) {
-                    _mapController.move(LatLng(lat, lon), 15.0);
-                    _sheetController.animateTo(
-                      0.08,
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeInOut,
-                    );
-                  }
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Icon(Icons.location_searching, size: 14, color: AppColors.primary),
-                      SizedBox(width: 4),
-                      Text(
-                        'Xem vị trí',
+          // Red top border line matching design
+          Container(
+            height: 4,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Row 1: Mức khẩn cấp & Xem vị trí
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'MỨC $urgency — $label',
                         style: TextStyle(
-                          color: AppColors.primary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
+                          color: color,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                          letterSpacing: 0.5,
                         ),
                       ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-
-          // Row 2: Summary
-          Text(
-            '"$summary"',
-            style: AppTypography.bodyLarge.copyWith(
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          // Row 3: Details
-          Row(
-            children: [
-              const Icon(
-                Icons.location_on,
-                size: 16,
-                color: AppColors.textSecondary,
-              ),
-              const SizedBox(width: 8),
-              Text('Cách bạn: $distanceStr', style: AppTypography.bodyMedium),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              const Icon(
-                Icons.local_offer,
-                size: 16,
-                color: AppColors.textSecondary,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Tags: $tagsStr',
-                  style: AppTypography.bodyMedium,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              const Icon(
-                Icons.schedule,
-                size: 16,
-                color: AppColors.textSecondary,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Gửi lúc: $timeSent ($timeAgo)',
-                style: AppTypography.bodyMedium,
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              const Icon(Icons.group, size: 16, color: AppColors.textSecondary),
-              const SizedBox(width: 8),
-              Text(
-                'TNV đang đến: $responderCount người',
-                style: AppTypography.bodyMedium,
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Buttons
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => ActiveMissionScreen(
-                      caseId: caseId,
-                      victimLat: (caseData['lat'] as num?)?.toDouble(),
-                      victimLon: (caseData['lon'] as num?)?.toDouble(),
-                      summary: summary,
-                      urgencyLevel: urgency,
                     ),
-                  ),
-                );
-              },
-              icon: const Icon(
-                Icons.check_circle,
-                color: Colors.white,
-                size: 18,
-              ),
-              label: const Text(
-                'Nhận ca',
-                style: TextStyle(color: Colors.white, fontSize: 14),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                    GestureDetector(
+                      onTap: () {
+                        final lat = (caseData['lat'] as num?)?.toDouble();
+                        final lon = (caseData['lon'] as num?)?.toDouble();
+                        if (lat != null && lon != null) {
+                          _mapController.move(LatLng(lat, lon), 15.0);
+                          _sheetController.animateTo(
+                            0.08,
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeInOut,
+                          );
+                        }
+                      },
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          Icon(Icons.location_on_outlined, size: 14, color: Colors.blue),
+                          SizedBox(width: 4),
+                          Text(
+                            'Xem vị trí',
+                            style: TextStyle(
+                              color: Colors.blue,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () async {
-                    final phone = caseData['victim_phone'] ?? '0123456789';
-                    final Uri url = Uri(scheme: 'tel', path: phone.toString());
-                    if (await canLaunchUrl(url)) {
-                      await launchUrl(url);
+                const SizedBox(height: 12),
+
+                // Row 2: Summary
+                Text(
+                  '"$summary"',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 18,
+                    color: Colors.black87,
+                    height: 1.3,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Row 3: Details
+                Row(
+                  children: [
+                    const Icon(Icons.location_on_outlined, size: 18, color: Colors.grey),
+                    const SizedBox(width: 8),
+                    Text('Cách bạn: $distanceStr', style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.schedule, size: 18, color: Colors.grey),
+                    const SizedBox(width: 8),
+                    Text('Gửi lúc: $timeSent ($timeAgo)', style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.group_outlined, size: 18, color: Colors.grey),
+                    const SizedBox(width: 8),
+                    Text(
+                      'TNV đang đến: $responderCount người',
+                      style: TextStyle(color: responderCount == 0 ? AppColors.alertRed : Colors.black87, fontSize: 14, fontWeight: responderCount == 0 ? FontWeight.bold : FontWeight.w500),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Tags
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: tags.map((tag) {
+                    Color bgColor = Colors.grey.shade100;
+                    Color textColor = Colors.grey.shade700;
+                    if (tag.toLowerCase().contains('trẻ em') || tag.toLowerCase().contains('người già')) {
+                      bgColor = AppColors.alertRed.withOpacity(0.1);
+                      textColor = AppColors.alertRed;
+                    } else if (tag.toLowerCase().contains('y tế')) {
+                      bgColor = Colors.blue.withOpacity(0.1);
+                      textColor = Colors.blue;
                     }
-                  },
-                  icon: const Icon(Icons.phone, color: Colors.green, size: 16),
-                  label: const Text(
-                    'Gọi thẳng GSM',
-                    style: TextStyle(color: Colors.green, fontSize: 12),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Colors.green),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () async {
-                    final lat = caseData['lat']?.toString() ?? '16.0544';
-                    final lon = caseData['lon']?.toString() ?? '108.2022';
-                    final Uri url = Uri.parse(
-                      'https://www.google.com/maps/search/?api=1&query=$lat,$lon',
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: bgColor,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        tag,
+                        style: TextStyle(color: textColor, fontSize: 11, fontWeight: FontWeight.bold),
+                      ),
                     );
-                    if (await canLaunchUrl(url)) {
-                      await launchUrl(
-                        url,
-                        mode: LaunchMode.externalApplication,
-                      );
-                    }
-                  },
-                  icon: const Icon(Icons.map, color: Colors.blue, size: 16),
-                  label: const Text(
-                    'Google Maps',
-                    style: TextStyle(color: Colors.blue, fontSize: 12),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Colors.blue),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                  }).toList(),
+                ),
+                const SizedBox(height: 20),
+
+                // Buttons
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {},
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      backgroundColor: Colors.blue.shade400,
+                      elevation: 0,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Icon(Icons.check, color: Colors.white, size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          'Nhận ca',
+                          style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          final phone = caseData['victim_phone'] ?? '0123456789';
+                          final Uri url = Uri(scheme: 'tel', path: phone.toString());
+                          if (await canLaunchUrl(url)) {
+                            await launchUrl(url);
+                          }
+                        },
+                        icon: const Icon(Icons.phone_outlined, color: Colors.white, size: 18),
+                        label: const Text(
+                          'Gọi thẳng GSM',
+                          style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green.shade400,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          final lat = caseData['lat']?.toString() ?? '16.0544';
+                          final lon = caseData['lon']?.toString() ?? '108.2022';
+                          final Uri url = Uri.parse(
+                            'https://www.google.com/maps/search/?api=1&query=$lat,$lon',
+                          );
+                          if (await canLaunchUrl(url)) {
+                            await launchUrl(
+                              url,
+                              mode: LaunchMode.externalApplication,
+                            );
+                          }
+                        },
+                        icon: const Icon(Icons.map_outlined, color: Colors.white, size: 18),
+                        label: const Text(
+                          'Google Maps',
+                          style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange.shade400,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ],
       ),

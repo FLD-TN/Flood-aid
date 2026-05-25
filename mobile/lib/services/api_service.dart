@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  static const String _baseUrl = 'http://localhost:3000';
-  // static const String _baseUrl = 'http://10.0.2.2:3000';
+  // static const String _baseUrl = 'http://localhost:3000';
+  static const String _baseUrl = 'http://10.0.2.2:3000';
 
   /// POST /api/sos — Gửi SOS
   static Future<Map<String, dynamic>?> sendSos({
@@ -205,6 +205,51 @@ class ApiService {
       return null;
     } catch (e) {
       return null;
+    }
+  }
+
+  /// GET /api/cases/nearby — Lấy danh sách ca SOS gần TNV (có khoảng cách, filter, sort)
+  static Future<List<Map<String, dynamic>>> getNearbyCases({
+    required double lat,
+    required double lon,
+    double maxDistance = 10,
+    List<int>? urgencyLevels,
+    List<String>? tags,
+    String sortBy = 'distance_asc',
+  }) async {
+    try {
+      final queryParams = <String, String>{
+        'lat': lat.toString(),
+        'lon': lon.toString(),
+        'maxDistance': maxDistance.toString(),
+        'sortBy': sortBy,
+      };
+
+      if (urgencyLevels != null && urgencyLevels.isNotEmpty) {
+        queryParams['urgency'] = urgencyLevels.join(',');
+      }
+      if (tags != null && tags.isNotEmpty) {
+        queryParams['tags'] = tags.join(',');
+      }
+
+      final uri = Uri.parse('$_baseUrl/api/cases/nearby')
+          .replace(queryParameters: queryParams);
+
+      final response = await http
+          .get(uri)
+          .timeout(const Duration(seconds: 8));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data is List) {
+          return List<Map<String, dynamic>>.from(data);
+        }
+        return [];
+      }
+      return [];
+    } catch (e) {
+      print('[ApiService] getNearbyCases error: $e');
+      return [];
     }
   }
 }

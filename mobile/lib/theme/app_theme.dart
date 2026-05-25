@@ -26,11 +26,11 @@ class AppColors {
   static const statusResolved = Color(0xFF6B7280); // Xám - Đã xử lý
 
   // ── Urgency Colors ──
-  static const urgency1 = Color(0xFF86EFAC); // Mức 1 - Rất thấp
-  static const urgency2 = Color(0xFFFDE047); // Mức 2 - Thấp
-  static const urgency3 = Color(0xFFFBBF24); // Mức 3 - Trung bình
-  static const urgency4 = Color(0xFFFCA5A5); // Mức 4 - Cao
-  static const urgency5 = Color(0xFFEF4444); // Mức 5 - Rất cao
+  static const urgency1 = Color(0xFF22C55E); // green-500
+  static const urgency2 = Color(0xFFEAB308); // yellow-500
+  static const urgency3 = Color(0xFFF97316); // orange-500
+  static const urgency4 = Color(0xFFEF4444); // red-500
+  static const urgency5 = Color(0xFFB91C1C); // red-700
 
   // ── Text ──
   static const textPrimary = Color(0xFF191C1D); // Dark gray

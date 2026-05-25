@@ -285,4 +285,138 @@ async function getActiveByPhone(req, res) {
   }
 }
 
-module.exports = { createSos, getCaseById, getTnvLocation, acceptCase, resolveCase, getActiveByPhone };
+/**
+ * GET /api/cases/nearby — Danh sách ca SOS gần TNV (có khoảng cách, filter, sort)
+ * Query params: lat, lon, maxDistance (km), urgency (csv), tags (csv), sortBy
+ */
+async function getNearbyCases(req, res) {
+  try {
+    const { lat, lon, maxDistance, urgency, tags, sortBy } = req.query;
+
+    if (!lat || !lon) {
+      return res.status(400).json({ error: 'Missing required: lat, lon' });
+    }
+
+    const volLat = parseFloat(lat);
+    const volLon = parseFloat(lon);
+
+    // Build dynamic WHERE clauses
+    const conditions = [
+      `c.status IN ('pending', 'responding')`
+    ];
+    const params = [volLon, volLat]; // $1=lon, $2=lat
+
+    // Distance filter
+    const parsedDist = parseFloat(maxDistance);
+    if (maxDistance !== 'all' && parsedDist > 0) {
+      const maxDist = parsedDist || 10; // km, default 10
+      params.push(maxDist * 1000);
+      conditions.push(`ST_DWithin(c.coords::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, $${params.length})`);
+    }
+
+    // Filter by urgency levels
+    if (urgency) {
+      const levels = urgency.split(',').map(Number).filter(n => n >= 1 && n <= 5);
+      if (levels.length > 0) {
+        params.push(levels);
+        conditions.push(`c.urgency_level = ANY($${params.length}::int[])`);
+      }
+    }
+
+    // Filter by tags
+    if (tags) {
+      const tagList = tags.split(',').map(t => t.trim()).filter(Boolean);
+      if (tagList.length > 0) {
+        params.push(tagList);
+        conditions.push(`c.tags ?| $${params.length}::text[]`);
+      }
+    }
+
+    // Determine ORDER BY
+    let orderClause = 'distance_m ASC, c.urgency_level DESC'; // default: gần nhất
+    switch (sortBy) {
+      case 'distance_desc':
+        orderClause = 'distance_m DESC';
+        break;
+      case 'newest':
+        orderClause = 'c.created_at DESC';
+        break;
+      case 'oldest':
+        orderClause = 'c.created_at ASC';
+        break;
+      case 'distance_asc':
+      default:
+        orderClause = 'distance_m ASC, c.urgency_level DESC';
+    }
+
+    const whereSQL = conditions.join(' AND ');
+
+    const query = `
+      SELECT 
+        c.id,
+        c.urgency_level,
+        c.tags,
+        c.summary_1line,
+        c.status,
+        c.text_raw,
+        c.phone_hash,
+        ST_X(c.coords::geometry) AS lon,
+        ST_Y(c.coords::geometry) AS lat,
+        c.created_at,
+        ROUND(ST_Distance(
+          c.coords::geography,
+          ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography
+        ))::int AS distance_m,
+        EXTRACT(EPOCH FROM (NOW() - c.created_at)) / 60 AS time_ago_minutes,
+        COALESCE(rc.cnt, 0) AS responder_count
+      FROM cases c
+      LEFT JOIN (
+        SELECT case_id, COUNT(*) AS cnt
+        FROM case_assignments
+        WHERE revoked_at IS NULL AND completed_at IS NULL
+        GROUP BY case_id
+      ) rc ON rc.case_id = c.id
+      WHERE ${whereSQL}
+      ORDER BY ${orderClause}
+      LIMIT 50
+    `;
+
+    const result = await db.query(query, params);
+
+    // Map tags -> Vietnamese labels + mask phone
+    const TAG_MAP = {
+      y_te: 'Y tế',
+      tre_em: 'Trẻ em',
+      nguoi_gia: 'Người già',
+      ngap_noc: 'Ngập nóc',
+      phuong_tien: 'Cần thuyền',
+    };
+
+    const cases = result.rows.map(row => {
+      const rawTags = typeof row.tags === 'string' ? JSON.parse(row.tags) : (row.tags || []);
+      return {
+        id: row.id,
+        urgency_level: row.urgency_level,
+        tags: rawTags,
+        tags_vi: rawTags.map(t => TAG_MAP[t] || t),
+        summary_1line: row.summary_1line,
+        ai_summary: row.summary_1line,
+        description: row.text_raw,
+        status: row.status,
+        lat: row.lat,
+        lon: row.lon,
+        distance_m: row.distance_m,
+        responder_count: parseInt(row.responder_count) || 0,
+        created_at: row.created_at,
+        time_ago_minutes: Math.round(parseFloat(row.time_ago_minutes) || 0),
+      };
+    });
+
+    res.json(cases);
+  } catch (err) {
+    console.error('[sosController][getNearbyCases]', err.message);
+    res.status(500).json({ error: 'Internal error' });
+  }
+}
+
+module.exports = { createSos, getCaseById, getTnvLocation, acceptCase, resolveCase, getActiveByPhone, getNearbyCases };
