@@ -4,11 +4,10 @@ import 'package:http/http.dart' as http;
 import 'auth_service.dart';
 
 class ApiService {
-  // Web: dùng 127.0.0.1 (Google không còn chấp nhận localhost cho reCAPTCHA)
-  // Android emulator: dùng 10.0.2.2 (IP đặc biệt trỏ về host machine)
-  // Real device: đổi thành IP thực hoặc domain server
+  // Web: dùng 127.0.0.1 cho local dev
+  // Android: dùng Render (backend online, hoạt động ở mọi nơi)
   static String get _baseUrl =>
-      kIsWeb ? 'http://127.0.0.1:3000' : 'http://10.0.2.2:3000';
+      kIsWeb ? 'http://127.0.0.1:3000' : 'https://floodaid.onrender.com';
 
   static Future<Map<String, String>> _getHeaders() async {
     final headers = {'Content-Type': 'application/json'};

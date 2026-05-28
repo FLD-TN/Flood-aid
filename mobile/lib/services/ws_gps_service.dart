@@ -10,11 +10,11 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 /// Fallback: REST polling every 10s when WS disconnects
 /// Auto-reconnect: Tries WS reconnection every 30s
 class WsGpsService {
-  // Web: 127.0.0.1 | Android emulator: 10.0.2.2
+  // Web: local dev | Android: Render (online)
   static String get _wsBaseUrl =>
-      kIsWeb ? 'ws://127.0.0.1:3000' : 'ws://10.0.2.2:3000';
+      kIsWeb ? 'ws://127.0.0.1:3000' : 'wss://floodaid.onrender.com';
   static String get _httpBaseUrl =>
-      kIsWeb ? 'http://127.0.0.1:3000' : 'http://10.0.2.2:3000';
+      kIsWeb ? 'http://127.0.0.1:3000' : 'https://floodaid.onrender.com';
 
   // Connection state
   bool _isConnected = false;

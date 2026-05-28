@@ -17,9 +17,9 @@ class SseEvent {
 /// SSE client service for listening to case status events.
 /// Replaces polling — only receives data when server has an actual update.
 class SseService {
-  // Web: 127.0.0.1 | Android emulator: 10.0.2.2
+  // Web: local dev | Android: Render (online)
   static String get _baseUrl =>
-      kIsWeb ? 'http://127.0.0.1:3000' : 'http://10.0.2.2:3000';
+      kIsWeb ? 'http://127.0.0.1:3000' : 'https://floodaid.onrender.com';
 
   /// Listen to case status events via SSE stream.
   /// 
