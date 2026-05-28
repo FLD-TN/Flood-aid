@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "121208807643",
+    "project_id": "floodaid-9802a",
+    "storage_bucket": "floodaid-9802a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:121208807643:android:3f60d82c1c6e8077302cfe",
+        "android_client_info": {
+          "package_name": "com.floodaid.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDYQbEefS9Oo1mt9ba0uszwiI_Ls8eUEPg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

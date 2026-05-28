@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
+import '../../services/ws_gps_service.dart';
 import '../../widgets/map_widget.dart';
 import '../../widgets/sos_legend_widget.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -29,7 +30,8 @@ class ActiveMissionScreen extends StatefulWidget {
 }
 
 class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
-  Timer? _locationTimer;
+  Timer? _gpsTimer;
+  WsGpsService? _wsGpsService;
   final MapController _mapController = MapController();
 
   // TNV (volunteer) location — realtime GPS
@@ -42,6 +44,8 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
 
   // Case state
   bool _accepted = false;
+  bool _isResolving = false;
+  bool _wsConnected = false;
 
   // Draggable sheet controller
   final DraggableScrollableController _sheetController =
@@ -53,18 +57,48 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
     _victimLat = widget.victimLat ?? 16.0544;
     _victimLon = widget.victimLon ?? 108.2022;
 
+    // Get initial location once
     _getMyLocation();
-    // Update GPS every 10s
-    _locationTimer = Timer.periodic(const Duration(seconds: 10), (_) {
-      _getMyLocation();
-    });
   }
 
   @override
   void dispose() {
-    _locationTimer?.cancel();
+    _gpsTimer?.cancel();
+    _wsGpsService?.dispose();
     _sheetController.dispose();
     super.dispose();
+  }
+
+  /// Start GPS tracking via WebSocket (called after accepting case)
+  void _startGpsTracking() {
+    // Initialize WS GPS service
+    _wsGpsService = WsGpsService(
+      onConnectionChanged: (connected) {
+        if (mounted) {
+          setState(() => _wsConnected = connected);
+        }
+      },
+    );
+
+    // Connect WebSocket
+    _wsGpsService!.connect(
+      caseId: widget.caseId,
+      role: 'volunteer',
+      volunteerId: 'tnv-local',
+    );
+
+    // Start GPS timer — send GPS via WS (or REST fallback) every 10s
+    _gpsTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      _getMyLocation();
+    });
+  }
+
+  /// Stop GPS tracking (when case is resolved or cancelled)
+  void _stopGpsTracking() {
+    _gpsTimer?.cancel();
+    _gpsTimer = null;
+    _wsGpsService?.dispose();
+    _wsGpsService = null;
   }
 
   Future<void> _getMyLocation() async {
@@ -77,32 +111,85 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
           _myLat = pos.latitude;
           _myLon = pos.longitude;
         });
-        // Gửi vị trí lên server
-        await ApiService.updateLocation(
-          volunteerId: 'tnv-local',
-          lat: pos.latitude,
-          lon: pos.longitude,
-        );
+
+        // Send GPS: prefer WebSocket, fallback to REST
+        if (_wsGpsService != null && _wsGpsService!.isConnected) {
+          _wsGpsService!.sendGps(pos.latitude, pos.longitude);
+        } else if (_accepted) {
+          // REST fallback when WS is down
+          await ApiService.updateLocation(
+            volunteerId: 'tnv-local',
+            lat: pos.latitude,
+            lon: pos.longitude,
+          );
+        }
       }
     } catch (e) {
-      // GPS error — use default
       debugPrint('[ActiveMission] GPS error: $e');
     }
   }
 
   Future<void> _handleAcceptCase() async {
+    // Optimistic UI: update immediately
     setState(() => _accepted = true);
     try {
-      await ApiService.acceptCase(widget.caseId, 'tnv-local');
+      final success = await ApiService.acceptCase(widget.caseId, 'tnv-local');
+      if (!success && mounted) {
+        // Rollback on failure
+        setState(() => _accepted = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Nhận ca thất bại. Thử lại sau.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      } else if (mounted) {
+        // Accept succeeded — start GPS tracking via WebSocket
+        _startGpsTracking();
+      }
     } catch (e) {
+      if (mounted) {
+        setState(() => _accepted = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Lỗi mạng. Thử lại sau.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
       debugPrint('[ActiveMission] Accept error: $e');
     }
   }
 
   Future<void> _handleResolve() async {
-    final success = await ApiService.resolveCase(widget.caseId, 'volunteer');
-    if (success && mounted) {
-      Navigator.pop(context);
+    if (_isResolving) return;
+    // Optimistic: show resolving state immediately
+    setState(() => _isResolving = true);
+    try {
+      final success = await ApiService.resolveCase(widget.caseId, 'volunteer');
+      if (success && mounted) {
+        _stopGpsTracking();
+        Navigator.pop(context);
+      } else if (mounted) {
+        setState(() => _isResolving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Đóng ca thất bại. Thử lại sau.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isResolving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Lỗi mạng. Thử lại sau.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+      debugPrint('[ActiveMission] Resolve error: $e');
     }
   }
 
@@ -271,9 +358,9 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              const Text(
-                'Đang Ghi GPS — Cứu hộ',
-                style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+              Text(
+                _wsConnected ? 'Đang Ghi GPS — WS Live' : 'Đang Ghi GPS — Cứu hộ',
+                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
               ),
             ],
           ),
@@ -513,16 +600,23 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: ElevatedButton(
-                              onPressed: _handleResolve,
+                              onPressed: _isResolving ? null : _handleResolve,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.success,
+                                backgroundColor: _isResolving ? Colors.grey : AppColors.success,
                                 padding: const EdgeInsets.symmetric(vertical: 14),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               ),
-                              child: const Text(
-                                'Tiếp cận xong',
-                                style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                              ),
+                              child: _isResolving
+                                  ? const SizedBox(
+                                      width: 18, height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2, color: Colors.white,
+                                      ),
+                                    )
+                                  : const Text(
+                                      'Tiếp cận xong',
+                                      style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                                    ),
                             ),
                           ),
                         ],

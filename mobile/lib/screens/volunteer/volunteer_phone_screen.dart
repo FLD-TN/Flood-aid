@@ -3,40 +3,40 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../theme/app_theme.dart';
 import '../../services/auth_service.dart';
-import 'otp_verification_screen.dart';
-import 'sos_screen.dart';
+import '../victim/otp_verification_screen.dart';
+import 'volunteer_home_screen.dart';
 
-/// Màn hình nhập SĐT — thay thế OTP verification tạm thời
-/// Lưu SĐT vào SharedPreferences, chỉ nhập 1 lần
-class PhoneInputScreen extends StatefulWidget {
-  const PhoneInputScreen({super.key});
+/// Màn hình nhập SĐT cho Tình nguyện viên — xác thực OTP Firebase
+/// Nếu đã authenticated → vào thẳng VolunteerHomeScreen
+class VolunteerPhoneScreen extends StatefulWidget {
+  const VolunteerPhoneScreen({super.key});
 
   @override
-  State<PhoneInputScreen> createState() => _PhoneInputScreenState();
+  State<VolunteerPhoneScreen> createState() => _VolunteerPhoneScreenState();
 }
 
-class _PhoneInputScreenState extends State<PhoneInputScreen> {
+class _VolunteerPhoneScreenState extends State<VolunteerPhoneScreen> {
   final _phoneController = TextEditingController();
   bool _isValid = false;
   bool _isLoading = true;
+  bool _isSendingOtp = false;
 
   @override
   void initState() {
     super.initState();
-    _checkExistingPhone();
+    _checkExistingAuth();
   }
 
-  /// Kiểm tra xem đã có SĐT lưu sẵn chưa → bỏ qua nếu có
-  Future<void> _checkExistingPhone() async {
+  /// Kiểm tra đã authenticated chưa → bỏ qua nếu có
+  Future<void> _checkExistingAuth() async {
     final prefs = await SharedPreferences.getInstance();
     final savedPhone = prefs.getString('user_phone');
 
     if (AuthService.isAuthenticated || (savedPhone != null && savedPhone.isNotEmpty)) {
       if (mounted) {
-        // Đã có SĐT → vào thẳng SOS screen
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const SosScreen()),
+          MaterialPageRoute(builder: (_) => const VolunteerHomeScreen()),
         );
         return;
       }
@@ -46,7 +46,6 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
   }
 
   void _onPhoneChanged(String value) {
-    // Validate SĐT Việt Nam: 10 số, bắt đầu bằng 0
     final cleaned = value.replaceAll(RegExp(r'\D'), '');
     setState(() {
       _isValid = cleaned.length == 10 && cleaned.startsWith('0');
@@ -57,14 +56,14 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
     final phone = _phoneController.text.replaceAll(RegExp(r'\D'), '');
     if (!_isValid) return;
 
-    setState(() => _isLoading = true);
+    setState(() => _isSendingOtp = true);
 
     try {
       await AuthService.sendOtp(
         phoneNumber: phone,
         onCodeSent: (String verificationId, int? resendToken) {
           if (!mounted) return;
-          setState(() => _isLoading = false);
+          setState(() => _isSendingOtp = false);
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -74,7 +73,7 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
                 onSuccess: () {
                   Navigator.pushReplacement(
                     context,
-                    MaterialPageRoute(builder: (_) => const SosScreen()),
+                    MaterialPageRoute(builder: (_) => const VolunteerHomeScreen()),
                   );
                 },
               ),
@@ -83,31 +82,28 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
         },
         onVerificationFailed: (e) {
           if (!mounted) return;
-          setState(() => _isLoading = false);
+          setState(() => _isSendingOtp = false);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Lỗi gửi OTP: ${e.message}')),
           );
         },
-        onCodeAutoRetrievalTimeout: (String verificationId) {
-          // Xử lý timeout nếu cần
-        },
+        onCodeAutoRetrievalTimeout: (String verificationId) {},
         onVerificationCompleted: (credential) async {
-          // Tự động verify thành công trên Android (auto retrieval)
           try {
             await AuthService.signInWithCredential(credential);
             if (!mounted) return;
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (_) => const SosScreen()),
+              MaterialPageRoute(builder: (_) => const VolunteerHomeScreen()),
             );
           } catch (e) {
-             print('[FloodAid] auto sign in error: $e');
+            print('[VolunteerPhoneScreen] auto sign in error: $e');
           }
-        }
+        },
       );
     } catch (e) {
       if (!mounted) return;
-      setState(() => _isLoading = false);
+      setState(() => _isSendingOtp = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Đã xảy ra lỗi khi gửi mã OTP')),
       );
@@ -133,12 +129,18 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             children: [
-              const SizedBox(height: 60),
+              const SizedBox(height: 40),
 
               // ── Icon ──
               Container(
@@ -153,25 +155,21 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
                   ),
                 ),
                 child: const Center(
-                  child: Icon(
-                    Icons.phone_android,
-                    size: 40,
-                    color: AppColors.primary,
-                  ),
+                  child: Text('🦺', style: TextStyle(fontSize: 40)),
                 ),
               ),
               const SizedBox(height: 24),
 
               // ── Title ──
               Text(
-                'Xác thực Số điện thoại',
+                'Đăng nhập Tình nguyện viên',
                 style: AppTypography.displayMedium.copyWith(
                   color: AppColors.textPrimary,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
-                'Nhập SĐT để định danh ca SOS của bạn.\nSĐT giúp đội cứu hộ liên lạc khi cần.',
+                'Xác thực SĐT để nhận ca cứu hộ.\nSĐT giúp nạn nhân liên lạc trực tiếp.',
                 style: AppTypography.bodyMedium.copyWith(
                   color: AppColors.textSecondary,
                 ),
@@ -201,7 +199,6 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 child: Row(
                   children: [
-                    // Country prefix
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
@@ -220,7 +217,6 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    // Phone input
                     Expanded(
                       child: TextField(
                         controller: _phoneController,
@@ -250,7 +246,6 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
                         ),
                       ),
                     ),
-                    // Checkmark
                     if (_isValid)
                       const Icon(
                         Icons.check_circle,
@@ -262,7 +257,6 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
               ),
               const SizedBox(height: 12),
 
-              // ── Helper text ──
               Text(
                 'Nhập đúng 10 số (bắt đầu bằng 0)',
                 style: AppTypography.caption.copyWith(
@@ -276,32 +270,41 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: _isValid ? _handleContinue : null,
+                  onPressed: (_isValid && !_isSendingOtp) ? _handleContinue : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _isValid
-                        ? AppColors.alertRed
+                        ? AppColors.primary
                         : AppColors.surfaceBorder,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
                     elevation: _isValid ? 4 : 0,
-                    shadowColor: AppColors.alertRed.withOpacity(0.4),
+                    shadowColor: AppColors.primary.withOpacity(0.4),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.emergency, size: 20),
-                      const SizedBox(width: 8),
-                      Text(
-                        'TIẾP TỤC ĐẾN SOS',
-                        style: AppTypography.labelLarge.copyWith(
-                          color: Colors.white,
-                          letterSpacing: 1.5,
+                  child: _isSendingOtp
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2.5,
+                          ),
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.verified_user, size: 20),
+                            const SizedBox(width: 8),
+                            Text(
+                              'XÁC THỰC SĐT',
+                              style: AppTypography.labelLarge.copyWith(
+                                color: Colors.white,
+                                letterSpacing: 1.5,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
-                  ),
                 ),
               ),
 
@@ -327,7 +330,7 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'SĐT chỉ dùng để định danh ca SOS và liên lạc cứu hộ. Bạn chỉ cần nhập một lần.',
+                        'SĐT được xác thực qua OTP một lần duy nhất. Lần sau mở app sẽ tự đăng nhập.',
                         style: AppTypography.caption.copyWith(
                           color: AppColors.primary,
                         ),

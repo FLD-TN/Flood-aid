@@ -6,9 +6,16 @@ let pool;
  * Initialize PostgreSQL connection pool
  */
 async function initDb() {
-  pool = new Pool({
+  const poolConfig = {
     connectionString: process.env.DATABASE_URL,
-  });
+  };
+
+  // Render và các Cloud DB yêu cầu SSL
+  if (process.env.NODE_ENV === 'production' || process.env.DATABASE_URL.includes('render.com')) {
+    poolConfig.ssl = { rejectUnauthorized: false };
+  }
+
+  pool = new Pool(poolConfig);
 
   // Test connection
   const client = await pool.connect();

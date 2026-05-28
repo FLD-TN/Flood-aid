@@ -1,9 +1,23 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'auth_service.dart';
 
 class ApiService {
-  // static const String _baseUrl = 'http://localhost:3000';
-  static const String _baseUrl = 'http://10.0.2.2:3000';
+  // Web: dùng 127.0.0.1 (Google không còn chấp nhận localhost cho reCAPTCHA)
+  // Android emulator: dùng 10.0.2.2 (IP đặc biệt trỏ về host machine)
+  // Real device: đổi thành IP thực hoặc domain server
+  static String get _baseUrl =>
+      kIsWeb ? 'http://127.0.0.1:3000' : 'http://10.0.2.2:3000';
+
+  static Future<Map<String, String>> _getHeaders() async {
+    final headers = {'Content-Type': 'application/json'};
+    final token = await AuthService.getIdToken();
+    if (token != null) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    return headers;
+  }
 
   /// POST /api/sos — Gửi SOS
   static Future<Map<String, dynamic>?> sendSos({
@@ -16,10 +30,11 @@ class ApiService {
     int elderly = 0,
   }) async {
     try {
+      final headers = await _getHeaders();
       final response = await http
           .post(
             Uri.parse('$_baseUrl/api/sos'),
-            headers: {'Content-Type': 'application/json'},
+            headers: headers,
             body: json.encode({
               'text': text,
               'lat': lat,
@@ -48,8 +63,9 @@ class ApiService {
   /// GET /api/sos/active?phone=xxx — Kiểm tra ca SOS active
   static Future<Map<String, dynamic>?> checkActiveCaseByPhone(String phone) async {
     try {
+      final headers = await _getHeaders();
       final response = await http
-          .get(Uri.parse('$_baseUrl/api/sos/active?phone=$phone'))
+          .get(Uri.parse('$_baseUrl/api/sos/active?phone=$phone'), headers: headers)
           .timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
@@ -81,9 +97,10 @@ class ApiService {
   /// POST /api/case/:id/resolve — Đóng ca
   static Future<bool> resolveCase(String caseId, String resolvedBy) async {
     try {
+      final headers = await _getHeaders();
       final response = await http.post(
         Uri.parse('$_baseUrl/api/case/$caseId/resolve'),
-        headers: {'Content-Type': 'application/json'},
+        headers: headers,
         body: json.encode({'resolvedBy': resolvedBy}),
       );
       return response.statusCode == 200;
@@ -95,9 +112,10 @@ class ApiService {
   /// POST /api/case/:id/accept — TNV nhận ca
   static Future<bool> acceptCase(String caseId, String volunteerId) async {
     try {
+      final headers = await _getHeaders();
       final response = await http.post(
         Uri.parse('$_baseUrl/api/case/$caseId/accept'),
-        headers: {'Content-Type': 'application/json'},
+        headers: headers,
         body: json.encode({'volunteerId': volunteerId}),
       );
       return response.statusCode == 200;
@@ -113,10 +131,11 @@ class ApiService {
     required String volunteerId,
   }) async {
     try {
+      final headers = await _getHeaders();
       await http
           .post(
             Uri.parse('$_baseUrl/api/location'),
-            headers: {'Content-Type': 'application/json'},
+            headers: headers,
             body: json.encode({
               'lat': lat,
               'lon': lon,
@@ -136,9 +155,10 @@ class ApiService {
     List<String>? skills,
   }) async {
     try {
+      final headers = await _getHeaders();
       final response = await http.post(
         Uri.parse('$_baseUrl/api/volunteers/register'),
-        headers: {'Content-Type': 'application/json'},
+        headers: headers,
         body: json.encode({
           'phone': phone,
           'fullName': fullName,
@@ -235,8 +255,9 @@ class ApiService {
       final uri = Uri.parse('$_baseUrl/api/cases/nearby')
           .replace(queryParameters: queryParams);
 
+      final headers = await _getHeaders();
       final response = await http
-          .get(uri)
+          .get(uri, headers: headers)
           .timeout(const Duration(seconds: 8));
 
       if (response.statusCode == 200) {

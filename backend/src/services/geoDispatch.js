@@ -5,6 +5,7 @@
 
 const { db } = require('../db');
 const { sendFcmToVolunteer } = require('./fcmService');
+const { emitCaseEvent } = require('../controllers/sseController');
 
 const INITIAL_RADIUS_KM = parseInt(process.env.INITIAL_RADIUS_KM) || 3;
 const EXTENDED_RADIUS_KM = parseInt(process.env.EXTENDED_RADIUS_KM) || 10;
@@ -128,6 +129,14 @@ async function broadcastToAllVolunteers(sosCase, radiusKm) {
 
 async function alertAdminOrphanCase(caseId, urgencyLevel) {
   console.warn(`[geoDispatch] ⚠️ ORPHAN CASE: ${caseId}, urgency: ${urgencyLevel} — Admin cần can thiệp!`);
+  
+  // Emit SSE event to victim
+  emitCaseEvent(caseId, 'case:orphaned', {
+    caseId,
+    urgencyLevel,
+    status: 'orphaned',
+  });
+  
   // TODO: Gửi FCM cho Admin khi có Firebase Admin SDK
 }
 

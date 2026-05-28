@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
+import '../../services/auth_service.dart';
 import '../../widgets/map_widget.dart';
 import '../../widgets/sos_legend_widget.dart';
 import '../../widgets/filter_bottom_sheet.dart';
 import 'active_mission_screen.dart';
+import 'volunteer_phone_screen.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -72,7 +75,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
         }
       }
     } catch (e) {
-      print("[VolunteerHomeScreen] Lỗi lấy GPS: $e");
+      print("[FloodAid] Lỗi lấy GPS: $e");
     }
 
     // 2. Gọi API với vị trí mới nhất
@@ -90,6 +93,25 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  Future<void> _handleAcceptFromCard(Map<String, dynamic> caseData) async {
+    final caseId = caseData['id']?.toString() ?? '';
+    if (caseId.isEmpty) return;
+
+    // Optimistic: navigate immediately
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ActiveMissionScreen(
+          caseId: caseId,
+          victimLat: (caseData['lat'] as num?)?.toDouble(),
+          victimLon: (caseData['lon'] as num?)?.toDouble(),
+          summary: caseData['ai_summary'] as String? ?? caseData['summary_1line'] as String?,
+          urgencyLevel: (caseData['urgency_level'] as num?)?.toInt(),
+        ),
+      ),
+    );
   }
 
   // Lọc ra các case chưa resolved
@@ -332,27 +354,181 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
             ),
           ),
           const Spacer(),
-          Row(
-            children: [
-              Text(
-                'Live',
-                style: AppTypography.caption.copyWith(
-                  color: AppColors.alertRed,
-                  fontWeight: FontWeight.bold,
+          GestureDetector(
+            onTap: _showVolunteerProfile,
+            child: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.1),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: AppColors.primary.withOpacity(0.3),
+                  width: 1.5,
                 ),
               ),
-              const SizedBox(width: 4),
-              Container(
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.alertRed,
-                ),
+              child: const Icon(
+                Icons.person,
+                color: AppColors.primary,
+                size: 20,
               ),
-            ],
+            ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showVolunteerProfile() {
+    final user = AuthService.currentUser;
+    String phoneDisplay = 'Chưa xác thực';
+    if (user?.phoneNumber != null) {
+      String phone = user!.phoneNumber!;
+      if (phone.startsWith('+84')) {
+        phone = '0${phone.substring(3)}';
+      }
+      phoneDisplay = phone;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Drag handle
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.surfaceBorder,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Avatar
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.1),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: AppColors.primary.withOpacity(0.3),
+                  width: 2,
+                ),
+              ),
+              child: const Icon(
+                Icons.person,
+                color: AppColors.primary,
+                size: 36,
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            Text(
+              'Tình nguyện viên',
+              style: AppTypography.headingMedium,
+            ),
+            const SizedBox(height: 24),
+
+            // Phone info
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceElevated,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.surfaceBorder),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: AppColors.success.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.verified,
+                      color: AppColors.success,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Số điện thoại đã xác thực',
+                          style: AppTypography.caption,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          phoneDisplay,
+                          style: AppTypography.bodyLarge.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Logout button
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  Navigator.pop(ctx); // Đóng bottom sheet
+                  await AuthService.signOut();
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.remove('user_phone');
+                  if (!mounted) return;
+                  // Quay về màn hình chọn role
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const VolunteerPhoneScreen(),
+                    ),
+                    (route) => false,
+                  );
+                },
+                icon: const Icon(Icons.logout, size: 18),
+                label: Text(
+                  'Đăng xuất',
+                  style: AppTypography.labelMedium.copyWith(
+                    color: AppColors.danger,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.danger,
+                  side: const BorderSide(color: AppColors.danger),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
       ),
     );
   }
@@ -629,7 +805,6 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
         caseData['summary_1line'] as String? ??
         caseData['description'] as String? ??
         'Yêu cầu cứu trợ';
-    final caseId = caseData['id']?.toString() ?? '';
     final createdAt = caseData['created_at'] as String?;
 
     // Real tags from backend
@@ -804,7 +979,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () {},
+                    onPressed: () => _handleAcceptFromCard(caseData),
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(

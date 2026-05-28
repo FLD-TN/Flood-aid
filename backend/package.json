@@ -16,6 +16,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "firebase-admin": "^12.1.0",
     "@google/generative-ai": "^0.24.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -24,7 +25,8 @@
     "helmet": "^7.1.0",
     "morgan": "^1.10.0",
     "node-cron": "^3.0.3",
-    "pg": "^8.12.0"
+    "pg": "^8.12.0",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.4"

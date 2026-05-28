@@ -17,7 +17,7 @@ Khi nạn nhân nhấn nút "Tạo SOS", một form điền thông tin sẽ hi�
 - **Màn hình bản đồ SOS dành cho Nạn nhân:**
 Bản đồ SOS hiển thị **2 marker**:
   - 📍 **Ping đỏ** — vị trí của chính nạn nhân (cố định).
-  - 🔵 **Ping xanh** — vị trí TNV đang di chuyển về phía nạn nhân. Chỉ xuất hiện khi **đã có TNV nhận ca**. App nạn nhân polling `GET /api/case/:id/tnv-location` mỗi **15 giây** để cập nhật marker xanh — nạn nhân thấy ping xanh nhích dần về phía mình theo thời gian thực. Khi chưa có TNV nhận ca, ping xanh không hiển thị.
+  - 🔵 **Ping xanh** — vị trí TNV đang di chuyển về phía nạn nhân. Chỉ xuất hiện khi **đã có TNV nhận ca**. Ứng dụng sử dụng **Server-Sent Events (SSE)** để lắng nghe trạng thái ca cứu hộ và **WebSocket** để stream vị trí GPS của TNV theo **thời gian thực** (độ trễ < 100ms) xuống cho nạn nhân. Nạn nhân sẽ thấy ping xanh nhích dần về phía mình một cách mượt mà. Khi mạng yếu hoặc mất kết nối WebSocket, hệ thống tự động fallback về cơ chế polling REST API mỗi 10 giây. Khi chưa có TNV nhận ca, ping xanh không hiển thị.
 
 Nạn nhân **không thấy ping của nạn nhân khác** và **không thấy bản đồ SOS tổng thể** — nhằm tránh người không có kỹ năng tự ý đi cứu và trở thành nạn nhân tiếp theo.
 
@@ -125,7 +125,7 @@ Thay vì gọi tuần tự (tổng timeout lên đến 5+ giây), hệ thống g
 
 **Tracking GPS Thích nghi (Adaptive GPS Strategy):**
 
-Thay vì POST cứng mỗi 7 giây bất kể trạng thái, hệ thống chia làm 3 chế độ GPS theo giai đoạn để tối ưu pin — điều kiện thiên tai khi sạc điện không có sẵn đòi hỏi thiết bị phải hoạt động được 7–10 tiếng thay vì 3–4 tiếng.
+Thay vì POST cứng mỗi 7 giây bất kể trạng thái, hệ thống chia làm 3 chế độ GPS theo giai đoạn để tối ưu pin — điều kiện thiên tai khi sạc điện không có sẵn đòi hỏi thiết bị phải hoạt động được 7–10 tiếng thay vì 3–4 tiếng. Đặc biệt, khi ca ở trạng thái đang xử lý (responding), vị trí GPS của TNV được stream qua **WebSocket** để cập nhật theo **thời gian thực** cho nạn nhân, tự động fallback về REST polling nếu mất kết nối.
 
 - **Chế độ 1 — TNV Idle (chưa nhận ca):** Tắt hoàn toàn GPS stream. Dùng `getLastKnownPosition()` cached sẵn để đăng ký vị trí tĩnh với server khi cần. Tiêu thụ GPS ≈ 0%.
 
@@ -145,7 +145,7 @@ Geolocator.getPositionStream(
 
 **Foreground Service bắt buộc:** Android 8+ kill background GPS sau 5–10 phút nếu không có Foreground Service. Khi TNV nhận ca, app bắt buộc khởi động Foreground Service với persistent notification: *"Đang cứu hộ — GPS đang hoạt động"*. Đây là điều kiện bắt buộc để GPS tracking hoạt động xuyên suốt ca cứu hộ — không làm vậy mọi tracking đều vô nghĩa sau vài phút background.
 
-**Phía Nạn nhân:** Sau khi gửi SOS thành công, GPS của nạn nhân tắt hoàn toàn — tọa độ đã fixed, không cần cập nhật thêm. App chỉ polling REST `GET /api/case/:id/tnv-location` mỗi 15 giây để lấy vị trí TNV hiển thị lên bản đồ.
+**Phía Nạn nhân:** Sau khi gửi SOS thành công, GPS của nạn nhân tắt hoàn toàn — tọa độ đã fixed, không cần cập nhật thêm. App sẽ tự động lắng nghe trạng thái ca cứu trợ qua **Server-Sent Events (SSE)**. Khi có TNV nhận ca, hệ thống mở kết nối **WebSocket** để nhận vị trí GPS của TNV theo thời gian thực và hiển thị lên bản đồ.
 
 
 **Công nghệ:** Firebase Auth (OTP), FPT AI eKYC (cho TNV), HTTP POST (GPS tracking), Android Foreground Service.
@@ -370,3 +370,7 @@ TNV có khả năng thu hẹp danh sách tìm kiếm thông qua màn hình bộ 
 - Sắp xếp ưu tiên: **Gần đến xa / Xa đến gần** và **Mới nhất / Đợi lâu nhất**.
 - Lọc theo **Tags đặc biệt** (Trẻ em, Người già, Y tế, Ngập nóc, Cần thuyền).
 Tất cả các tuỳ chọn lọc này gọi trực tiếp xuống database qua API để trả về kết quả thời gian thực.
+
+**5. Trải nghiệm người dùng theo thời gian thực (Real-time UX) và Optimistic UI:**
+- **Optimistic UI:** Mọi thao tác quan trọng (Nhận ca, Đóng ca, Xác nhận An toàn) đều cập nhật giao diện ngay lập tức (instant feedback) mà không cần đợi API phản hồi. Nếu có lỗi mạng, hệ thống tự động rollback trạng thái và hiển thị thông báo lỗi. Điều này giúp loại bỏ hoàn toàn cảm giác "app bị đơ" khi sử dụng ở vùng sóng yếu.
+- **Push-based Communication:** Loại bỏ hoàn toàn cơ chế polling chậm trễ. Trạng thái ca cứu hộ được push từ server xuống client thông qua **Server-Sent Events (SSE)**. Vị trí GPS của TNV được stream trực tiếp qua **WebSocket** với độ trễ dưới 100ms, giúp nạn nhân thấy rõ hành trình cứu hộ trên bản đồ theo thời gian thực. Hệ thống có cơ chế tự động fallback về polling nếu mất kết nối WebSocket.

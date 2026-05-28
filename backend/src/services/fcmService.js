@@ -5,29 +5,10 @@
 
 const URGENCY_EMOJI = { 1: '🔵', 2: '🟡', 3: '🟠', 4: '🔴', 5: '🆘' };
 
-let firebaseAdmin = null;
+const { getAdmin } = require('./firebaseAdmin');
 
 function initFirebaseAdmin() {
-  if (firebaseAdmin) return firebaseAdmin;
-
-  const serviceAccountPath = process.env.FIREBASE_ADMIN_SDK;
-  if (!serviceAccountPath) {
-    console.warn('[fcmService] FIREBASE_ADMIN_SDK not configured — notifications will be logged only');
-    return null;
-  }
-
-  try {
-    const admin = require('firebase-admin');
-    const serviceAccount = require(require('path').resolve(serviceAccountPath));
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-    });
-    firebaseAdmin = admin;
-    return admin;
-  } catch (err) {
-    console.warn('[fcmService] Firebase Admin init failed:', err.message);
-    return null;
-  }
+  return getAdmin();
 }
 
 /**

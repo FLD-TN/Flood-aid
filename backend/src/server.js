@@ -1,13 +1,16 @@
 require('dotenv').config();
 const express = require('express');
+const http = require('http');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 
 const { initDb } = require('./db');
 const routes = require('./routes');
+const { initWebSocket } = require('./services/wsServer');
 
 const app = express();
+const server = http.createServer(app);
 const PORT = process.env.PORT || 3000;
 
 // Middleware
@@ -36,12 +39,19 @@ async function start() {
     await initDb();
     console.log('[DB] Connected to PostgreSQL');
 
+    const { initFirebaseAdmin } = require('./services/firebaseAdmin');
+    initFirebaseAdmin();
+
     // Load background jobs
     require('./jobs/autoResolve');
     require('./jobs/staleAssignmentChecker');
     console.log('[JOBS] Background jobs loaded');
 
-    app.listen(PORT, () => {
+    // Initialize WebSocket GPS server
+    initWebSocket(server);
+    console.log('[WS] WebSocket server initialized');
+
+    server.listen(PORT, () => {
       console.log(`[SERVER] FloodAid backend running on port ${PORT}`);
       console.log(`[SERVER] Environment: ${process.env.NODE_ENV}`);
     });
@@ -54,3 +64,4 @@ async function start() {
 start();
 
 module.exports = app;
+

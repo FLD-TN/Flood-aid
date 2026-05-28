@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
+import '../../services/sse_service.dart';
+import '../../services/ws_gps_service.dart';
 import '../../widgets/map_widget.dart';
 import '../../widgets/sos_legend_widget.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -24,7 +26,8 @@ class TrackingScreen extends StatefulWidget {
 }
 
 class _TrackingScreenState extends State<TrackingScreen> {
-  Timer? _pollTimer;
+  StreamSubscription<SseEvent>? _sseSubscription;
+  WsGpsService? _wsGpsService;
   final MapController _mapController = MapController();
 
   // State from API
@@ -33,6 +36,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
   double? _tnvLat;
   double? _tnvLon;
   bool _hasVolunteer = false;
+  bool _isResolving = false;
 
   // Victim position
   late double _victimLat;
@@ -52,39 +56,157 @@ class _TrackingScreenState extends State<TrackingScreen> {
       if (mounted) setState(() {});
     });
 
-    // Start polling every 15s
-    _pollTnvLocation();
-    _pollTimer = Timer.periodic(const Duration(seconds: 15), (_) {
-      _pollTnvLocation();
-    });
+    // SSE: listen for case status changes (replaces status polling)
+    _startSseListener();
+
+    // Initial fetch of TNV location (one-time, then WS takes over)
+    _fetchInitialTnvLocation();
   }
 
   @override
   void dispose() {
-    _pollTimer?.cancel();
+    _sseSubscription?.cancel();
+    _wsGpsService?.dispose();
     _sheetController.dispose();
     super.dispose();
   }
 
-  Future<void> _pollTnvLocation() async {
+  /// Fetch TNV location once on startup
+  Future<void> _fetchInitialTnvLocation() async {
     final data = await ApiService.getTnvLocation(widget.caseId);
     if (data != null && mounted) {
       setState(() {
-        _status = data['status'] ?? 'pending';
         _distanceM = data['distance_m'] != null
             ? (data['distance_m'] as num).toInt()
             : null;
         _tnvLat = data['lat'] != null ? (data['lat'] as num).toDouble() : null;
         _tnvLon = data['lon'] != null ? (data['lon'] as num).toDouble() : null;
         _hasVolunteer = data['has_volunteer'] == true;
+        // Also update status from initial fetch
+        final fetchedStatus = data['status'] as String?;
+        if (fetchedStatus != null) {
+          _status = fetchedStatus;
+          // If already responding, start WS GPS immediately
+          if (_status == 'responding' && _hasVolunteer) {
+            _startWsGps();
+          }
+        }
       });
     }
   }
 
+  /// Start WebSocket GPS receiver (called when case becomes 'responding')
+  void _startWsGps() {
+    if (_wsGpsService != null) return; // Already started
+
+    _wsGpsService = WsGpsService(
+      onGpsReceived: (data) {
+        if (!mounted) return;
+        setState(() {
+          if (data['lat'] != null) {
+            _tnvLat = (data['lat'] as num).toDouble();
+          }
+          if (data['lon'] != null) {
+            _tnvLon = (data['lon'] as num).toDouble();
+          }
+          if (data['distance_m'] != null) {
+            _distanceM = (data['distance_m'] as num).toInt();
+          }
+          _hasVolunteer = true;
+        });
+      },
+      onConnectionChanged: (connected) {
+        debugPrint('[TrackingScreen] WS GPS ${connected ? 'connected' : 'disconnected'}');
+      },
+    );
+
+    _wsGpsService!.connect(
+      caseId: widget.caseId,
+      role: 'victim',
+    );
+  }
+
+  /// SSE listener for case status events (case:accepted, case:resolved, etc.)
+  void _startSseListener() {
+    _sseSubscription = SseService.listenCaseEvents(widget.caseId).listen(
+      (event) {
+        if (!mounted) return;
+        switch (event.event) {
+          case 'case:accepted':
+            setState(() {
+              _status = 'responding';
+              _hasVolunteer = true;
+              if (event.data['initialDistance'] != null) {
+                _distanceM = (event.data['initialDistance'] as num).toInt();
+              }
+            });
+            // Start WS GPS to receive TNV location in real-time
+            _startWsGps();
+            break;
+          case 'case:resolved':
+            // Another party resolved the case — navigate back
+            _wsGpsService?.dispose();
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Ca SOS đã được đóng.'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+              Navigator.pop(context);
+            }
+            break;
+          case 'case:orphaned':
+            setState(() {
+              _status = 'orphaned';
+            });
+            break;
+        }
+      },
+      onError: (e) {
+        print('[TrackingScreen] SSE error: $e');
+      },
+    );
+  }
+
   Future<void> _handleResolve() async {
-    final success = await ApiService.resolveCase(widget.caseId, 'victim');
-    if (success && mounted) {
-      Navigator.pop(context);
+    if (_isResolving) return;
+    // Optimistic: show resolved state immediately
+    final prevStatus = _status;
+    setState(() {
+      _status = 'resolved';
+      _isResolving = true;
+    });
+    try {
+      final success = await ApiService.resolveCase(widget.caseId, 'victim');
+      if (success && mounted) {
+        Navigator.pop(context);
+      } else if (mounted) {
+        // Rollback
+        setState(() {
+          _status = prevStatus;
+          _isResolving = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Đóng ca thất bại. Thử lại sau.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _status = prevStatus;
+          _isResolving = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Lỗi mạng. Thử lại sau.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
     }
   }
 
@@ -461,7 +583,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
                                     ),
                                   ),
                                   Text(
-                                    'Cập nhật mỗi 15 giây',
+                                    'Cập nhật thời gian thực',
                                     style: AppTypography.caption,
                                   ),
                                 ],
@@ -495,19 +617,26 @@ class _TrackingScreenState extends State<TrackingScreen> {
 
                     // Resolve button
                     ElevatedButton.icon(
-                      onPressed: _handleResolve,
-                      icon: const Icon(
-                        Icons.check_circle_outline,
-                        color: Colors.white,
-                      ),
+                      onPressed: _isResolving ? null : _handleResolve,
+                      icon: _isResolving
+                          ? const SizedBox(
+                              width: 18, height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white,
+                              ),
+                            )
+                          : const Icon(
+                              Icons.check_circle_outline,
+                              color: Colors.white,
+                            ),
                       label: Text(
-                        'Tôi đã được giúp đỡ / An toàn',
+                        _isResolving ? 'Đang xử lý...' : 'Tôi đã được giúp đỡ / An toàn',
                         style: AppTypography.labelLarge.copyWith(
                           color: Colors.white,
                         ),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
+                        backgroundColor: _isResolving ? Colors.grey : AppColors.primary,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),

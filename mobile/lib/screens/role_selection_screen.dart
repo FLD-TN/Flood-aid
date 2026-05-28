@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import 'victim/phone_input_screen.dart';
-import 'volunteer/volunteer_home_screen.dart';
+import 'volunteer/volunteer_phone_screen.dart';
 
 /// Màn hình chọn vai trò: Nạn nhân hoặc Tình nguyện viên
 /// Design concept: Tactical Calm — dark cockpit, amber brand
@@ -100,7 +100,7 @@ class RoleSelectionScreen extends StatelessWidget {
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (_) => const VolunteerHomeScreen()),
+                      builder: (_) => const VolunteerPhoneScreen()),
                 ),
               ),
 

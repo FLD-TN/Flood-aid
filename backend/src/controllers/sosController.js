@@ -6,6 +6,7 @@
 const { runParallelAiPipeline } = require('../services/aiPipeline');
 const { db } = require('../db');
 const crypto = require('crypto');
+const { emitCaseEvent } = require('./sseController');
 
 const SALT = process.env.PHONE_HASH_SALT || 'default_salt';
 
@@ -18,7 +19,9 @@ function hashPhone(phone) {
  */
 async function createSos(req, res) {
   try {
-    const { text, lat, lon, phone } = req.body;
+    const { text, lat, lon } = req.body;
+    const phone = req.user?.phone_number || req.body.phone;
+    const firebaseUid = req.user?.uid;
 
     // Validate input
     if (!lat || !lon || !phone) {
@@ -26,6 +29,15 @@ async function createSos(req, res) {
     }
 
     const phoneHash = hashPhone(phone);
+    
+    if (firebaseUid) {
+      // Upsert victims table
+      await db.query(
+        `INSERT INTO victims (phone_hash, firebase_uid) VALUES ($1, $2)
+         ON CONFLICT (phone_hash) DO UPDATE SET firebase_uid = EXCLUDED.firebase_uid`,
+        [phoneHash, firebaseUid]
+      );
+    }
 
     // Anti-spam: 1 SĐT chỉ có 1 ca active (RULE-1)
     const existing = await db.query(
@@ -199,6 +211,13 @@ async function acceptCase(req, res) {
 
     console.log(`[sosController] TNV ${volunteerId} accepted case ${id}, distance: ${initialDistance}m`);
 
+    // Emit SSE event to all listeners (victim app)
+    emitCaseEvent(id, 'case:accepted', {
+      volunteerId,
+      initialDistance,
+      status: 'responding',
+    });
+
     res.json({ success: true, initialDistance });
   } catch (err) {
     console.error('[sosController][acceptCase]', err.message);
@@ -236,6 +255,12 @@ async function resolveCase(req, res) {
 
     console.log(`[sosController] Case ${id} resolved by ${resolvedBy}`);
 
+    // Emit SSE event to all listeners
+    emitCaseEvent(id, 'case:resolved', {
+      resolvedBy,
+      status: 'resolved',
+    });
+
     res.json({ success: true, resolvedBy });
   } catch (err) {
     console.error('[sosController][resolveCase]', err.message);
@@ -248,7 +273,7 @@ async function resolveCase(req, res) {
  */
 async function getActiveByPhone(req, res) {
   try {
-    const { phone } = req.query;
+    const phone = req.user?.phone_number || req.query.phone;
     if (!phone) {
       return res.status(400).json({ error: 'Missing phone' });
     }

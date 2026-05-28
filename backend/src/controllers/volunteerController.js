@@ -17,7 +17,9 @@ function hashPhone(phone) {
  */
 async function registerVolunteer(req, res) {
   try {
-    const { phone, fullName, skills } = req.body;
+    const { fullName, skills } = req.body;
+    const phone = req.user?.phone_number || req.body.phone;
+    const firebaseUid = req.user?.uid;
 
     if (!phone) {
       return res.status(400).json({ error: 'Missing phone number' });
@@ -38,10 +40,10 @@ async function registerVolunteer(req, res) {
     }
 
     const result = await db.query(
-      `INSERT INTO volunteers (phone_hash, full_name, skills, is_available)
-       VALUES ($1, $2, $3::jsonb, true)
+      `INSERT INTO volunteers (phone_hash, firebase_uid, full_name, skills, is_available)
+       VALUES ($1, $2, $3, $4::jsonb, true)
        RETURNING id, full_name, skills, is_available, admin_approved, created_at`,
-      [phoneHash, fullName || null, JSON.stringify(skills || [])]
+      [phoneHash, firebaseUid || null, fullName || null, JSON.stringify(skills || [])]
     );
 
     res.status(201).json(result.rows[0]);

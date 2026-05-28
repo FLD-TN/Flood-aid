@@ -10,6 +10,10 @@ dependencies:
   flutter:
     sdk: flutter
   
+  # Firebase
+  firebase_core: ^3.13.0
+  firebase_auth: ^5.7.0
+  
   # HTTP & API
   http: ^1.6.0
   
@@ -24,6 +28,7 @@ dependencies:
   flutter_map: ^8.3.0
   latlong2: ^0.9.1
   url_launcher: ^6.3.2
+  web_socket_channel: ^3.0.2
   
   # Speech to Text
   speech_to_text: ^7.0.0
