@@ -18,9 +18,4 @@ export const getVolunteerLocations = () => api.get('/api/volunteers/locations');
 export const getVolunteers = () => api.get('/api/volunteers');
 export const approveVolunteer = (id, approved) => api.put(`/api/volunteers/${id}/approve`, { approved });
 
-// Warning Flags
-export const getFlags = () => api.get('/api/flags');
-export const createFlag = (lat, lon, type) => api.post('/api/flags', { lat, lon, type });
-export const deactivateFlag = (id) => api.delete(`/api/flags/${id}`);
-
 export default api;

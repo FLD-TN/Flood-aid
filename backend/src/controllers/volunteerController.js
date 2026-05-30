@@ -7,9 +7,45 @@ const { db } = require('../db');
 const crypto = require('crypto');
 
 const SALT = process.env.PHONE_HASH_SALT || 'default_salt';
+const ENCRYPT_KEY = process.env.PHONE_ENCRYPT_KEY;
 
 function hashPhone(phone) {
   return crypto.createHmac('sha256', SALT).update(phone).digest('hex');
+}
+
+/**
+ * AES-256-GCM encrypt phone number
+ */
+function encryptPhone(phone) {
+  if (!ENCRYPT_KEY || !phone) return null;
+  const key = Buffer.from(ENCRYPT_KEY, 'hex');
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+  let encrypted = cipher.update(phone, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+  const authTag = cipher.getAuthTag().toString('hex');
+  return iv.toString('hex') + ':' + encrypted + ':' + authTag;
+}
+
+/**
+ * AES-256-GCM decrypt phone number
+ */
+function decryptPhone(encryptedStr) {
+  if (!ENCRYPT_KEY || !encryptedStr) return null;
+  try {
+    const key = Buffer.from(ENCRYPT_KEY, 'hex');
+    const parts = encryptedStr.split(':');
+    const iv = Buffer.from(parts[0], 'hex');
+    const encrypted = parts[1];
+    const authTag = Buffer.from(parts[2], 'hex');
+    const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+    decipher.setAuthTag(authTag);
+    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -40,10 +76,10 @@ async function registerVolunteer(req, res) {
     }
 
     const result = await db.query(
-      `INSERT INTO volunteers (phone_hash, firebase_uid, full_name, skills, is_available)
-       VALUES ($1, $2, $3, $4::jsonb, true)
+      `INSERT INTO volunteers (phone_hash, firebase_uid, full_name, skills, is_available, phone_encrypted)
+       VALUES ($1, $2, $3, $4::jsonb, true, $5)
        RETURNING id, full_name, skills, is_available, admin_approved, created_at`,
-      [phoneHash, firebaseUid || null, fullName || null, JSON.stringify(skills || [])]
+      [phoneHash, firebaseUid || null, fullName || null, JSON.stringify(skills || []), encryptPhone(phone)]
     );
 
     res.status(201).json(result.rows[0]);
@@ -60,7 +96,7 @@ async function listVolunteers(req, res) {
   try {
     const result = await db.query(`
       SELECT id, full_name, skills, is_available, admin_approved, 
-             cccd_verified, flag_count, created_at,
+             cccd_verified, phone_encrypted, created_at,
              ST_X(current_coords::geometry) AS lon,
              ST_Y(current_coords::geometry) AS lat,
              last_seen_at
@@ -68,7 +104,14 @@ async function listVolunteers(req, res) {
       ORDER BY created_at DESC
     `);
 
-    res.json(result.rows);
+    // Decrypt phone cho Admin
+    const rows = result.rows.map(row => ({
+      ...row,
+      phone: decryptPhone(row.phone_encrypted),
+      phone_encrypted: undefined, // Không trả ciphertext ra client
+    }));
+
+    res.json(rows);
   } catch (err) {
     console.error('[volunteerController][list]', err.message);
     res.status(500).json({ error: 'Internal error' });

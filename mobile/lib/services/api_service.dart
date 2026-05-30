@@ -24,9 +24,6 @@ class ApiService {
     required double lat,
     required double lon,
     required String phone,
-    int adults = 0,
-    int children = 0,
-    int elderly = 0,
   }) async {
     try {
       final headers = await _getHeaders();
@@ -39,9 +36,6 @@ class ApiService {
               'lat': lat,
               'lon': lon,
               'phone': phone,
-              'adults': adults,
-              'children': children,
-              'elderly': elderly,
             }),
           )
           .timeout(const Duration(seconds: 10));
@@ -177,21 +171,6 @@ class ApiService {
     }
   }
 
-  /// GET /api/flags — Lấy cờ cảnh báo (Bản đồ An toàn)
-  static Future<List<Map<String, dynamic>>> getWarningFlags() async {
-    try {
-      final response = await http
-          .get(Uri.parse('$_baseUrl/api/flags'))
-          .timeout(const Duration(seconds: 5));
-
-      if (response.statusCode == 200) {
-        return List<Map<String, dynamic>>.from(json.decode(response.body));
-      }
-      return [];
-    } catch (e) {
-      return [];
-    }
-  }
 
   /// GET /api/admin/cases — Lấy danh sách ca SOS active
   static Future<List<Map<String, dynamic>>> getCases() async {

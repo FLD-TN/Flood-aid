@@ -28,11 +28,11 @@
 
 | # | Bảng / Cột | Vấn đề | Đề xuất sửa |
 |---|-----------|--------|-------------|
-| C1 | `cases.phone_hash` | **Thiếu Foreign Key → `victims`**. Cột `phone_hash` không có ràng buộc FK nào trỏ về bảng `victims`. Nếu bảng `victims` bị xóa/sửa, `cases` vẫn trỏ vào "bóng ma". Tuy nhiên lưu ý: victim có thể tạo SOS trước khi row victim được insert (nếu chưa có Firebase UID) → cần upsert victim trước khi insert case. | Thêm FK `REFERENCES victims(phone_hash)` **SAU KHI** đảm bảo luồng code luôn upsert victims trước. Hoặc chấp nhận loose coupling ở đây vì `phone_hash` chỉ là identifier, không phải PK của victims. |
-| C2 | `warning_flags.created_by` | **FK treo — không rõ REFERENCES bảng nào**. Cột `created_by UUID NOT NULL` không có REFERENCES. Theo Y_tuong_KLTN, cờ cảnh báo do Admin tạo → nên FK đến `admins(id)`. Hiện tại, bất kỳ UUID giả nào cũng được chấp nhận. | `ALTER TABLE warning_flags ADD CONSTRAINT fk_flags_admin FOREIGN KEY (created_by) REFERENCES admins(id);` |
-| C3 | `cases` | **Thiếu cột `adults`, `children`, `elderly`**. Theo Y_tuong_KLTN: "Nạn nhân nhập số lượng người (người lớn, trẻ em, người già)". Hiện tại migrations KHÔNG có 3 cột này. API `sendSos` trong app Flutter gửi `adults`, `children`, `elderly` lên server, nhưng backend `sosController.js` không đọc và không lưu chúng → **dữ liệu bị mất hoàn toàn**. | Thêm 3 cột: `adults SMALLINT DEFAULT 0`, `children SMALLINT DEFAULT 0`, `elderly SMALLINT DEFAULT 0`. Cập nhật sosController để INSERT 3 giá trị này. |
-| C4 | `volunteers` | **Thiếu cột `phone` (SĐT gốc)**. Chỉ lưu `phone_hash` — Admin và TNV khác **không thể gọi GSM trực tiếp** cho TNV khi cần điều phối ngoại tuyến. Y_tuong_KLTN nhấn mạnh: "GSM là Primary channel", "Admin luôn có SĐT thật". Tuy nhiên, lưu trữ SĐT thật tạo ra vấn đề PII — cân nhắc encrypt at rest. | Thêm cột `phone_encrypted TEXT` (encrypt bằng AES-256 với key từ env) hoặc chấp nhận tradeoff bảo mật bằng cách thêm `phone VARCHAR(15)` trực tiếp nếu hệ thống nội bộ tin cậy. |
-| C5 | `migrations.js` dòng 8-10 | **Thiếu SSL config cho Render**. Pool connection không có `ssl: { rejectUnauthorized: false }`. Khi chạy migration trên cloud sẽ bị lỗi `SSL/TLS required` (giống lỗi bạn gặp hôm qua ở `db/index.js`). | Thêm tham số SSL tương tự `db/index.js` đã sửa. |
+| C1 | `cases.phone_hash` | ✅ **ĐÃ SỬA:** **Thiếu Foreign Key → `victims`**. Cột `phone_hash` không có ràng buộc FK nào trỏ về bảng `victims`. Nếu bảng `victims` bị xóa/sửa, `cases` vẫn trỏ vào "bóng ma". Tuy nhiên lưu ý: victim có thể tạo SOS trước khi row victim được insert (nếu chưa có Firebase UID) → cần upsert victim trước khi insert case. | Thêm FK `REFERENCES victims(phone_hash)` **SAU KHI** đảm bảo luồng code luôn upsert victims trước. Hoặc chấp nhận loose coupling ở đây vì `phone_hash` chỉ là identifier, không phải PK của victims. |
+| C2 | `warning_flags` | ✅ **ĐÃ SỬA:** Đã xoá toàn bộ tính năng `warning_flags` khỏi hệ thống (bao gồm CSDL, API, mobile app, cron job, và tài liệu Y_tuong_KLTN.md) theo yêu cầu. | Xoá toàn bộ. |
+| C3 | `cases` | ✅ **ĐÃ SỬA:** Đã xoá hoàn toàn các biến `adults`, `children`, `elderly` khỏi luồng SOS của app Flutter và tài liệu Y_tuong_KLTN.md vì không còn cần thiết. | Loại bỏ khỏi app và tài liệu. |
+| C4 | `volunteers` | ✅ **ĐÃ SỬA:** **Thiếu cột `phone` (SĐT gốc)**. Chỉ lưu `phone_hash` — Admin và TNV khác **không thể gọi GSM trực tiếp** cho TNV khi cần điều phối ngoại tuyến. Y_tuong_KLTN nhấn mạnh: "GSM là Primary channel", "Admin luôn có SĐT thật". Tuy nhiên, lưu trữ SĐT thật tạo ra vấn đề PII — cân nhắc encrypt at rest. | Thêm cột `phone_encrypted TEXT` (encrypt bằng AES-256 với key từ env) hoặc chấp nhận tradeoff bảo mật bằng cách thêm `phone VARCHAR(15)` trực tiếp nếu hệ thống nội bộ tin cậy. |
+| C5 | `migrations.js` dòng 8-10 | ✅ **ĐÃ SỬA:** **Thiếu SSL config cho Render**. Pool connection không có `ssl: { rejectUnauthorized: false }`. Khi chạy migration trên cloud sẽ bị lỗi `SSL/TLS required` (giống lỗi bạn gặp hôm qua ở `db/index.js`). | Thêm tham số SSL tương tự `db/index.js` đã sửa. |
 
 ---
 
@@ -40,12 +40,12 @@
 
 | # | Bảng / Cột | Vấn đề | Đề xuất sửa |
 |---|-----------|--------|-------------|
-| M1 | `cases` | **Thiếu `updated_at`**. Chỉ có `created_at` và `resolved_at`. Khi status chuyển `pending → responding → on_scene`, không track được thời điểm thay đổi. | Thêm `updated_at TIMESTAMPTZ DEFAULT NOW()` + trigger hoặc update thủ công khi đổi status. |
-| M2 | `volunteers` | **Thiếu `updated_at`**. Khi Admin phê duyệt, khi TNV đổi availability — không trace được thời gian. | Thêm `updated_at TIMESTAMPTZ DEFAULT NOW()`. |
-| M3 | `case_assignments` | **Thiếu index trên `assigned_at`**. Background job `autoResolve` và `staleAssignmentChecker` query các assignment theo thời gian nhưng không có index trên cột timestamp. | `CREATE INDEX idx_assignments_assigned_at ON case_assignments (assigned_at) WHERE completed_at IS NULL AND revoked_at IS NULL;` |
+| M1 | `cases` | ✅ **ĐÃ SỬA:** **Thiếu `updated_at`**. Chỉ có `created_at` và `resolved_at`. Khi status chuyển `pending → responding → on_scene`, không track được thời điểm thay đổi. | Thêm `updated_at TIMESTAMPTZ DEFAULT NOW()` trong migration005. |
+| M2 | `volunteers` | ✅ **ĐÃ SỬA:** **Thiếu `updated_at`**. Khi Admin phê duyệt, khi TNV đổi availability — không trace được thời gian. | Thêm `updated_at TIMESTAMPTZ DEFAULT NOW()` trong migration005. |
+| M3 | `case_assignments` | ✅ **ĐÃ SỬA:** **Thiếu index trên `assigned_at`**. Background job `autoResolve` và `staleAssignmentChecker` query các assignment theo thời gian nhưng không có index trên cột timestamp. | `CREATE INDEX idx_assignments_active_time ON case_assignments (assigned_at) WHERE completed_at IS NULL AND revoked_at IS NULL;` trong migration005. |
 | M4 | `user_role` ENUM | **Khai báo nhưng không bảng nào sử dụng**. ENUM `user_role ('victim', 'volunteer', 'admin')` được tạo nhưng không có cột nào dùng nó. Gây confusion. | Xóa nếu không dùng, hoặc thêm cột `role user_role` vào bảng phù hợp. |
-| M5 | `volunteer_flag_alerts` | **PK quá rộng** — `PRIMARY KEY (volunteer_id, flag_id, alerted_at)`. `alerted_at` là `TIMESTAMPTZ DEFAULT NOW()` — 2 alert cho cùng 1 cờ trong cùng 1 giây sẽ bị trùng PK, nhưng khác giây thì tạo được nhiều row trùng lặp. | Đổi sang `UNIQUE(volunteer_id, flag_id)` nếu logic chỉ cần 1 alert / cờ / TNV, hoặc thêm cột `id UUID PK` riêng. |
-| M6 | `cases.ai_source` | **Thiếu CHECK constraint**. Giá trị hợp lệ chỉ là `'gemini'` hoặc `'regex'` (từ AI Pipeline), nhưng hiện cho phép nhập bất kỳ chuỗi nào. | `ALTER TABLE cases ADD CONSTRAINT chk_ai_source CHECK (ai_source IN ('gemini', 'regex'));` |
+| M5 | `volunteer_flag_alerts` | ✅ **ĐÃ XOÁ:** Bảng đã bị xoá cùng với tính năng `warning_flags` trong C2. | Đã xoá trong migration004. |
+| M6 | `cases.ai_source` | ✅ **ĐÃ SỬA:** **Thiếu CHECK constraint**. Giá trị hợp lệ chỉ là `'gemini'` hoặc `'regex'` (từ AI Pipeline), nhưng hiện cho phép nhập bất kỳ chuỗi nào. | `ALTER TABLE cases ADD CONSTRAINT chk_ai_source CHECK (ai_source IN ('gemini', 'regex'));` trong migration005. |
 
 ---
 
@@ -61,76 +61,37 @@
 
 ---
 
-## 📝 Migration Scripts
+## 📝 Migration Scripts (Đã áp dụng)
 
-### C2 — Fix FK `warning_flags.created_by`
-```sql
--- Migration: fix_flags_fk
--- Description: Thêm FK cho created_by trỏ về admins(id)
+Tất cả migration scripts đã được tích hợp vào [migrations.js](file:///c:/Users/Admin/Desktop/KLTN/backend/src/db/migrations.js):
 
-ALTER TABLE warning_flags 
-  ADD CONSTRAINT fk_flags_admin 
-  FOREIGN KEY (created_by) REFERENCES admins(id);
-```
+| Migration | Nội dung | Issues |
+|-----------|---------|--------|
+| `migration004` | FK `cases.phone_hash → victims`, cột `phone_encrypted`, DROP `warning_flags`/`volunteer_flag_alerts`/`flag_type` | C1, C2, C4, M5 |
+| `migration005` | `updated_at` cho `cases` & `volunteers`, index `assigned_at`, CHECK `ai_source` | M1, M2, M3, M6 |
+| SSL config | Thêm `ssl: { rejectUnauthorized: false }` cho Render vào Pool constructor | C5 |
 
-### C3 — Thêm cột thống kê nhân khẩu cho `cases`
-```sql
--- Migration: add_case_demographics
--- Description: Lưu số lượng người lớn/trẻ em/người già mà nạn nhân khai báo
-
-ALTER TABLE cases ADD COLUMN IF NOT EXISTS adults SMALLINT DEFAULT 0;
-ALTER TABLE cases ADD COLUMN IF NOT EXISTS children SMALLINT DEFAULT 0;
-ALTER TABLE cases ADD COLUMN IF NOT EXISTS elderly SMALLINT DEFAULT 0;
-```
-
-### M1 + M2 — Thêm `updated_at` cho cases và volunteers
-```sql
--- Migration: add_updated_at
--- Description: Track thời điểm thay đổi dữ liệu gần nhất
-
-ALTER TABLE cases ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
-ALTER TABLE volunteers ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
-```
-
-### M3 — Index cho assignment timestamp
-```sql
--- Migration: add_assignment_timestamp_index
--- Description: Tăng tốc query background job (autoResolve, staleChecker)
-
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_assignments_active_time 
-  ON case_assignments (assigned_at) 
-  WHERE completed_at IS NULL AND revoked_at IS NULL;
-```
-
-### M6 — CHECK constraint cho ai_source
-```sql
--- Migration: add_ai_source_check
--- Description: Enforce giá trị hợp lệ cho cột ai_source
-
-ALTER TABLE cases ADD CONSTRAINT chk_ai_source 
-  CHECK (ai_source IN ('gemini', 'regex'));
-```
-
-### C5 — Fix SSL trong migrations.js
-```diff
- const pool = new Pool({
-   connectionString: process.env.DATABASE_URL,
-+  ssl: process.env.DATABASE_URL?.includes('render.com')
-+    ? { rejectUnauthorized: false }
-+    : undefined,
- });
-```
+### Đã xoá hoàn toàn khỏi codebase (C2, C3):
+- Tính năng `warning_flags` (DB, API routes, controllers, background jobs, mobile app, tài liệu)
+- Tham số `adults`/`children`/`elderly` (Flutter sendSos, sos_screen, tài liệu)
 
 ---
 
-## 📌 Priority Order
+## 📌 Trạng thái tổng hợp
 
-1. **C3** — Thêm `adults`, `children`, `elderly` vào `cases` (dữ liệu đang bị mất hoàn toàn mỗi khi tạo SOS)
-2. **C5** — Fix SSL trong `migrations.js` (không chạy được migration trên cloud)
-3. **C4** — Quyết định chiến lược lưu SĐT thật (ảnh hưởng core flow "Admin gọi GSM")
-4. **C2** — FK cho `warning_flags.created_by` (bảo toàn tính toàn vẹn dữ liệu)
-5. **C1** — Cân nhắc FK `cases.phone_hash → victims.phone_hash` (tùy mức độ coupling mong muốn)
-6. **M1-M6** — Các moderate issues có thể gộp vào 1 migration chạy cùng lúc
+| # | Vấn đề | Trạng thái |
+|---|--------|-----------|
+| C1 | FK `cases.phone_hash → victims` | ✅ Đã sửa (migration004) |
+| C2 | Xoá `warning_flags` | ✅ Đã xoá toàn bộ |
+| C3 | Xoá `adults/children/elderly` | ✅ Đã xoá toàn bộ |
+| C4 | Thêm `phone_encrypted` (AES-256-GCM) | ✅ Đã sửa (migration004 + volunteerController) |
+| C5 | SSL trong migrations.js | ✅ Đã sửa |
+| M1 | `updated_at` cho `cases` | ✅ Đã sửa (migration005) |
+| M2 | `updated_at` cho `volunteers` | ✅ Đã sửa (migration005) |
+| M3 | Index `assigned_at` | ✅ Đã sửa (migration005) |
+| M4 | `user_role` ENUM | ✅ **ĐÃ XOÁ:** ENUM không sử dụng đã bị drop. | Đã xoá trong migration005. |
+| M5 | `volunteer_flag_alerts` PK rộng | ✅ Đã xoá cùng C2 |
+| M6 | CHECK `ai_source` | ✅ Đã sửa (migration005) |
 
 ---
 
@@ -138,13 +99,12 @@ ALTER TABLE cases ADD CONSTRAINT chk_ai_source
 
 | Feature trong Y_tuong_KLTN | Trạng thái Schema | Ghi chú |
 |---|---|---|
-| Số lượng người (adults/children/elderly) | ❌ **Thiếu hoàn toàn** | App gửi lên nhưng DB không lưu |
 | eKYC CCCD cho TNV | ⚠️ Có cột `cccd_verified` | Thiếu cột lưu ảnh/metadata CCCD |
 | Mở rộng bán kính động (2km → 5km → 10km) | ⚠️ Logic ở code | Không cần thêm cột DB — xử lý ở query |
 | FCM Notification | ✅ Có `fcm_token` | Đúng |
 | Ca mồ côi alert | ⚠️ Logic ở code | View `v_active_cases` có `minutes_waiting` hỗ trợ |
 | TNV không di chuyển → hủy ca | ✅ `warned_at`, `confirmed_en_route`, `revoked_at` | Đủ cột, logic ở background job |
-| Kênh GSM (SĐT thật) | ❌ **Chỉ có hash** | Không thể gọi GSM nếu chỉ có hash |
-| Bản đồ An toàn (cờ cảnh báo) | ✅ `warning_flags` | Đúng |
+| Kênh GSM (SĐT thật) | ✅ `phone_encrypted` (AES-256-GCM) | Đã sửa trong C4 |
 | Crowd-swarming (nhiều TNV / ca) | ✅ `case_assignments` N-N | Đúng |
 | Auto-resolve triple-AND | ⚠️ Logic ở `autoResolve.js` | Cần `arrived_at` (đã có), distance check (ở code) |
+

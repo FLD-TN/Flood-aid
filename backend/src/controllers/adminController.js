@@ -111,14 +111,9 @@ async function getDashboardStats(req, res) {
       FROM volunteers
     `);
 
-    const flagStats = await db.query(`
-      SELECT COUNT(*) AS active_flags FROM warning_flags WHERE is_active = true
-    `);
-
     res.json({
       cases: stats.rows[0],
       volunteers: volStats.rows[0],
-      flags: flagStats.rows[0],
     });
   } catch (err) {
     console.error('[adminController][getStats]', err.message);

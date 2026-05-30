@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { usePolling } from '../hooks/usePolling';
-import { createFlag } from '../api';
 
 // Fix Leaflet default marker icon
 delete L.Icon.Default.prototype._getIconUrl;
@@ -18,11 +17,6 @@ const URGENCY_COLORS = {
   5: '#EF4444', 4: '#FCA5A5', 3: '#FBBF24', 2: '#FDE047', 1: '#86EFAC',
 };
 
-const FLAG_TYPES = [
-  { type: 'tree_down',        icon: '🌲', label: 'Cây đổ' },
-  { type: 'bridge_collapsed', icon: '⛓',  label: 'Cầu sập' },
-  { type: 'flooded_road',     icon: '🌊',  label: 'Đường ngập' },
-];
 
 // Custom SOS marker — dark style theo spec
 function createSosIcon(urgencyLevel, count = 1) {
@@ -63,24 +57,6 @@ function createVolunteerIcon(isAvailable) {
   });
 }
 
-// Warning flag marker
-function createFlagIcon(type) {
-  const emojis = { tree_down: '🌲', bridge_collapsed: '⛓', flooded_road: '🌊' };
-  return L.divIcon({
-    className: '',
-    html: `<div style="
-      width:30px; height:30px;
-      background:rgba(245,158,11,0.9);
-      border-radius:6px;
-      border:2px solid rgba(255,255,255,0.7);
-      display:flex; align-items:center; justify-content:center;
-      font-size:15px;
-      box-shadow:0 0 10px rgba(245,158,11,0.5), 0 2px 6px rgba(0,0,0,0.4);
-    ">${emojis[type] || '⚠️'}</div>`,
-    iconSize: [30, 30],
-    iconAnchor: [15, 15],
-  });
-}
 
 // Popup content (styled theo Ops Center)
 function buildCasePopup(cluster) {
@@ -154,31 +130,12 @@ function buildVolPopup(vol) {
   `;
 }
 
-// Map click handler for placing flags
-function MapClickHandler({ flagType, onPlace }) {
-  useMapEvents({
-    click(e) { if (flagType) onPlace(e.latlng, flagType); },
-  });
-  return null;
-}
 
 export default function LiveCommandMap({ onCaseSelect, selectedCaseId }) {
-  const [activeFlagType, setActiveFlagType] = useState(null);
   const [isLegendExpanded, setIsLegendExpanded] = useState(false);
 
   const { data: caseClusters } = usePolling('/api/admin/case-clusters', 15000);
   const { data: volunteerLocations } = usePolling('/api/volunteers/locations', 15000);
-  const { data: warningFlags, refresh: refreshFlags } = usePolling('/api/flags', 30000);
-
-  const handlePlaceFlag = async (latlng, type) => {
-    try {
-      await createFlag(latlng.lat, latlng.lng, type);
-      refreshFlags();
-      setActiveFlagType(null);
-    } catch (err) {
-      console.error('Failed to place flag:', err);
-    }
-  };
 
   const center = [16.0544, 108.2022];
 
@@ -195,7 +152,6 @@ export default function LiveCommandMap({ onCaseSelect, selectedCaseId }) {
           attribution='&copy; <a href="https://carto.com">CARTO</a>'
         />
 
-        <MapClickHandler flagType={activeFlagType} onPlace={handlePlaceFlag} />
 
         {/* SOS clusters */}
         {caseClusters?.map((cluster, i) => {
@@ -231,53 +187,7 @@ export default function LiveCommandMap({ onCaseSelect, selectedCaseId }) {
             </Marker>
           );
         })}
-
-        {/* Warning Flags */}
-        {warningFlags?.map(flag => (
-          <Marker
-            key={`flag-${flag.id}`}
-            position={[flag.lat, flag.lon]}
-            icon={createFlagIcon(flag.type)}
-          >
-            <Popup>
-              <div style={{ fontFamily: 'var(--font-body)', padding: 4 }}>
-                <div style={{
-                  fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 600,
-                  textTransform: 'uppercase', letterSpacing: '0.05em',
-                  color: 'var(--status-responding)', marginBottom: 4,
-                }}>
-                  ⚠ {FLAG_TYPES.find(f => f.type === flag.type)?.label || flag.type}
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-                  {new Date(flag.created_at).toLocaleString('vi-VN')}
-                </div>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
       </MapContainer>
-
-      {/* Flag Toolbar — top right */}
-      <div className="map-toolbar">
-        <div className="flag-toolbar-card">
-          <div className="flag-toolbar-header">🚩 CẮM CỜ CẢNH BÁO</div>
-          {FLAG_TYPES.map(({ type, icon, label }) => (
-            <button
-              key={type}
-              className={`flag-btn ${activeFlagType === type ? 'active' : ''}`}
-              onClick={() => setActiveFlagType(activeFlagType === type ? null : type)}
-            >
-              <span>{icon}</span>
-              <span>{label}</span>
-            </button>
-          ))}
-          {activeFlagType && (
-            <div className="flag-placing-hint">
-              CLICK VÀO BẢN ĐỒ ĐỂ ĐẶT CỜ
-            </div>
-          )}
-        </div>
-      </div>
 
       {/* Map Legend — bottom left */}
       <div className="map-legend" style={{ position: 'absolute', bottom: 20, left: 20, zIndex: 1000 }}>
@@ -330,10 +240,7 @@ export default function LiveCommandMap({ onCaseSelect, selectedCaseId }) {
                 <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#34D399' }} />
                 <span style={{ fontSize: 13 }}>Tình nguyện viên</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 12, height: 12, borderRadius: 3, background: '#F59E0B' }} />
-                <span style={{ fontSize: 13 }}>Cảnh báo</span>
-              </div>
+
             </div>
           )}
         </div>

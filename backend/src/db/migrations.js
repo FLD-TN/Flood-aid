@@ -7,6 +7,9 @@ const { Pool } = require('pg');
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL?.includes('render.com')
+    ? { rejectUnauthorized: false }
+    : undefined,
 });
 
 const migration001 = `
@@ -20,15 +23,7 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
-DO $$ BEGIN
-  CREATE TYPE flag_type AS ENUM ('tree_down', 'bridge_collapsed', 'flooded_road');
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
 
-DO $$ BEGIN
-  CREATE TYPE user_role AS ENUM ('victim', 'volunteer', 'admin');
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
 
 -- Bảng victims (Nạn nhân)
 CREATE TABLE IF NOT EXISTS victims (
@@ -88,17 +83,6 @@ CREATE TABLE IF NOT EXISTS case_assignments (
   UNIQUE(case_id, volunteer_id)
 );
 
--- Bảng warning_flags (Cờ cảnh báo tuyến đường)
-CREATE TABLE IF NOT EXISTS warning_flags (
-  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  coords          GEOMETRY(POINT, 4326) NOT NULL,
-  type            flag_type NOT NULL,
-  created_by      UUID NOT NULL,
-  is_active       BOOLEAN DEFAULT TRUE,
-  created_at      TIMESTAMPTZ DEFAULT NOW(),
-  deactivated_at  TIMESTAMPTZ
-);
-
 -- Bảng admins
 CREATE TABLE IF NOT EXISTS admins (
   id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -106,14 +90,6 @@ CREATE TABLE IF NOT EXISTS admins (
   firebase_uid VARCHAR(128) UNIQUE,
   full_name   VARCHAR(255),
   created_at  TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Bảng chống spam FCM cờ
-CREATE TABLE IF NOT EXISTS volunteer_flag_alerts (
-  volunteer_id UUID NOT NULL REFERENCES volunteers(id),
-  flag_id      UUID NOT NULL REFERENCES warning_flags(id),
-  alerted_at   TIMESTAMPTZ DEFAULT NOW(),
-  PRIMARY KEY (volunteer_id, flag_id, alerted_at)
 );
 `;
 
@@ -129,8 +105,6 @@ CREATE INDEX IF NOT EXISTS idx_volunteers_coords ON volunteers USING GIST(curren
 CREATE INDEX IF NOT EXISTS idx_volunteers_available ON volunteers (is_available, admin_approved) 
   WHERE is_available = true AND admin_approved = true;
 
--- Warning flags
-CREATE INDEX IF NOT EXISTS idx_flags_coords ON warning_flags USING GIST(coords) WHERE is_active = true;
 
 -- Case assignments
 CREATE INDEX IF NOT EXISTS idx_assignments_case ON case_assignments (case_id);
@@ -176,6 +150,46 @@ WHERE v.admin_approved = true
   AND v.current_coords IS NOT NULL;
 `;
 
+const migration004 = `
+-- C1: FK cases.phone_hash → victims.phone_hash
+DO $$ BEGIN
+  ALTER TABLE cases ADD CONSTRAINT fk_cases_victim
+    FOREIGN KEY (phone_hash) REFERENCES victims(phone_hash);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- C4: Cột lưu SĐT mã hoá cho volunteers (Admin cần gọi GSM)
+ALTER TABLE volunteers ADD COLUMN IF NOT EXISTS phone_encrypted TEXT;
+
+-- C2: Cleanup — Xoá bảng warning_flags (tính năng đã loại bỏ)
+DROP TABLE IF EXISTS volunteer_flag_alerts;
+DROP TABLE IF EXISTS warning_flags;
+DROP TYPE IF EXISTS flag_type;
+`;
+
+const migration005 = `
+-- M1: Thêm updated_at cho cases — track thời điểm thay đổi status
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+-- M2: Thêm updated_at cho volunteers — track thời điểm Admin duyệt, TNV đổi availability
+ALTER TABLE volunteers ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+-- M3: Index cho assignment timestamp — tăng tốc background jobs (autoResolve, staleChecker)
+CREATE INDEX IF NOT EXISTS idx_assignments_active_time
+  ON case_assignments (assigned_at)
+  WHERE completed_at IS NULL AND revoked_at IS NULL;
+
+-- M6: CHECK constraint cho ai_source — enforce giá trị hợp lệ
+DO $$ BEGIN
+  ALTER TABLE cases ADD CONSTRAINT chk_ai_source
+    CHECK (ai_source IN ('gemini', 'regex'));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- M4: Drop unused user_role enum
+DROP TYPE IF EXISTS user_role;
+`;
+
 async function runMigrations() {
   const client = await pool.connect();
   try {
@@ -190,6 +204,14 @@ async function runMigrations() {
     console.log('[Migration] Running migration 003: Views...');
     await client.query(migration003);
     console.log('[Migration] ✓ Migration 003 complete');
+
+    console.log('[Migration] Running migration 004: FK + phone_encrypted + cleanup...');
+    await client.query(migration004);
+    console.log('[Migration] ✓ Migration 004 complete');
+
+    console.log('[Migration] Running migration 005: updated_at + index + constraints...');
+    await client.query(migration005);
+    console.log('[Migration] ✓ Migration 005 complete');
 
     console.log('[Migration] All migrations completed successfully!');
   } catch (err) {

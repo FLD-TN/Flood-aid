@@ -13,7 +13,7 @@ export default function StatsPanel() {
 
   const cases = stats.cases || {};
   const vols = stats.volunteers || {};
-  const flags = stats.flags || {};
+
 
   return (
     <div className="stats-panel">
@@ -38,10 +38,7 @@ export default function StatsPanel() {
           <div className="stat-value blue">{vols.available_count || 0}</div>
           <div className="stat-label">TNV sẵn sàng</div>
         </div>
-        <div className="stat-card">
-          <div className="stat-value purple">{flags.active_flags || 0}</div>
-          <div className="stat-label">Cờ cảnh báo</div>
-        </div>
+
       </div>
     </div>
   );

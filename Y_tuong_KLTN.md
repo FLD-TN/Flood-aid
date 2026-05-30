@@ -12,7 +12,7 @@
 - App được cài đặt và đăng ký OTP **một lần trước mùa bão** trong điều kiện bình thường. Khi thiên tai xảy ra, Nạn nhân chỉ cần mở app và bấm SOS — không phải thực hiện bất kỳ bước đăng ký nào nữa. SĐT đã xác thực giúp TNV và Admin có thể gọi GSM trực tiếp khi mất 4G, và là cơ sở để hệ thống chống spam hiệu quả.
 
 - **Hoạt động chính của Nạn nhân:**
-Khi nạn nhân nhấn nút "Tạo SOS", một form điền thông tin sẽ hiện ra. Nạn nhân có thể điền thông tin về số lượng người (người lớn, trẻ em, người già), kiểm tra vị trí hiện tại hoặc chọn vị trí thủ công trên bản đồ (có hỗ trợ tìm kiếm). Nạn nhân cũng có thể nhập một dòng text ngắn gọn hoặc nhấn giữ nút mic để nói — Android `SpeechRecognizer` (gói Flutter `speech_to_text`) nhận dạng giọng nói thành text ngay trên thiết bị và hiển thị vào ô nhập liệu. Nạn nhân xem lại, sửa nếu cần, rồi bấm Gửi SOS. **Chỉ có text và các siêu dữ liệu (tọa độ, số người) được gửi lên server — không upload file audio.** AI sẽ tóm tắt nội dung text thành một dòng duy nhất hiển thị trên notification của TNV để giúp TNV ra quyết định nhanh mà không cần đọc text dài.
+Khi nạn nhân nhấn nút "Tạo SOS", một form điền thông tin sẽ hiện ra. Nạn nhân có thể kiểm tra vị trí hiện tại hoặc chọn vị trí thủ công trên bản đồ (có hỗ trợ tìm kiếm). Nạn nhân cũng có thể nhập một dòng text ngắn gọn hoặc nhấn giữ nút mic để nói — Android `SpeechRecognizer` (gói Flutter `speech_to_text`) nhận dạng giọng nói thành text ngay trên thiết bị và hiển thị vào ô nhập liệu. Nạn nhân xem lại, sửa nếu cần, rồi bấm Gửi SOS. **Chỉ có text và các siêu dữ liệu (tọa độ) được gửi lên server — không upload file audio.** AI sẽ tóm tắt nội dung text thành một dòng duy nhất hiển thị trên notification của TNV để giúp TNV ra quyết định nhanh mà không cần đọc text dài.
 
 - **Màn hình bản đồ SOS dành cho Nạn nhân:**
 Bản đồ SOS hiển thị **2 marker**:
@@ -26,8 +26,6 @@ Bên dưới bản đồ hiển thị **text trạng thái** cập nhật liên 
   - 🟡 *"Đã có người đang trên đường — cách bạn ~2.3km"* — trạng thái Responding
   - 🟠 *"Người cứu hộ còn cách bạn ~300m, hãy ra hiệu!"* — trạng thái Near (server tính distance < 300m)
   - 🟢 *"Người cứu hộ đã rất gần!"* — trạng thái On-scene (server tính distance < 100m)
-
-Ngoài ra, Nạn nhân được xem **Bản đồ An toàn** — một lớp bản đồ riêng hiển thị: cờ cảnh báo tuyến đường nguy hiểm (cây đổ, cầu sập do Admin cắm thủ công dựa trên báo cáo điện thoại từ TNV) và các điểm tiếp tế/sơ tán. Dữ liệu Bản đồ An toàn được tái sử dụng từ hệ thống cờ cảnh báo của Module Admin Dashboard (read-only).
 
 - **Đóng ca chủ động:**
 Nạn nhân có thể bấm nút **"Tôi đã được giúp đỡ"** bất cứ lúc nào để xóa điểm ping của mình khỏi bản đồ ngay lập tức, không cần đợi hệ thống tự đóng ca.
@@ -65,7 +63,7 @@ Trong quá trình đăng ký, TNV có thể khai báo kỹ năng chuyên môn (k
 
 **Chức năng chính:**
 
-**UI & Định vị:** Xử lý giao diện nút bấm SOS với form nhập liệu chi tiết. Nạn nhân nhập số lượng người (người lớn, trẻ em, người già) và có hai phương thức nhập text ghi chú: (1) nhập text thủ công — phương thức chính, (2) nhấn giữ nút mic → Android `SpeechRecognizer` chuyển giọng nói thành text ngay trên thiết bị (client-side STT, không upload audio lên server). Cung cấp tùy chọn mở bản đồ để kéo thả ghim tọa độ hoặc tìm kiếm địa chỉ thủ công để chống sai số GPS. Tuyệt đối không phó mặc 100% cho GPS tự động.
+**UI & Định vị:** Xử lý giao diện nút bấm SOS với form nhập liệu chi tiết. Nạn nhân có hai phương thức nhập text ghi chú: (1) nhập text thủ công — phương thức chính, (2) nhấn giữ nút mic → Android `SpeechRecognizer` chuyển giọng nói thành text ngay trên thiết bị (client-side STT, không upload audio lên server). Cung cấp tùy chọn mở bản đồ để kéo thả ghim tọa độ hoặc tìm kiếm địa chỉ thủ công để chống sai số GPS. Tuyệt đối không phó mặc 100% cho GPS tự động.
 
 **Xử lý GPS Cold Start (3 lớp):** Android GPS cold start có thể mất 30–60 giây — nguy hiểm nếu user bấm SOS ngay khi mở app. Ba lớp kết hợp giải quyết vấn đề này:
 - *Lớp 1 — Buffer tự nhiên:* Khi user đang gõ text hoặc nói vào mic (5–15 giây), GPS Fused Location Provider đã warm up song song trong nền và thường có fix từ cell tower/WiFi sau 3–8 giây. Đến lúc bấm "Gửi SOS", tọa độ đã sẵn sàng.
@@ -164,7 +162,7 @@ Thay vì dùng Android Geo-fencing API phức tạp trên thiết bị, toàn b�
 Mỗi khi server nhận GPS update từ TNV (mỗi 7 giây), background job tự động tính `distance(GPS_TNV, GPS_NạnNhân)` và xử lý theo ngưỡng:
 
 - `distance < 500m` → cập nhật text trạng thái trên app nạn nhân: *"Người cứu hộ còn cách bạn ~500m"*
-- `distance < 300m` → FCM cho nạn nhân: *"Người cứu hộ còn ~300m, hãy ra hiệu!"* + FCM cho TNV: *"Bạn sắp tới nơi, chuẩn bị tiếp cận!"* (mỗi ngưỡng chỉ gửi 1 lần — flag `notifSent` tránh spam)
+- `distance < 300m` → FCM cho nạn nhân: *"Người cứu hộ còn ~300m, hãy ra hiệu!"* + FCM cho TNV: *"Bạn sắp tới nơi, chuẩn bị tiếp cận!"* (mỗi ngưỡng chỉ gửi 1 lần)
 - `distance < 100m` → text trạng thái trên app nạn nhân chuyển: *"🟢 Người cứu hộ đã rất gần!"*
 
 Khi GPS lệch do bão (500m–1km), hệ quả chỉ là notification đến hơi sớm hoặc muộn — không crash logic, không đóng nhầm ca.
@@ -193,7 +191,7 @@ Nếu GPS TNV vẫn còn trong khu vực → không đóng ca, vì nhiều khả
 
 **Chức năng chính:**
 
-**Live Command Map:** Bản đồ hiển thị cụm SOS, chấm GPS của TNV đang di chuyển, và các cờ cảnh báo tuyến đường do Admin cắm thủ công. Dashboard chạy `setInterval` 15 giây gọi `GET /api/volunteers/locations` để cập nhật marker trên bản đồ — độ trễ 15 giây chấp nhận được vì xuồng chạy 20 km/h chỉ di chuyển ~80m trong khoảng thời gian đó. Trạng thái ca SOS cũng được đọc qua polling 15 giây từ REST API. Lớp cờ cảnh báo được chia sẻ sang Bản đồ An toàn của Nạn nhân (chế độ read-only).
+**Live Command Map:** Bản đồ hiển thị cụm SOS, chấm GPS của TNV đang di chuyển. Dashboard chạy `setInterval` 15 giây gọi `GET /api/volunteers/locations` để cập nhật marker trên bản đồ — độ trễ 15 giây chấp nhận được vì xuồng chạy 20 km/h chỉ di chuyển ~80m trong khoảng thời gian đó. Trạng thái ca SOS cũng được đọc qua polling 15 giây từ REST API.
 
 **Giám sát Điểm mù (Timeout Alerts):** Đánh dấu đỏ nhấp nháy đối với các ca SOS Mức 3-5 bị treo quá 15 phút mà biến đếm "người đang đến" vẫn là 0.
 
@@ -213,7 +211,7 @@ Nếu GPS TNV vẫn còn trong khu vực → không đóng ca, vì nhiều khả
 
 Nạn nhân mở App — session OTP đã lưu từ trước, không cần đăng nhập lại.
   
-Khi bấm nút tạo SOS, App mở ra một form nhập liệu gồm số lượng người lớn, trẻ em, người già, và hiển thị vị trí (đồng thời chộp tọa độ GPS hiện tại - xem phần GPS Cold Start). Nạn nhân có thể chọn tọa độ thủ công trên bản đồ nếu muốn. Sau đó nhập text thủ công hoặc nhấn giữ nút mic → Android `SpeechRecognizer` chuyển giọng nói thành text ngay trên thiết bị → text hiện ra trong ô ghi chú → nạn nhân xem và sửa nếu cần → bấm Gửi. **Chỉ text và siêu dữ liệu được gửi lên server.**
+Khi bấm nút tạo SOS, App mở ra một form nhập liệu và hiển thị vị trí (đồng thời chộp tọa độ GPS hiện tại - xem phần GPS Cold Start). Nạn nhân có thể chọn tọa độ thủ công trên bản đồ nếu muốn. Sau đó nhập text thủ công hoặc nhấn giữ nút mic → Android `SpeechRecognizer` chuyển giọng nói thành text ngay trên thiết bị → text hiện ra trong ô ghi chú → nạn nhân xem và sửa nếu cần → bấm Gửi. **Chỉ text và siêu dữ liệu được gửi lên server.**
 
 App kiểm tra chất lượng mạng ngay lập tức để quyết định chiến lược gửi:
 - Mạng ổn: gửi full payload (text + GPS + metadata).
@@ -227,7 +225,7 @@ Backend nhận payload và khởi chạy **Parallel Race Pipeline**:
 
 Ca SOS được lưu vào PostGIS với trạng thái `pending`, kèm: tọa độ, `urgency_level`, `tags[]`, `summary_1line`.
 
-Sau khi gửi SOS thành công, Nạn nhân được chuyển đến màn hình theo dõi ca của bản thân và Bản đồ An toàn.
+Sau khi gửi SOS thành công, Nạn nhân được chuyển đến màn hình theo dõi ca của bản thân.
 
 **2. Lưu ý / Lỗ hổng:**
 
@@ -278,8 +276,6 @@ TNV nhận notification (nội dung đã được AI tóm tắt thành 1 dòng),
 Bản đồ hiển thị trạng thái *"Đã có 1 người đang đến"* (Crowd-swarming — cho phép nhiều TNV cùng nhận 1 ca để dự phòng). Ca chuyển sang màu vàng (Responding).
 
 TNV di chuyển đến điểm SOS. Liên lạc giữa TNV và Nạn nhân qua **GSM (gọi điện trực tiếp)** — Admin có SĐT thật của cả 2 bên từ OTP/eKYC để kết nối khi cần. Không có chat in-app.
-
-Trong lúc di chuyển, nếu TNV phát hiện chướng ngại vật nguy hiểm (cây đổ, cầu sập), TNV gọi GSM báo cáo về cho Admin. Admin cắm cờ cảnh báo lên bản đồ thủ công tại tọa độ tương ứng — cờ hiển thị ngay trên Bản đồ An toàn của tất cả Nạn nhân. Đồng thời, background job trên server tự động tính khoảng cách giữa GPS của các TNV đang di chuyển và tọa độ cờ cảnh báo — nếu TNV nào tiến vào trong vòng **200m** thì bắn FCM cảnh báo: *"Cảnh báo: Có chướng ngại vật nguy hiểm phía trước!"*. Không cần Android Geo-fencing API — cùng pattern server-side distance với Module 4.
 
 **2. Lưu ý / Lỗ hổng:**
 
@@ -343,22 +339,6 @@ Sau khi ca `resolved`: ping xanh và ping đỏ biến khỏi bản đồ, ca SO
 ---
 
 ### PHỤ LỤC: CẬP NHẬT GIAO DIỆN & TÍNH NĂNG MỚI CHO TNV
-
-**1. Phân loại 5 cấp độ và Bảng chú thích SOS:**
-Hệ thống SOS được phân loại thành 5 mức độ ưu tiên với màu sắc nhận diện trực quan:
-- **Mức 1 (Ít khẩn cấp):** Xanh lá cây (Cần lương thực, nước uống)
-- **Mức 2 (Khẩn cấp thấp):** Vàng (Ngập nhẹ, cần di dời)
-- **Mức 3 (Khẩn cấp TB):** Cam (Nước dâng cao, cô lập)
-- **Mức 4 (Khẩn cấp cao):** Đỏ (Trẻ em/người già, ngập nóc)
-- **Mức 5 (Cực kỳ nguy hiểm):** Đỏ sậm (Bất tỉnh, đuối nước, nguy hiểm tính mạng)
-*Bảng chú thích màu sắc này có thể thu phóng và xuất hiện trên Bản đồ SOS của cả Nạn nhân, TNV và Admin Dashboard.*
-
-**2. Tối ưu hóa UI/UX Thẻ thông tin ca SOS (Case Card):**
-- Hiển thị rõ **khoảng cách thực tế** từ TNV đến nạn nhân (VD: 800m, 1.2km) bằng cách sử dụng `ST_Distance` của PostGIS thông qua API `GET /api/cases/nearby`.
-- Tự động đếm và hiển thị **số lượng TNV đang đến** hỗ trợ.
-- Hiển thị linh hoạt **thời gian chờ** (VD: 3 phút trước).
-- Các **thẻ phân loại (Tags)** được trích xuất từ AI Pipeline sẽ hiển thị nổi bật với màu sắc tương ứng (VD: 'Trẻ em', 'Người già' tô viền đỏ; 'Y tế' viền xanh biển).
-- Nút bấm action: **Nhận ca**, **Gọi thẳng GSM** (màu xanh lá), **Google Maps** (màu vàng cam) được thiết kế bo tròn, trực quan để thao tác nhanh nhất trên thực địa.
 
 **3. Xem nhanh vị trí (Quick View):**
 Ở mỗi thẻ ca SOS của TNV, cung cấp nút **"Xem vị trí"**. Khi bấm, bản đồ sẽ lập tức di chuyển camera (fly-to) đến đúng tọa độ của nạn nhân, giúp TNV không cần phải lướt map thủ công để tìm kiếm vị trí của ca đó.

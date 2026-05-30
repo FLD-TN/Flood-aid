@@ -85,66 +85,8 @@ async function onVolunteerLocationUpdate(volunteerId, newCoordsWkt) {
       }
     }
 
-    // Kiểm tra cờ cảnh báo trong 200m
-    await checkWarningFlagProximity(volunteerId, newCoordsWkt);
-
   } catch (err) {
     console.error('[distanceTracker][onVolunteerLocationUpdate]', err.message);
-  }
-}
-
-/**
- * Cảnh báo TNV khi tiến vào 200m từ cờ nguy hiểm
- */
-async function checkWarningFlagProximity(volunteerId, tnvCoordsWkt) {
-  const WARNING_RADIUS_M = 200;
-
-  try {
-    const flags = await db.query(`
-      SELECT 
-        wf.id,
-        wf.type,
-        ST_Distance(ST_GeomFromEWKT($1)::geography, wf.coords::geography) AS dist_m
-      FROM warning_flags wf
-      WHERE wf.is_active = true
-        AND ST_DWithin(wf.coords::geography, ST_GeomFromEWKT($1)::geography, $2)
-    `, [tnvCoordsWkt, WARNING_RADIUS_M]);
-
-    if (flags.rows.length === 0) return;
-
-    const vol = await db.query('SELECT fcm_token FROM volunteers WHERE id = $1', [volunteerId]);
-    if (!vol.rows[0]?.fcm_token) return;
-
-    const typeLabels = {
-      tree_down: 'Cây đổ chắn đường',
-      bridge_collapsed: 'Cầu sập',
-      flooded_road: 'Đường ngập sâu',
-    };
-
-    for (const flag of flags.rows) {
-      // Chống spam: chỉ cảnh báo 1 lần trong 30 phút
-      const alreadyAlerted = await db.query(
-        `SELECT 1 FROM volunteer_flag_alerts 
-         WHERE volunteer_id = $1 AND flag_id = $2 AND alerted_at > NOW() - INTERVAL '30 minutes'`,
-        [volunteerId, flag.id]
-      );
-      if (alreadyAlerted.rows.length > 0) continue;
-
-      await sendFcmToVolunteer(vol.rows[0].fcm_token, {
-        id: flag.id,
-        urgency_level: 4,
-        summary_1line: `⚠️ ${typeLabels[flag.type] || 'Chướng ngại vật'} — cách bạn ~${Math.round(flag.dist_m)}m`,
-      });
-
-      await db.query(
-        'INSERT INTO volunteer_flag_alerts (volunteer_id, flag_id, alerted_at) VALUES ($1, $2, NOW())',
-        [volunteerId, flag.id]
-      );
-
-      console.log(`[distanceTracker] Flag ${flag.id} proximity alert sent to TNV ${volunteerId}`);
-    }
-  } catch (err) {
-    console.error('[distanceTracker][checkWarningFlagProximity]', err.message);
   }
 }
 

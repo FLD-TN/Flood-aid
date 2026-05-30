@@ -113,9 +113,9 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
             bottom: MediaQuery.of(context).viewInsets.bottom,
           ),
           child: _SosFormSheet(
-            onSubmit: (adults, children, elderly, location, text) {
+            onSubmit: (location, text) {
               Navigator.pop(context); // close modal
-              _handleSendActual(adults, children, elderly, location, text);
+              _handleSendActual(location, text);
             },
           ),
         );
@@ -124,7 +124,7 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _handleSendActual(
-      int adults, int children, int elderly, LatLng location, String text) async {
+      LatLng location, String text) async {
     if (_isSending) return;
     setState(() => _isSending = true);
 
@@ -135,9 +135,6 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
       lat: location.latitude,
       lon: location.longitude,
       phone: _phone,
-      adults: adults,
-      children: children,
-      elderly: elderly,
     );
 
     if (!mounted) return;
@@ -437,7 +434,7 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
 }
 
 class _SosFormSheet extends StatefulWidget {
-  final Function(int adults, int children, int elderly, LatLng location, String text) onSubmit;
+  final Function(LatLng location, String text) onSubmit;
 
   const _SosFormSheet({Key? key, required this.onSubmit}) : super(key: key);
 
@@ -477,7 +474,17 @@ class _SosFormSheetState extends State<_SosFormSheet> {
         }
       },
       onError: (error) {
-        if (mounted) setState(() => _isListening = false);
+        print('[SpeechError] Lỗi nhận diện giọng nói: ${error.errorMsg}');
+        if (mounted) {
+          setState(() => _isListening = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Chi tiết lỗi: ${error.errorMsg}'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
       },
     );
     if (mounted) setState(() {});
@@ -540,7 +547,7 @@ class _SosFormSheetState extends State<_SosFormSheet> {
           });
         }
 
-        // Sau đó lấy vị trí chính xác hơn (có thể chậm hơn)
+        // Sau đó lấy vị trí chính xác hơn (có thể chậm hơn)  
         try {
           Position position = await Geolocator.getCurrentPosition(
             locationSettings: const LocationSettings(
@@ -773,9 +780,6 @@ class _SosFormSheetState extends State<_SosFormSheet> {
                     return;
                   }
                   widget.onSubmit(
-                    0,
-                    0,
-                    0,
                     _currentLocation!,
                     _textController.text,
                   );

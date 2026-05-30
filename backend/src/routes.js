@@ -10,7 +10,6 @@ const sosController = require('./controllers/sosController');
 const locationController = require('./controllers/locationController');
 const volunteerController = require('./controllers/volunteerController');
 const adminController = require('./controllers/adminController');
-const flagController = require('./controllers/flagController');
 const sseController = require('./controllers/sseController');
 const { authMiddleware } = require('./middleware/authMiddleware');
 
@@ -39,9 +38,5 @@ router.get('/admin/case-clusters', adminController.getCaseClusters);
 router.get('/admin/cases', adminController.getAllCases);
 router.get('/admin/stats', adminController.getDashboardStats);
 
-// ====== Module 5: Warning Flags ======
-router.post('/flags', flagController.createFlag);
-router.get('/flags', flagController.getFlags);
-router.delete('/flags/:id', flagController.deactivateFlag);
 
 module.exports = router;
