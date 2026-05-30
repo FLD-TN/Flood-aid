@@ -148,6 +148,7 @@ class ApiService {
   }
 
   /// POST /api/volunteers/register — Đăng ký TNV
+  /// Trả về volunteerId (UUID) cả khi tạo mới (201) lẫn đã tồn tại (409)
   static Future<Map<String, dynamic>?> registerVolunteer({
     required String phone,
     String? fullName,
@@ -165,11 +166,13 @@ class ApiService {
         }),
       );
 
-      if (response.statusCode == 201) {
+      if (response.statusCode == 201 || response.statusCode == 409) {
+        // 201 = tạo mới, 409 = đã tồn tại → cả hai đều trả về volunteerId
         return json.decode(response.body);
       }
       return null;
     } catch (e) {
+      print('[ApiService] registerVolunteer error: $e');
       return null;
     }
   }

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/ws_gps_service.dart';
 import '../../widgets/map_widget.dart';
 import '../../widgets/sos_legend_widget.dart';
@@ -133,7 +134,9 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
     // Optimistic UI: update immediately
     setState(() => _accepted = true);
     try {
-      final success = await ApiService.acceptCase(widget.caseId, 'tnv-local');
+      final prefs = await SharedPreferences.getInstance();
+      final volunteerId = prefs.getString('volunteer_id') ?? '';
+      final success = await ApiService.acceptCase(widget.caseId, volunteerId);
       if (!success && mounted) {
         // Rollback on failure
         setState(() => _accepted = false);

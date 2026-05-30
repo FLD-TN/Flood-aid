@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../theme/app_theme.dart';
 import '../../services/auth_service.dart';
+import '../../services/api_service.dart';
 import '../victim/otp_verification_screen.dart';
 import 'volunteer_home_screen.dart';
 
@@ -27,21 +28,8 @@ class _VolunteerPhoneScreenState extends State<VolunteerPhoneScreen> {
     _checkExistingAuth();
   }
 
-  /// Kiểm tra đã authenticated chưa → bỏ qua nếu có
+  /// TNV luôn phải xác thực OTP mỗi lần mở app
   Future<void> _checkExistingAuth() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedPhone = prefs.getString('user_phone');
-
-    if (AuthService.isAuthenticated || (savedPhone != null && savedPhone.isNotEmpty)) {
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const VolunteerHomeScreen()),
-        );
-        return;
-      }
-    }
-
     setState(() => _isLoading = false);
   }
 
@@ -70,12 +58,7 @@ class _VolunteerPhoneScreenState extends State<VolunteerPhoneScreen> {
               builder: (_) => OtpVerificationScreen(
                 phoneNumber: phone,
                 initialVerificationId: verificationId,
-                onSuccess: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (_) => const VolunteerHomeScreen()),
-                  );
-                },
+                onSuccess: () => _onOtpSuccess(phone),
               ),
             ),
           );
@@ -92,10 +75,7 @@ class _VolunteerPhoneScreenState extends State<VolunteerPhoneScreen> {
           try {
             await AuthService.signInWithCredential(credential);
             if (!mounted) return;
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const VolunteerHomeScreen()),
-            );
+            await _onOtpSuccess(phone);
           } catch (e) {
             print('[VolunteerPhoneScreen] auto sign in error: $e');
           }
@@ -108,6 +88,26 @@ class _VolunteerPhoneScreenState extends State<VolunteerPhoneScreen> {
         const SnackBar(content: Text('Đã xảy ra lỗi khi gửi mã OTP')),
       );
     }
+  }
+
+  /// Sau khi OTP thành công → đăng ký TNV lên backend → lưu UUID
+  Future<void> _onOtpSuccess(String phone) async {
+    // Gọi API đăng ký TNV (nếu đã tồn tại → trả về UUID cũ)
+    final result = await ApiService.registerVolunteer(phone: phone);
+    if (result != null) {
+      final volunteerId = result['id'] ?? result['volunteerId'];
+      if (volunteerId != null) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('volunteer_id', volunteerId.toString());
+        await prefs.setString('volunteer_phone', phone);
+      }
+    }
+
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const VolunteerHomeScreen()),
+    );
   }
 
   @override

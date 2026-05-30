@@ -163,19 +163,6 @@ class _FloodAidMapState extends State<FloodAidMap>
               maxZoom: 18,
               userAgentPackageName: 'com.floodaid.mobile',
             ),
-            // Lớp chữ và đường sá (chỉ hiển thị khi đang ở chế độ Vệ tinh)
-            if (_currentStyle == MapTileStyle.satellite) ...[
-              TileLayer(
-                urlTemplate: 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}',
-                maxZoom: 18,
-                userAgentPackageName: 'com.floodaid.mobile',
-              ),
-              TileLayer(
-                urlTemplate: 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
-                maxZoom: 18,
-                userAgentPackageName: 'com.floodaid.mobile',
-              ),
-            ],
             if (widget.circles != null && widget.circles!.isNotEmpty)
               CircleLayer(circles: widget.circles!),
             if (widget.polylines != null && widget.polylines!.isNotEmpty)

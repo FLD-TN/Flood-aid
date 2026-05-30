@@ -7,7 +7,7 @@
     <!-- Internet for API calls -->
     <uses-permission android:name="android.permission.INTERNET" />
     <application
-        android:label="mobile"
+        android:label="FloodAid"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
