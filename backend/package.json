@@ -4,6 +4,8 @@
   "description": "FloodAid - Flood Relief Coordination Backend",
   "main": "src/server.js",
   "scripts": {
+    "migrate": "node src/db/migrations.js",
+    "prestart": "npm run migrate",
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "test": "jest --verbose"
