@@ -6,6 +6,7 @@ import 'package:speech_to_text/speech_to_text.dart';
 import 'package:flutter_map/flutter_map.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
+import '../../services/local_notification_service.dart';
 import 'tracking_screen.dart';
 import 'location_picker_screen.dart';
 
@@ -140,6 +141,12 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
     if (!mounted) return;
 
     if (result != null && result['error'] != 'ACTIVE_CASE_EXISTS') {
+      // Hiển thị System Notification thật (giống Messenger/MBBank)
+      LocalNotificationService.showSosSuccess(
+        caseId: result['caseId']?.toString() ?? '',
+        summary: result['summary'] as String?,
+      );
+
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -159,7 +166,8 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
       _checkActiveCase();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Tín hiệu đã được gửi hoặc đang có ca xử lý.'),
+          content: Text('Tín hiệu đã được gửi hoặc bạn đang có ca đang xử lý.'),
+          backgroundColor: Colors.orange,
         ),
       );
     }

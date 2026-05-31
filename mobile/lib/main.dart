@@ -4,12 +4,15 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'theme/app_theme.dart';
 import 'screens/role_selection_screen.dart';
+import 'services/local_notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  // Khởi tạo System Notification (giống Messenger/MBBank)
+  await LocalNotificationService.initialize();
   // Lock orientation — portrait only cho mobile emergency app
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,

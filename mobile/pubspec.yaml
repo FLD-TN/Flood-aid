@@ -33,6 +33,9 @@ dependencies:
   # Speech to Text
   speech_to_text: ^7.0.0
 
+  # Local Notifications (System-level, giống Messenger/MBBank)
+  flutter_local_notifications: ^19.0.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

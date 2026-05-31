@@ -38,7 +38,8 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchCases();
+    // Lấy GPS lần đầu (không block UI), sau đó fetch cases
+    _updateGpsThenFetch();
     _startPolling();
     _sheetController.addListener(() {
       if (mounted) setState(() {});
@@ -48,7 +49,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
   void _startPolling() {
     _pollTimer?.cancel();
     _pollTimer = Timer.periodic(const Duration(seconds: 15), (_) {
-      _fetchCases();
+      _updateGpsThenFetch();
     });
   }
 
@@ -64,8 +65,19 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
     super.dispose();
   }
 
-  Future<void> _fetchCases() async {
-    // 1. Lấy vị trí GPS thật của TNV trước khi gọi API
+  bool _isFetching = false;
+
+  /// Lấy GPS trước (có timeout), sau đó gọi API.
+  /// Nếu GPS chậm → dùng tọa độ cached để gọi API trước.
+  Future<void> _updateGpsThenFetch() async {
+    // Cập nhật GPS (non-blocking)
+    _updateGps();
+    // Gọi API ngay với tọa độ hiện có (có thể là cached)
+    await _fetchCasesOnly();
+  }
+
+  /// Chỉ cập nhật GPS, không gọi API
+  Future<void> _updateGps() async {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (serviceEnabled) {
@@ -77,7 +89,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
           Position position = await Geolocator.getCurrentPosition(
             locationSettings: const LocationSettings(
               accuracy: LocationAccuracy.medium,
-              timeLimit: Duration(seconds: 5),
+              timeLimit: Duration(seconds: 3),
             ),
           );
           _currentLat = position.latitude;
@@ -85,29 +97,48 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
         }
       }
     } catch (e) {
-      print("[FloodAid] Lỗi lấy GPS: $e");
+      // Dùng tọa độ cached, không cần log mỗi lần
     }
+  }
 
-    // 2. Gọi API với vị trí mới nhất
-    final cases = await ApiService.getNearbyCases(
-      lat: _currentLat,
-      lon: _currentLon,
-      maxDistance: _currentFilter?.maxDistance ?? 10.0,
-      urgencyLevels: _currentFilter?.urgencyLevels,
-      tags: _currentFilter?.tags,
-      sortBy: _currentFilter?.sortByDistance ?? 'distance_asc',
-    );
-    if (mounted) {
-      setState(() {
-        _cases = cases;
-        _isLoading = false;
-      });
+  /// Gọi API lấy danh sách ca với tọa độ hiện có (KHÔNG chờ GPS)
+  Future<void> _fetchCasesOnly() async {
+    if (_isFetching) return; // Tránh gọi song song
+    _isFetching = true;
+
+    try {
+      final cases = await ApiService.getNearbyCases(
+        lat: _currentLat,
+        lon: _currentLon,
+        maxDistance: _currentFilter?.maxDistance ?? 10.0,
+        urgencyLevels: _currentFilter?.urgencyLevels,
+        tags: _currentFilter?.tags,
+        sortBy: _currentFilter?.sortByDistance ?? 'distance_asc',
+      );
+      if (mounted) {
+        setState(() {
+          _cases = cases;
+          _isLoading = false;
+        });
+      }
+    } finally {
+      _isFetching = false;
     }
+  }
+
+  /// Xóa 1 case khỏi danh sách local ngay lập tức (optimistic UI)
+  void _removeLocalCase(String caseId) {
+    setState(() {
+      _cases.removeWhere((c) => c['id']?.toString() == caseId);
+    });
   }
 
   Future<void> _handleAcceptFromCard(Map<String, dynamic> caseData) async {
     final caseId = caseData['id']?.toString() ?? '';
     if (caseId.isEmpty) return;
+
+    // Optimistic UI: xóa ca khỏi danh sách ngay lập tức
+    _removeLocalCase(caseId);
 
     // Tạm dừng poll khi TNV đang trong màn hình Active Mission
     _stopPolling();
@@ -128,7 +159,8 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
 
     // Bật lại poll khi TNV quay lại trang chủ
     if (mounted) {
-      _fetchCases();
+      // Gọi API ngay với GPS cached (KHÔNG chờ GPS) → UI cập nhật nhanh
+      await _fetchCasesOnly();
       _startPolling();
     }
   }
@@ -153,8 +185,9 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
           onApply: (params) {
             setState(() {
               _currentFilter = params;
+              _isLoading = true; // Hiện loading ngay khi lọc
             });
-            _fetchCases();
+            _fetchCasesOnly(); // Không chờ GPS → nhanh hơn
           },
         ),
       ),

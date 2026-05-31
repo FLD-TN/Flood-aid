@@ -1,0 +1,4 @@
+1) UI update chậm, khi mà user tạo sos , tnv delay 1 lúc mới hiện ca sos. khi xác nhận kết thúc ca ( đã cứu  xong ) thì giao diện TNV sẽ dc back về bản đồ sos , nhưng vì UI delay nên ca SOS khi nãy chưa bị biến mất,vẫn có thể nhấn cứu dc gây ra lỗi. khi lọc ca sos cũng z
+
+2) phone 1plus ko hiện thông báo ??? chỉ hiện ra ở trên khi vuốt xuống khay thông báo. ko hiện banner trên cùng. 
+- User tạo SOS, TNV không nhận được thông báo nào về ca SOS mới cả.
