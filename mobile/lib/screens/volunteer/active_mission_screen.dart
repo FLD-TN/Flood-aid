@@ -43,6 +43,9 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
   late double _victimLat;
   late double _victimLon;
 
+  // Volunteer UUID (loaded from SharedPreferences)
+  String _volunteerId = '';
+
   // Case state
   bool _accepted = false;
   bool _isResolving = false;
@@ -58,8 +61,19 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
     _victimLat = widget.victimLat ?? 16.0544;
     _victimLon = widget.victimLon ?? 108.2022;
 
+    // Load volunteer UUID from SharedPreferences
+    _loadVolunteerId();
+
     // Get initial location once
     _getMyLocation();
+  }
+
+  Future<void> _loadVolunteerId() async {
+    final prefs = await SharedPreferences.getInstance();
+    final id = prefs.getString('volunteer_id') ?? '';
+    if (mounted) {
+      setState(() => _volunteerId = id);
+    }
   }
 
   @override
@@ -81,11 +95,11 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
       },
     );
 
-    // Connect WebSocket
+    // Connect WebSocket with real volunteer UUID
     _wsGpsService!.connect(
       caseId: widget.caseId,
       role: 'volunteer',
-      volunteerId: 'tnv-local',
+      volunteerId: _volunteerId,
     );
 
     // Start GPS timer — send GPS via WS (or REST fallback) every 10s
@@ -116,10 +130,10 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
         // Send GPS: prefer WebSocket, fallback to REST
         if (_wsGpsService != null && _wsGpsService!.isConnected) {
           _wsGpsService!.sendGps(pos.latitude, pos.longitude);
-        } else if (_accepted) {
+        } else if (_accepted && _volunteerId.isNotEmpty) {
           // REST fallback when WS is down
           await ApiService.updateLocation(
-            volunteerId: 'tnv-local',
+            volunteerId: _volunteerId,
             lat: pos.latitude,
             lon: pos.longitude,
           );
@@ -134,9 +148,14 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
     // Optimistic UI: update immediately
     setState(() => _accepted = true);
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final volunteerId = prefs.getString('volunteer_id') ?? '';
-      final success = await ApiService.acceptCase(widget.caseId, volunteerId);
+      // Use _volunteerId already loaded from SharedPreferences
+      final volunteerId = _volunteerId;
+      final success = await ApiService.acceptCase(
+        widget.caseId,
+        volunteerId,
+        lat: _myLat,
+        lon: _myLon,
+      );
       if (!success && mounted) {
         // Rollback on failure
         setState(() => _accepted = false);

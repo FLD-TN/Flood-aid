@@ -159,7 +159,7 @@ async function getTnvLocation(req, res) {
 async function acceptCase(req, res) {
   try {
     const { id } = req.params;
-    const { volunteerId } = req.body;
+    const { volunteerId, lat, lon } = req.body;
 
     if (!volunteerId) {
       return res.status(400).json({ error: 'Missing volunteerId' });
@@ -181,12 +181,33 @@ async function acceptCase(req, res) {
     );
 
     let initialDistance = null;
-    if (volRow.rows[0]?.current_coords) {
+    const volCoords = volRow.rows[0]?.current_coords;
+
+    if (volCoords) {
+      // TNV đã có tọa độ trong DB → tính từ DB
       const distResult = await db.query(
         `SELECT ST_Distance($1::geography, $2::geography) AS dist_m`,
-        [volRow.rows[0].current_coords, caseRow.rows[0].coords]
+        [volCoords, caseRow.rows[0].coords]
       );
       initialDistance = Math.round(distResult.rows[0].dist_m);
+    } else if (lat && lon) {
+      // Fallback: TNV chưa có current_coords → dùng tọa độ gửi kèm từ app
+      const distResult = await db.query(
+        `SELECT ROUND(ST_Distance(
+           $1::geography,
+           ST_SetSRID(ST_MakePoint($2, $3), 4326)::geography
+         ))::int AS dist_m`,
+        [caseRow.rows[0].coords, lon, lat]
+      );
+      initialDistance = distResult.rows[0].dist_m;
+
+      // Bonus: cập nhật luôn current_coords cho TNV (lần đầu tiên)
+      await db.query(
+        `UPDATE volunteers 
+         SET current_coords = ST_SetSRID(ST_MakePoint($1, $2), 4326), last_seen_at = NOW()
+         WHERE id = $3 AND current_coords IS NULL`,
+        [lon, lat, volunteerId]
+      );
     }
 
     // Tạo assignment

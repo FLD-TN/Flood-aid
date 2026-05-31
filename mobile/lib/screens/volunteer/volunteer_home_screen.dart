@@ -39,17 +39,27 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
   void initState() {
     super.initState();
     _fetchCases();
-    _pollTimer = Timer.periodic(const Duration(seconds: 15), (_) {
-      _fetchCases();
-    });
+    _startPolling();
     _sheetController.addListener(() {
       if (mounted) setState(() {});
     });
   }
 
+  void _startPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      _fetchCases();
+    });
+  }
+
+  void _stopPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = null;
+  }
+
   @override
   void dispose() {
-    _pollTimer?.cancel();
+    _stopPolling();
     _sheetController.dispose();
     super.dispose();
   }
@@ -99,8 +109,11 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
     final caseId = caseData['id']?.toString() ?? '';
     if (caseId.isEmpty) return;
 
-    // Optimistic: navigate immediately
-    Navigator.push(
+    // Tạm dừng poll khi TNV đang trong màn hình Active Mission
+    _stopPolling();
+
+    // Navigate to Active Mission and wait until it is popped
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => ActiveMissionScreen(
@@ -112,6 +125,12 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
         ),
       ),
     );
+
+    // Bật lại poll khi TNV quay lại trang chủ
+    if (mounted) {
+      _fetchCases();
+      _startPolling();
+    }
   }
 
   // Lọc ra các case chưa resolved

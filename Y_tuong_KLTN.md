@@ -354,3 +354,32 @@ Tất cả các tuỳ chọn lọc này gọi trực tiếp xuống database qua
 **5. Trải nghiệm người dùng theo thời gian thực (Real-time UX) và Optimistic UI:**
 - **Optimistic UI:** Mọi thao tác quan trọng (Nhận ca, Đóng ca, Xác nhận An toàn) đều cập nhật giao diện ngay lập tức (instant feedback) mà không cần đợi API phản hồi. Nếu có lỗi mạng, hệ thống tự động rollback trạng thái và hiển thị thông báo lỗi. Điều này giúp loại bỏ hoàn toàn cảm giác "app bị đơ" khi sử dụng ở vùng sóng yếu.
 - **Push-based Communication:** Loại bỏ hoàn toàn cơ chế polling chậm trễ. Trạng thái ca cứu hộ được push từ server xuống client thông qua **Server-Sent Events (SSE)**. Vị trí GPS của TNV được stream trực tiếp qua **WebSocket** với độ trễ dưới 100ms, giúp nạn nhân thấy rõ hành trình cứu hộ trên bản đồ theo thời gian thực. Hệ thống có cơ chế tự động fallback về polling nếu mất kết nối WebSocket.
+
+
+- POST /api/volunteers/register 409 918.438 ms - 81 , lúc xác thực otp 
+
+- bắt đầu ấn nhận ca :
+[geoDispatch] Case 1332ede6-a0eb-43e6-aae5-408e1c425865: broadcast to 0 TNV (3km)
+[sosController] TNV 573b9773-6b3c-4dda-88f3-90d1ae956297 accepted case 1332ede6-a0eb-43e6-aae5-408e1c425865, distance: nullm
+[SSE] Emitted "case:accepted" to 1 client(s) for case 1332ede6-a0eb-43e6-aae5-408e1c425865
+POST /api/case/1332ede6-a0eb-43e6-aae5-408e1c425865/accept 200 930.530 ms - 39
+GET /api/case/1332ede6-a0eb-43e6-aae5-408e1c425865/stream 200 0.117 ms - -
+[SSE] Client disconnected from case 1332ede6-a0eb-43e6-aae5-408e1c425865 (0 remaining)
+[WS] volunteer joined room 1332ede6-a0eb-43e6-aae5-408e1c425865 (V:1 / N:0)
+GET /api/cases/nearby?lat=10.6352058&lon=107.0471772&maxDistance=10.0&sortBy=distance_asc 200 136.251 ms - 415
+[WS] DB save error: invalid input syntax for type uuid: "tnv-local"
+GET /api/cases/nearby?lat=10.6352387&lon=107.0471809&maxDistance=10.0&sortBy=distance_asc 200 5.856 ms - 415
+[WS] DB save error: invalid input syntax for type uuid: "tnv-local"
+GET /api/cases/nearby?lat=10.6352387&lon=107.0471809&maxDistance=10.0&sortBy=distance_asc 200 11.624 ms - 415
+[WS] DB save error: invalid input syntax for type uuid: "tnv-local"
+[WS] DB save error: invalid input syntax for type uuid: "tnv-local"
+GET /api/cases/nearby?lat=10.6352387&lon=107.0471809&maxDistance=10.0&sortBy=distance_asc 200 5.486 ms - 415
+[WS] DB save error: invalid input syntax for type uuid: "tnv-local"
+GET /api/cases/nearby?lat=10.635256&lon=107.0472065&maxDistance=10.0&sortBy=distance_asc 200 7.920 ms - 415
+[WS] DB save error: invalid input syntax for type uuid: "tnv-local"
+[WS] DB save error: invalid input syntax for type uuid: "tnv-local"
+GET /api/cases/nearby?lat=10.6352102&lon=107.0470794&maxDistance=10.0&sortBy=distance_asc 200 1058.174 ms - 416
+[WS] DB save error: invalid input syntax for type uuid: "tnv-local"
+
+- liên tục spam
+

@@ -103,13 +103,19 @@ class ApiService {
   }
 
   /// POST /api/case/:id/accept — TNV nhận ca
-  static Future<bool> acceptCase(String caseId, String volunteerId) async {
+  /// Gửi kèm lat/lon hiện tại để backend tính khoảng cách ban đầu
+  static Future<bool> acceptCase(String caseId, String volunteerId, {double? lat, double? lon}) async {
     try {
       final headers = await _getHeaders();
+      final body = <String, dynamic>{'volunteerId': volunteerId};
+      if (lat != null && lon != null) {
+        body['lat'] = lat;
+        body['lon'] = lon;
+      }
       final response = await http.post(
         Uri.parse('$_baseUrl/api/case/$caseId/accept'),
         headers: headers,
-        body: json.encode({'volunteerId': volunteerId}),
+        body: json.encode(body),
       );
       return response.statusCode == 200;
     } catch (e) {

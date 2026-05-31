@@ -1,6 +1,5 @@
 # 📋 Database Audit Report — FloodAid
 
-> **Đánh giá bởi:** Database Architect (AI Agent)
 > **Schema source:** [migrations.js](file:///c:/Users/Admin/Desktop/KLTN/backend/src/db/migrations.js)
 > **Business context:** [Y_tuong_KLTN.md](file:///c:/Users/Admin/Desktop/KLTN/Y_tuong_KLTN.md)
 > **Ngày:** 2026-05-29
