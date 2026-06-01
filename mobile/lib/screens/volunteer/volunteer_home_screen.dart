@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/local_notification_service.dart';
 import '../../widgets/map_widget.dart';
 import '../../widgets/sos_legend_widget.dart';
 import '../../widgets/filter_bottom_sheet.dart';
@@ -26,6 +27,11 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
   List<Map<String, dynamic>> _cases = [];
   bool _isLoading = true;
   FilterParams? _currentFilter;
+
+  /// Lưu Set các caseId đã biết — dùng để Diffing phát hiện ca SOS mới
+  Set<String> _knownCaseIds = {};
+  /// Lần fetch đầu tiên không hiện notification (tránh spam khi vừa mở app)
+  bool _isFirstFetch = true;
 
   // Tọa độ TNV hiện tại (mặc định Đà Nẵng nếu chưa có GPS)
   double _currentLat = 16.0544;
@@ -102,6 +108,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
   }
 
   /// Gọi API lấy danh sách ca với tọa độ hiện có (KHÔNG chờ GPS)
+  /// Có logic Diffing: so sánh list cũ vs mới → phát hiện ca SOS mới → hiện notification
   Future<void> _fetchCasesOnly() async {
     if (_isFetching) return; // Tránh gọi song song
     _isFetching = true;
@@ -116,6 +123,35 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
         sortBy: _currentFilter?.sortByDistance ?? 'distance_asc',
       );
       if (mounted) {
+        // ── Diffing: Phát hiện ca SOS mới để hiện notification ──
+        final newCaseIds = cases.map((c) => c['id']?.toString() ?? '').toSet();
+
+        if (!_isFirstFetch) {
+          // Tìm những ID có trong list mới mà CHƯA CÓ trong list cũ
+          final brandNewIds = newCaseIds.difference(_knownCaseIds);
+          for (final newId in brandNewIds) {
+            final newCase = cases.firstWhere(
+              (c) => c['id']?.toString() == newId,
+              orElse: () => <String, dynamic>{},
+            );
+            if (newCase.isNotEmpty) {
+              // Kích hoạt Local Notification banner cho TNV
+              LocalNotificationService.showNewSosForVolunteer(
+                caseId: newId,
+                urgencyLevel: newCase['urgency_level'] as int? ?? 3,
+                distanceM: (newCase['distance_km'] as num?)?.toInt(),
+                summary: newCase['summary_1line'] as String?,
+              );
+              debugPrint('[VolunteerHome] 🔔 New SOS detected: $newId → notification fired');
+            }
+          }
+        } else {
+          _isFirstFetch = false;
+        }
+
+        // Cập nhật bộ nhớ đã biết
+        _knownCaseIds = newCaseIds;
+
         setState(() {
           _cases = cases;
           _isLoading = false;
