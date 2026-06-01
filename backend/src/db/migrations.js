@@ -180,11 +180,9 @@ CREATE INDEX IF NOT EXISTS idx_assignments_active_time
   WHERE completed_at IS NULL AND revoked_at IS NULL;
 
 -- M6: CHECK constraint cho ai_source — enforce giá trị hợp lệ
-DO $$ BEGIN
-  ALTER TABLE cases ADD CONSTRAINT chk_ai_source
-    CHECK (ai_source IN ('gemini', 'regex'));
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
+ALTER TABLE cases DROP CONSTRAINT IF EXISTS chk_ai_source;
+ALTER TABLE cases ADD CONSTRAINT chk_ai_source
+  CHECK (ai_source IN ('gemini', 'regex', 'rule_based'));
 
 -- M4: Drop unused user_role enum
 DROP TYPE IF EXISTS user_role;
