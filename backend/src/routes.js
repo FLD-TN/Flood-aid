@@ -33,6 +33,7 @@ router.get('/volunteers/locations', volunteerController.getVolunteerLocations);
 router.put('/volunteers/:id/approve', volunteerController.approveVolunteer);
 router.put('/volunteers/:id/availability', volunteerController.setAvailability);
 router.put('/volunteers/:id/fcm-token', volunteerController.updateFcmToken);
+router.put('/volunteers/:id/radius', volunteerController.updateNotificationRadius);
 
 // ====== Module 5: Admin Dashboard ======
 router.get('/admin/case-clusters', adminController.getCaseClusters);

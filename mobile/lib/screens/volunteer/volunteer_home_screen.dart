@@ -479,7 +479,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
     );
   }
 
-  void _showVolunteerProfile() {
+  void _showVolunteerProfile() async {
     final user = AuthService.currentUser;
     String phoneDisplay = 'Chưa xác thực';
     if (user?.phoneNumber != null) {
@@ -489,6 +489,11 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
       }
       phoneDisplay = phone;
     }
+
+    final prefs = await SharedPreferences.getInstance();
+    final volunteerId = prefs.getString('volunteer_id') ?? '';
+
+    if (!mounted) return;
 
     showModalBottomSheet(
       context: context,
@@ -590,6 +595,10 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
             ),
             const SizedBox(height: 24),
 
+            // ── Cài đặt bán kính nhận thông báo ──
+            if (volunteerId.isNotEmpty) RadiusSettingsWidget(volunteerId: volunteerId),
+            if (volunteerId.isNotEmpty) const SizedBox(height: 24),
+
             // Logout button
             SizedBox(
               width: double.infinity,
@@ -598,8 +607,8 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                 onPressed: () async {
                   Navigator.pop(ctx); // Đóng bottom sheet
                   await AuthService.signOut();
-                  final prefs = await SharedPreferences.getInstance();
                   await prefs.remove('user_phone');
+                  await prefs.remove('notification_radius_km'); // clear cache
                   if (!mounted) return;
                   // Quay về màn hình chọn role
                   Navigator.pushAndRemoveUntil(
@@ -1163,6 +1172,173 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                 ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class RadiusSettingsWidget extends StatefulWidget {
+  final String volunteerId;
+  const RadiusSettingsWidget({Key? key, required this.volunteerId}) : super(key: key);
+
+  @override
+  State<RadiusSettingsWidget> createState() => _RadiusSettingsWidgetState();
+}
+
+class _RadiusSettingsWidgetState extends State<RadiusSettingsWidget> {
+  int _radiusKm = 5;
+  bool _receiveAll = false;
+  Timer? _debounce;
+  bool _isLoading = true;
+  late TextEditingController _radiusController;
+
+  @override
+  void initState() {
+    super.initState();
+    _radiusController = TextEditingController();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    // Load local settings, default to receive all (null/0)
+    final savedRadius = prefs.getInt('notification_radius_km');
+    setState(() {
+      if (savedRadius == null || savedRadius == 0) {
+        _receiveAll = true;
+        _radiusKm = 5; // Default when disabled
+      } else {
+        _receiveAll = false;
+        _radiusKm = savedRadius.clamp(1, 999);
+      }
+      _radiusController.text = _radiusKm.toString();
+      _isLoading = false;
+    });
+  }
+
+  void _onRadiusChanged(String value) {
+    final parsed = int.tryParse(value);
+    if (parsed != null && parsed > 0) {
+      setState(() {
+        _radiusKm = parsed;
+        _receiveAll = false;
+      });
+      _debouncedSave();
+    }
+  }
+
+  void _onReceiveAllChanged(bool value) {
+    setState(() {
+      _receiveAll = value;
+      if (value) {
+        // Clear focus if turning on receive all
+        FocusScope.of(context).unfocus();
+      }
+    });
+    _debouncedSave();
+  }
+
+  void _debouncedSave() {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () async {
+      final prefs = await SharedPreferences.getInstance();
+      final radiusToSave = _receiveAll ? 0 : _radiusKm;
+      await prefs.setInt('notification_radius_km', radiusToSave);
+
+      ApiService.updateNotificationRadius(
+        volunteerId: widget.volunteerId,
+        radiusKm: _receiveAll ? null : _radiusKm,
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _radiusController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) return const SizedBox(height: 120, child: Center(child: CircularProgressIndicator()));
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceElevated,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.surfaceBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.radar, color: AppColors.primary, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Phạm vi nhận ca cứu hộ',
+                style: AppTypography.headingMedium,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Bán kính (km):',
+                  style: AppTypography.bodyLarge.copyWith(
+                    color: _receiveAll ? AppColors.textMuted : AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 80,
+                child: TextField(
+                  controller: _radiusController,
+                  keyboardType: TextInputType.number,
+                  enabled: !_receiveAll,
+                  onChanged: _onRadiusChanged,
+                  textAlign: TextAlign.center,
+                  style: AppTypography.bodyLarge.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: _receiveAll ? AppColors.textMuted : AppColors.textPrimary,
+                  ),
+                  decoration: InputDecoration(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                    isDense: true,
+                    filled: true,
+                    fillColor: _receiveAll ? AppColors.background : Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: AppColors.surfaceBorder),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Nhận mọi ca (Không giới hạn)',
+                style: AppTypography.bodyMedium.copyWith(
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              Switch(
+                value: _receiveAll,
+                onChanged: _onReceiveAllChanged,
+                activeColor: AppColors.primary,
+              ),
+            ],
           ),
         ],
       ),

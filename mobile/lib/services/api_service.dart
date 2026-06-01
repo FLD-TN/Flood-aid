@@ -147,6 +147,28 @@ class ApiService {
     }
   }
 
+  /// PUT /api/volunteers/:id/radius — Cập nhật bán kính nhận thông báo
+  static Future<bool> updateNotificationRadius({
+    required String volunteerId,
+    int? radiusKm, // null = nhận tất cả
+  }) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http
+          .put(
+            Uri.parse('$_baseUrl/api/volunteers/$volunteerId/radius'),
+            headers: headers,
+            body: json.encode({
+              'radiusKm': radiusKm,
+            }),
+          )
+          .timeout(const Duration(seconds: 5));
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
+
   /// POST /api/volunteers/register — Đăng ký TNV
   /// Trả về volunteerId (UUID) cả khi tạo mới (201) lẫn đã tồn tại (409)
   static Future<Map<String, dynamic>?> registerVolunteer({

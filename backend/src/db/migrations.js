@@ -188,6 +188,13 @@ ALTER TABLE cases ADD CONSTRAINT chk_ai_source
 DROP TYPE IF EXISTS user_role;
 `;
 
+const migration006 = `
+-- Smart Notification Radius: Cho phép TNV tự chọn bán kính nhận thông báo SOS
+-- NULL = Nhận tất cả (không giới hạn bán kính)
+-- Số nguyên (VD: 5) = Chỉ nhận ca trong vòng 5km
+ALTER TABLE volunteers ADD COLUMN IF NOT EXISTS notification_radius_km INTEGER DEFAULT NULL;
+`;
+
 async function runMigrations() {
   const client = await pool.connect();
   try {
@@ -210,6 +217,10 @@ async function runMigrations() {
     console.log('[Migration] Running migration 005: updated_at + index + constraints...');
     await client.query(migration005);
     console.log('[Migration] ✓ Migration 005 complete');
+
+    console.log('[Migration] Running migration 006: Smart Notification Radius...');
+    await client.query(migration006);
+    console.log('[Migration] ✓ Migration 006 complete');
 
     console.log('[Migration] All migrations completed successfully!');
   } catch (err) {

@@ -101,7 +101,7 @@ async function listVolunteers(req, res) {
   try {
     const result = await db.query(`
       SELECT id, full_name, skills, is_available, admin_approved, 
-             cccd_verified, phone_encrypted, created_at,
+             cccd_verified, phone_encrypted, notification_radius_km, created_at,
              ST_X(current_coords::geometry) AS lon,
              ST_Y(current_coords::geometry) AS lat,
              last_seen_at
@@ -205,6 +205,40 @@ async function updateFcmToken(req, res) {
   }
 }
 
+/**
+ * PUT /api/volunteers/:id/radius — TNV cập nhật bán kính nhận thông báo SOS
+ * Body: { radiusKm: number | null }
+ *   - null hoặc 0 = Nhận mọi ca (không giới hạn)
+ *   - 1–30 = Chỉ nhận ca trong bán kính đó (km)
+ */
+async function updateNotificationRadius(req, res) {
+  try {
+    const { id } = req.params;
+    const { radiusKm } = req.body;
+
+    // Validate: null/0 = unlimited, hoặc số nguyên 1-999
+    let value = null;
+    if (radiusKm !== null && radiusKm !== undefined && radiusKm !== 0) {
+      const parsed = parseInt(radiusKm);
+      if (isNaN(parsed) || parsed < 1 || parsed > 999) {
+        return res.status(400).json({ error: 'radiusKm must be null, 0, or between 1-999' });
+      }
+      value = parsed;
+    }
+
+    await db.query(
+      'UPDATE volunteers SET notification_radius_km = $1 WHERE id = $2',
+      [value, id]
+    );
+
+    console.log(`[volunteerController] Notification radius updated for ${id}: ${value === null ? 'unlimited' : value + 'km'}`);
+    res.json({ success: true, notification_radius_km: value });
+  } catch (err) {
+    console.error('[volunteerController][updateNotificationRadius]', err.message);
+    res.status(500).json({ error: 'Internal error' });
+  }
+}
+
 module.exports = {
   registerVolunteer,
   listVolunteers,
@@ -212,4 +246,5 @@ module.exports = {
   approveVolunteer,
   setAvailability,
   updateFcmToken,
+  updateNotificationRadius,
 };
