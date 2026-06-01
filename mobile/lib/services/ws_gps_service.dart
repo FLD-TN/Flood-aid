@@ -36,8 +36,9 @@ class WsGpsService {
   // Callbacks
   final void Function(Map<String, dynamic>)? onGpsReceived;
   final void Function(bool)? onConnectionChanged;
+  final void Function(Map<String, dynamic>)? onCaseResolved;
 
-  WsGpsService({this.onGpsReceived, this.onConnectionChanged});
+  WsGpsService({this.onGpsReceived, this.onConnectionChanged, this.onCaseResolved});
 
   bool get isConnected => _isConnected;
 
@@ -124,6 +125,10 @@ class WsGpsService {
         break;
       case 'connected':
         debugPrint('[WsGps] Server confirmed connection for case ${msg['caseId']}');
+        break;
+      case 'case:resolved':
+        debugPrint('[WsGps] Case resolved by ${msg['resolvedBy']}');
+        onCaseResolved?.call(msg);
         break;
     }
   }

@@ -7,6 +7,7 @@ const { runParallelAiPipeline } = require('../services/aiPipeline');
 const { db } = require('../db');
 const crypto = require('crypto');
 const { emitCaseEvent } = require('./sseController');
+const { broadcastToRoom } = require('../services/wsServer');
 
 const SALT = process.env.PHONE_HASH_SALT || 'default_salt';
 
@@ -280,6 +281,14 @@ async function resolveCase(req, res) {
     emitCaseEvent(id, 'case:resolved', {
       resolvedBy,
       status: 'resolved',
+    });
+
+    // Broadcast qua WebSocket để TNV trong room nhận được ngay
+    broadcastToRoom(id, {
+      type: 'case:resolved',
+      resolvedBy,
+      status: 'resolved',
+      caseId: id,
     });
 
     res.json({ success: true, resolvedBy });

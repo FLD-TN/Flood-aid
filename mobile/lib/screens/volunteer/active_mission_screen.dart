@@ -93,6 +93,25 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
           setState(() => _wsConnected = connected);
         }
       },
+      onCaseResolved: (data) {
+        // Nạn nhân hoặc Admin đã đóng ca → TNV tự động thoát
+        if (mounted) {
+          final resolvedBy = data['resolvedBy'] ?? 'victim';
+          _stopGpsTracking();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                resolvedBy == 'victim'
+                    ? 'Nạn nhân đã xác nhận được giúp đỡ. Ca đã đóng!'
+                    : 'Ca đã được đóng bởi $resolvedBy.',
+              ),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+          Navigator.pop(context);
+        }
+      },
     );
 
     // Connect WebSocket with real volunteer UUID

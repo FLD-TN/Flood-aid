@@ -178,6 +178,27 @@ async function handleMessage(ws, msg) {
 }
 
 /**
+ * Broadcast a message to ALL clients (volunteers + victims) in a room.
+ * Used by sosController to notify TNV when victim resolves a case.
+ */
+function broadcastToRoom(caseId, message) {
+  const room = rooms.get(caseId);
+  if (!room) return;
+
+  const payload = JSON.stringify(message);
+  let sent = 0;
+
+  for (const ws of [...room.volunteers, ...room.victims]) {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(payload);
+      sent++;
+    }
+  }
+
+  console.log(`[WS] Broadcast "${message.type}" to ${sent} client(s) in room ${caseId}`);
+}
+
+/**
  * Save volunteer GPS to database (same logic as locationController)
  */
 async function saveGpsToDb(volunteerId, lat, lon) {
@@ -225,4 +246,4 @@ function removeFromRoom(ws) {
   console.log(`[WS] ${role} left room ${caseId} (V:${room.volunteers.size} / N:${room.victims.size})`);
 }
 
-module.exports = { initWebSocket };
+module.exports = { initWebSocket, broadcastToRoom };
