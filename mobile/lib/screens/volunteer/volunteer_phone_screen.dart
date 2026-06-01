@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../theme/app_theme.dart';
 import '../../services/auth_service.dart';
 import '../../services/api_service.dart';
+import '../../services/fcm_service.dart';
 import '../victim/otp_verification_screen.dart';
 import 'volunteer_home_screen.dart';
 
@@ -90,7 +91,7 @@ class _VolunteerPhoneScreenState extends State<VolunteerPhoneScreen> {
     }
   }
 
-  /// Sau khi OTP thành công → đăng ký TNV lên backend → lưu UUID
+  /// Sau khi OTP thành công → đăng ký TNV lên backend → lưu UUID → đăng ký FCM
   Future<void> _onOtpSuccess(String phone) async {
     // Gọi API đăng ký TNV (nếu đã tồn tại → trả về UUID cũ)
     final result = await ApiService.registerVolunteer(phone: phone);
@@ -100,6 +101,9 @@ class _VolunteerPhoneScreenState extends State<VolunteerPhoneScreen> {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('volunteer_id', volunteerId.toString());
         await prefs.setString('volunteer_phone', phone);
+
+        // Đăng ký FCM Token → Backend lưu vào DB để gửi push notification
+        await FcmService.registerToken(volunteerId.toString());
       }
     }
 

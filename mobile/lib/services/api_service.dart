@@ -260,4 +260,22 @@ class ApiService {
       return [];
     }
   }
+  /// PUT /api/volunteers/:id/fcm-token — Gửi FCM token lên Backend
+  static Future<bool> updateFcmToken({
+    required String volunteerId,
+    required String fcmToken,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.put(
+        Uri.parse('$_baseUrl/api/volunteers/$volunteerId/fcm-token'),
+        headers: headers,
+        body: json.encode({'fcmToken': fcmToken}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print('[ApiService] updateFcmToken error: $e');
+      return false;
+    }
+  }
 }

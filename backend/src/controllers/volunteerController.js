@@ -175,10 +175,36 @@ async function setAvailability(req, res) {
   }
 }
 
+/**
+ * PUT /api/volunteers/:id/fcm-token — Lưu/cập nhật FCM Token cho TNV
+ */
+async function updateFcmToken(req, res) {
+  try {
+    const { id } = req.params;
+    const { fcmToken } = req.body;
+
+    if (!fcmToken) {
+      return res.status(400).json({ error: 'Missing fcmToken' });
+    }
+
+    await db.query(
+      'UPDATE volunteers SET fcm_token = $1 WHERE id = $2',
+      [fcmToken, id]
+    );
+
+    console.log(`[volunteerController] FCM token saved for volunteer ${id}`);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[volunteerController][updateFcmToken]', err.message);
+    res.status(500).json({ error: 'Internal error' });
+  }
+}
+
 module.exports = {
   registerVolunteer,
   listVolunteers,
   getVolunteerLocations,
   approveVolunteer,
   setAvailability,
+  updateFcmToken,
 };
