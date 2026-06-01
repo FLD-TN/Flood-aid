@@ -69,6 +69,11 @@ async function registerVolunteer(req, res) {
       [phoneHash]
     );
     if (existing.rows.length > 0) {
+      // Đảm bảo TNV cũ luôn được phê duyệt và sẵn sàng khi đăng nhập lại
+      await db.query(
+        'UPDATE volunteers SET admin_approved = true, is_available = true WHERE id = $1',
+        [existing.rows[0].id]
+      );
       return res.status(409).json({
         error: 'VOLUNTEER_EXISTS',
         volunteerId: existing.rows[0].id,
@@ -76,8 +81,8 @@ async function registerVolunteer(req, res) {
     }
 
     const result = await db.query(
-      `INSERT INTO volunteers (phone_hash, firebase_uid, full_name, skills, is_available, phone_encrypted)
-       VALUES ($1, $2, $3, $4::jsonb, true, $5)
+      `INSERT INTO volunteers (phone_hash, firebase_uid, full_name, skills, is_available, admin_approved, phone_encrypted)
+       VALUES ($1, $2, $3, $4::jsonb, true, true, $5)
        RETURNING id, full_name, skills, is_available, admin_approved, created_at`,
       [phoneHash, firebaseUid || null, fullName || null, JSON.stringify(skills || []), encryptPhone(phone)]
     );

@@ -82,7 +82,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
     await _fetchCasesOnly();
   }
 
-  /// Chỉ cập nhật GPS, không gọi API
+  /// Cập nhật GPS + đồng bộ vị trí lên Backend (để geoDispatch tìm thấy TNV)
   Future<void> _updateGps() async {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -100,6 +100,18 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
           );
           _currentLat = position.latitude;
           _currentLon = position.longitude;
+
+          // Đồng bộ GPS lên Backend → cập nhật cột current_coords trong DB
+          // Để geoDispatch có thể tìm thấy TNV này khi có ca SOS mới
+          final prefs = await SharedPreferences.getInstance();
+          final volunteerId = prefs.getString('volunteer_id');
+          if (volunteerId != null) {
+            ApiService.updateLocation(
+              lat: position.latitude,
+              lon: position.longitude,
+              volunteerId: volunteerId,
+            );
+          }
         }
       }
     } catch (e) {
