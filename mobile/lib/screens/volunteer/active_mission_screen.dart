@@ -1,5 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -50,6 +53,10 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
   bool _accepted = false;
   bool _isResolving = false;
   bool _wsConnected = false;
+  bool _caseResolved = false; // ca đã bị đóng từ bên ngoài (SSE)
+
+  // SSE subscription (lắng nghe trước khi accept)
+  StreamSubscription? _sseSub;
 
   // Draggable sheet controller
   final DraggableScrollableController _sheetController =
@@ -66,6 +73,52 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
 
     // Get initial location once
     _getMyLocation();
+
+    // Connect SSE ngay lập tức — lắng nghe case:resolved TRƯỚC khi accept
+    _connectCaseSSE();
+  }
+
+  /// Connect SSE cho case này để phát hiện ca bị đóng trước khi accept
+  void _connectCaseSSE() {
+    final baseUrl = kIsWeb ? 'http://127.0.0.1:3000' : 'https://floodaid.onrender.com';
+    final client = http.Client();
+    final request = http.Request('GET', Uri.parse('$baseUrl/api/case/${widget.caseId}/stream'));
+    
+    client.send(request).then((response) {
+      _sseSub = response.stream
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .listen((line) {
+        if (line.startsWith('data: ') && mounted && !_caseResolved) {
+          try {
+            final data = json.decode(line.substring(6));
+            final status = data['status'] as String?;
+            if (status == 'resolved' || status == 'cancelled') {
+              _caseResolved = true;
+              final resolvedBy = data['resolvedBy'] ?? 'victim';
+              _stopGpsTracking();
+              _sseSub?.cancel();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    resolvedBy == 'victim'
+                        ? 'Nạn nhân đã xác nhận được giúp đỡ. Ca đã đóng!'
+                        : 'Ca đã được đóng bởi $resolvedBy.',
+                  ),
+                  backgroundColor: Colors.green,
+                  duration: const Duration(seconds: 3),
+                ),
+              );
+              Navigator.pop(context);
+            }
+          } catch (_) {}
+        }
+      }, onError: (e) {
+        debugPrint('[ActiveMission] SSE error: $e');
+      });
+    }).catchError((e) {
+      debugPrint('[ActiveMission] SSE connect error: $e');
+    });
   }
 
   Future<void> _loadVolunteerId() async {
@@ -80,6 +133,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
   void dispose() {
     _gpsTimer?.cancel();
     _wsGpsService?.dispose();
+    _sseSub?.cancel();
     _sheetController.dispose();
     super.dispose();
   }
@@ -164,8 +218,32 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
   }
 
   Future<void> _handleAcceptCase() async {
+    // Pre-check: ca còn pending không?
+    final status = await ApiService.getCaseStatus(widget.caseId);
+    if (status != null && status != 'pending') {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              status == 'resolved'
+                  ? 'Ca này đã được xử lý rồi!'
+                  : 'Ca này không còn khả dụng (trạng thái: $status)',
+            ),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        Navigator.pop(context);
+      }
+      return;
+    }
+
     // Optimistic UI: update immediately
     setState(() => _accepted = true);
+
+    // Hủy SSE (WebSocket sẽ tiếp quản sau khi accept)
+    _sseSub?.cancel();
+
     try {
       // Use _volunteerId already loaded from SharedPreferences
       final volunteerId = _volunteerId;
@@ -178,6 +256,8 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
       if (!success && mounted) {
         // Rollback on failure
         setState(() => _accepted = false);
+        // Reconnect SSE vì accept thất bại
+        _connectCaseSSE();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Nhận ca thất bại. Thử lại sau.'),
@@ -191,6 +271,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _accepted = false);
+        _connectCaseSSE();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Lỗi mạng. Thử lại sau.'),

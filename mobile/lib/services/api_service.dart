@@ -87,6 +87,23 @@ class ApiService {
     }
   }
 
+  /// GET /api/case/:id — Lấy thông tin ca, dùng để pre-check status trước khi accept
+  static Future<String?> getCaseStatus(String caseId) async {
+    try {
+      final response = await http
+          .get(Uri.parse('$_baseUrl/api/case/$caseId'))
+          .timeout(const Duration(seconds: 5));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['status'] as String?;
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   /// POST /api/case/:id/resolve — Đóng ca
   static Future<bool> resolveCase(String caseId, String resolvedBy) async {
     try {

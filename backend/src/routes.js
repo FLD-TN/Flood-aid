@@ -20,6 +20,7 @@ router.get('/cases/nearby', sosController.getNearbyCases);
 router.get('/case/:id', sosController.getCaseById);
 router.get('/case/:id/tnv-location', sosController.getTnvLocation);
 router.get('/case/:id/stream', sseController.streamCase);
+router.get('/sse/volunteer-feed', sseController.streamVolunteerFeed);
 router.post('/case/:id/accept', sosController.acceptCase);
 router.post('/case/:id/resolve', sosController.resolveCase);
 

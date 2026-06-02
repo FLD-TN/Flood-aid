@@ -1,5 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
@@ -48,6 +51,9 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
   /// Lắng nghe FCM push ca SOS mới → refresh list ngay lập tức
   StreamSubscription? _newSosSub;
 
+  /// SSE subscription — lắng nghe case:resolved real-time
+  StreamSubscription? _sseSub;
+
   @override
   void initState() {
     super.initState();
@@ -58,21 +64,61 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
       if (mounted) setState(() {});
     });
 
-    // Lắng nghe FCM push ca SOS mới → refresh list ngay (không chờ poll 15s)
+    // Lắng nghe FCM push ca SOS mới → refresh list ngay (không chờ poll)
     _newSosSub = EventBus.on('new_sos').listen((data) {
       final caseId = data['caseId'] as String?;
       if (caseId != null && caseId.isNotEmpty) {
-        // Thêm vào _knownCaseIds để tránh duplicate local notification
-        // (FCM đã hiện notification rồi, không cần diffing hiện lại)
         _knownCaseIds.add(caseId);
       }
-      _fetchCasesOnly(); // Refresh list ngay lập tức
+      _fetchCasesOnly();
+    });
+
+    // Connect SSE volunteer-feed — lắng nghe case:resolved real-time
+    _connectVolunteerFeed();
+  }
+
+  /// Connect SSE để nhận event case:resolved ngay lập tức
+  void _connectVolunteerFeed() {
+    final baseUrl = kIsWeb ? 'http://127.0.0.1:3000' : 'https://floodaid.onrender.com';
+    final client = http.Client();
+    final request = http.Request('GET', Uri.parse('$baseUrl/api/sse/volunteer-feed'));
+    
+    client.send(request).then((response) {
+      _sseSub = response.stream
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .listen((line) {
+        if (line.startsWith('data: ')) {
+          try {
+            final data = json.decode(line.substring(6));
+            final caseId = data['caseId'] as String?;
+            if (caseId != null && mounted) {
+              // Xóa ca khỏi list ngay lập tức (optimistic removal)
+              setState(() {
+                _cases.removeWhere((c) => c['id']?.toString() == caseId);
+              });
+              debugPrint('[VolunteerHome] SSE: Case $caseId resolved, removed from list');
+            }
+          } catch (_) {}
+        }
+      }, onError: (e) {
+        debugPrint('[VolunteerHome] SSE error: $e');
+        // Reconnect sau 5s nếu mất kết nối
+        Future.delayed(const Duration(seconds: 5), () {
+          if (mounted) _connectVolunteerFeed();
+        });
+      });
+    }).catchError((e) {
+      debugPrint('[VolunteerHome] SSE connect error: $e');
+      Future.delayed(const Duration(seconds: 5), () {
+        if (mounted) _connectVolunteerFeed();
+      });
     });
   }
 
   void _startPolling() {
     _pollTimer?.cancel();
-    _pollTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+    _pollTimer = Timer.periodic(const Duration(seconds: 10), (_) {
       _updateGpsThenFetch();
     });
   }
@@ -86,6 +132,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
   void dispose() {
     _stopPolling();
     _newSosSub?.cancel();
+    _sseSub?.cancel();
     _sheetController.dispose();
     super.dispose();
   }
