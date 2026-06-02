@@ -12,6 +12,7 @@ import '../../widgets/sos_legend_widget.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ActiveMissionScreen extends StatefulWidget {
   final String caseId;
@@ -19,6 +20,7 @@ class ActiveMissionScreen extends StatefulWidget {
   final double? victimLon;
   final String? summary;
   final int? urgencyLevel;
+  final String? victimPhone;
 
   const ActiveMissionScreen({
     super.key,
@@ -27,6 +29,7 @@ class ActiveMissionScreen extends StatefulWidget {
     this.victimLon,
     this.summary,
     this.urgencyLevel,
+    this.victimPhone,
   });
 
   @override
@@ -315,6 +318,64 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
     }
   }
 
+  /// Fix #6: Hiện confirmation dialog trước khi đóng ca
+  void _handleResolveWithConfirm() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Xác nhận đóng ca'),
+        content: const Text(
+          'Bạn đã tiếp cận và hỗ trợ nạn nhân thành công?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Hủy'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _handleResolve();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.success,
+            ),
+            child: const Text(
+              'Xác nhận đóng ca ✓',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Fix #5: Dialog tạm cho nút "Báo chướng ngại"
+  void _handleReportObstacle() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: AppColors.alertRed),
+            SizedBox(width: 8),
+            Text('Báo chướng ngại'),
+          ],
+        ),
+        content: const Text(
+          'Tính năng báo chướng ngại vật (đường ngập, cầu sập...) đang được phát triển.\n\n'
+          'Hiện tại bạn có thể gọi điện trực tiếp cho nạn nhân để thông báo tình hình.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Đã hiểu'),
+          ),
+        ],
+      ),
+    );
+  }
+
   double? get _distanceKm {
     if (_myLat == null || _myLon == null) return null;
     final d = const Distance();
@@ -464,31 +525,38 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
   }
 
   Widget _buildRecordingStatusBar() {
+    // Fix #4: Chỉ hiện GPS recording khi đã accept
+    final isTracking = _accepted;
+    final bgColor = isTracking ? AppColors.alertRed : AppColors.primary;
+    final statusText = isTracking
+        ? (_wsConnected ? 'Đang Ghi GPS — WS Live' : 'Đang Ghi GPS — Cứu hộ')
+        : '📋 Xem trước ca — Chưa nhận';
+
     return Container(
-      color: AppColors.alertRed,
+      color: bgColor,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 8, height: 8,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                _wsConnected ? 'Đang Ghi GPS — WS Live' : 'Đang Ghi GPS — Cứu hộ',
-                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
+          // Fix #10: Chỉ giữ 1 nút back duy nhất ở đây, xóa header back
           GestureDetector(
             onTap: () => Navigator.pop(context),
-            child: const Icon(Icons.close, color: Colors.white, size: 16),
+            child: const Icon(Icons.arrow_back, color: Colors.white, size: 18),
+          ),
+          const SizedBox(width: 12),
+          if (isTracking)
+            Container(
+              width: 8, height: 8,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white,
+              ),
+            ),
+          if (isTracking) const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              statusText,
+              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -500,12 +568,8 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
       color: Colors.white,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
-          ),
           Text(
             'Nhiệm vụ Cứu hộ',
             style: AppTypography.headingMedium.copyWith(
@@ -513,7 +577,6 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(width: 24),
         ],
       ),
     );
@@ -560,7 +623,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                 ),
               ),
 
-              // ── Mini summary (visible when collapsed) ──
+              // ── Mini summary (visible when collapsed) — Fix #8: không trùng lặp ──
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 child: Row(
@@ -579,17 +642,27 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        widget.summary ?? 'Ca SOS',
+                    if (distKm != null)
+                      Text(
+                        distKm >= 1
+                            ? 'Còn ${distKm.toStringAsFixed(1)}km'
+                            : 'Còn ${(distKm * 1000).toInt()}m',
                         style: AppTypography.bodyMedium.copyWith(
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.bold,
                           fontSize: 13,
+                          color: AppColors.textPrimary,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      ),
+                    const Spacer(),
+                    Text(
+                      _accepted ? '✅ Đã nhận' : '⏳ Chưa nhận',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: _accepted ? AppColors.success : AppColors.textMuted,
                       ),
                     ),
+                    const SizedBox(width: 4),
                     const Icon(Icons.keyboard_arrow_up, color: AppColors.textMuted, size: 20),
                   ],
                 ),
@@ -684,34 +757,87 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                     const SizedBox(height: 16),
 
                     // Action Buttons
-                    Row(
-                      children: [
-                        if (!_accepted)
+                    if (!_accepted)
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: _handleAcceptCase,
+                          icon: const Icon(Icons.check, color: Colors.white, size: 18),
+                          label: const Text(
+                            'Nhận ca cứu hộ',
+                            style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ),
+                    if (_accepted) ...[
+                      // Fix #7: Nút Gọi + Maps chỉ hiện SAU KHI accept
+                      Row(
+                        children: [
                           Expanded(
                             child: ElevatedButton.icon(
-                              onPressed: _handleAcceptCase,
-                              icon: const Icon(Icons.check, color: Colors.white, size: 18),
+                              onPressed: () async {
+                                final phone = widget.victimPhone ?? '';
+                                if (phone.isEmpty) return;
+                                final Uri url = Uri(scheme: 'tel', path: phone);
+                                if (await canLaunchUrl(url)) {
+                                  await launchUrl(url);
+                                }
+                              },
+                              icon: const Icon(Icons.phone, color: Colors.white, size: 16),
                               label: const Text(
-                                'Nhận ca',
-                                style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                                'Gọi nạn nhân',
+                                style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
                               ),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primary,
-                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                backgroundColor: Colors.green.shade400,
+                                padding: const EdgeInsets.symmetric(vertical: 12),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               ),
                             ),
                           ),
-                        if (_accepted) ...[
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () async {
+                                final Uri url = Uri.parse(
+                                  'https://www.google.com/maps/dir/?api=1&destination=$_victimLat,$_victimLon',
+                                );
+                                if (await canLaunchUrl(url)) {
+                                  await launchUrl(url, mode: LaunchMode.externalApplication);
+                                }
+                              },
+                              icon: const Icon(Icons.directions, color: Colors.white, size: 16),
+                              label: const Text(
+                                'Chỉ đường',
+                                style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.orange.shade400,
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      // Fix #5 + #6: Nút chính sau accept
+                      Row(
+                        children: [
                           Expanded(
                             child: OutlinedButton(
-                              onPressed: () {},
+                              onPressed: _handleReportObstacle,
                               style: OutlinedButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(vertical: 14),
                                 side: const BorderSide(color: AppColors.alertRed),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               ),
-                              child: Text(
+                              child: const Text(
                                 'Báo chướng ngại',
                                 style: TextStyle(
                                   color: AppColors.alertRed, fontSize: 12, fontWeight: FontWeight.bold,
@@ -722,7 +848,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: ElevatedButton(
-                              onPressed: _isResolving ? null : _handleResolve,
+                              onPressed: _isResolving ? null : _handleResolveWithConfirm,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: _isResolving ? Colors.grey : AppColors.success,
                                 padding: const EdgeInsets.symmetric(vertical: 14),
@@ -742,8 +868,8 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                             ),
                           ),
                         ],
-                      ],
-                    ),
+                      ),
+                    ],
                   ],
                 ),
               ),

@@ -250,12 +250,9 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
     });
   }
 
-  Future<void> _handleAcceptFromCard(Map<String, dynamic> caseData) async {
+  Future<void> _handleViewCase(Map<String, dynamic> caseData) async {
     final caseId = caseData['id']?.toString() ?? '';
     if (caseId.isEmpty) return;
-
-    // Optimistic UI: xóa ca khỏi danh sách ngay lập tức
-    _removeLocalCase(caseId);
 
     // Tạm dừng poll khi TNV đang trong màn hình Active Mission
     _stopPolling();
@@ -270,6 +267,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
           victimLon: (caseData['lon'] as num?)?.toDouble(),
           summary: caseData['ai_summary'] as String? ?? caseData['summary_1line'] as String?,
           urgencyLevel: (caseData['urgency_level'] as num?)?.toInt(),
+          victimPhone: caseData['victim_phone']?.toString(),
         ),
       ),
     );
@@ -277,11 +275,10 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
     // Bật lại poll khi TNV quay lại trang chủ
     if (mounted) {
       // Optimistic UI: xóa ca resolved ngay trước khi fetch API
-      // → Tránh user thấy ca cũ và bấm "Cứu" lại
       if (resolvedCaseId != null) {
         _removeLocalCase(resolvedCaseId);
       }
-      _skipNextNotification = true; // Quay về từ mission ≠ ca mới
+      _skipNextNotification = true;
       await _fetchCasesOnly();
       _startPolling();
     }
@@ -1159,91 +1156,24 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // Buttons
+                // Fix #1: Đổi từ "Nhận ca" thành "Xem ca"
                 SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => _handleAcceptFromCard(caseData),
-                    style: ElevatedButton.styleFrom(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _handleViewCase(caseData),
+                    style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(24),
                       ),
-                      backgroundColor: Colors.blue.shade400,
-                      elevation: 0,
+                      side: BorderSide(color: Colors.blue.shade400, width: 1.5),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Icon(Icons.check, color: Colors.white, size: 20),
-                        SizedBox(width: 8),
-                        Text(
-                          'Nhận ca',
-                          style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
-                        ),
-                      ],
+                    icon: Icon(Icons.visibility_outlined, color: Colors.blue.shade400, size: 20),
+                    label: Text(
+                      'Xem ca \u25B8',
+                      style: TextStyle(color: Colors.blue.shade400, fontSize: 15, fontWeight: FontWeight.bold),
                     ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () async {
-                          final phone = caseData['victim_phone'] ?? '0123456789';
-                          final Uri url = Uri(scheme: 'tel', path: phone.toString());
-                          if (await canLaunchUrl(url)) {
-                            await launchUrl(url);
-                          }
-                        },
-                        icon: const Icon(Icons.phone_outlined, color: Colors.white, size: 18),
-                        label: const Text(
-                          'Gọi thẳng GSM',
-                          style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green.shade400,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () async {
-                          final lat = caseData['lat']?.toString() ?? '16.0544';
-                          final lon = caseData['lon']?.toString() ?? '108.2022';
-                          final Uri url = Uri.parse(
-                            'https://www.google.com/maps/search/?api=1&query=$lat,$lon',
-                          );
-                          if (await canLaunchUrl(url)) {
-                            await launchUrl(
-                              url,
-                              mode: LaunchMode.externalApplication,
-                            );
-                          }
-                        },
-                        icon: const Icon(Icons.map_outlined, color: Colors.white, size: 18),
-                        label: const Text(
-                          'Google Maps',
-                          style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange.shade400,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
                 ),
               ],
             ),
