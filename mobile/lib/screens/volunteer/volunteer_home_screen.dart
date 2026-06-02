@@ -5,6 +5,7 @@ import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/local_notification_service.dart';
+import '../../services/event_bus.dart';
 import '../../widgets/map_widget.dart';
 import '../../widgets/sos_legend_widget.dart';
 import '../../widgets/filter_bottom_sheet.dart';
@@ -29,9 +30,12 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
   FilterParams? _currentFilter;
 
   /// Lưu Set các caseId đã biết — dùng để Diffing phát hiện ca SOS mới
+  /// Chỉ addAll(), không bao giờ ghi đè → tránh spam khi đổi bộ lọc
   Set<String> _knownCaseIds = {};
   /// Lần fetch đầu tiên không hiện notification (tránh spam khi vừa mở app)
   bool _isFirstFetch = true;
+  /// Skip notification cho lần fetch ngay sau khi user đổi bộ lọc
+  bool _skipNextNotification = false;
 
   // Tọa độ TNV hiện tại (mặc định Đà Nẵng nếu chưa có GPS)
   double _currentLat = 16.0544;
@@ -41,6 +45,9 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
       DraggableScrollableController();
   final MapController _mapController = MapController();
 
+  /// Lắng nghe FCM push ca SOS mới → refresh list ngay lập tức
+  StreamSubscription? _newSosSub;
+
   @override
   void initState() {
     super.initState();
@@ -49,6 +56,17 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
     _startPolling();
     _sheetController.addListener(() {
       if (mounted) setState(() {});
+    });
+
+    // Lắng nghe FCM push ca SOS mới → refresh list ngay (không chờ poll 15s)
+    _newSosSub = EventBus.on('new_sos').listen((data) {
+      final caseId = data['caseId'] as String?;
+      if (caseId != null && caseId.isNotEmpty) {
+        // Thêm vào _knownCaseIds để tránh duplicate local notification
+        // (FCM đã hiện notification rồi, không cần diffing hiện lại)
+        _knownCaseIds.add(caseId);
+      }
+      _fetchCasesOnly(); // Refresh list ngay lập tức
     });
   }
 
@@ -67,6 +85,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
   @override
   void dispose() {
     _stopPolling();
+    _newSosSub?.cancel();
     _sheetController.dispose();
     super.dispose();
   }
@@ -136,10 +155,11 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
       );
       if (mounted) {
         // ── Diffing: Phát hiện ca SOS mới để hiện notification ──
+        // Chỉ notification khi ca THỰC SỰ MỚI từ server, không phải do đổi bộ lọc
         final newCaseIds = cases.map((c) => c['id']?.toString() ?? '').toSet();
 
-        if (!_isFirstFetch) {
-          // Tìm những ID có trong list mới mà CHƯA CÓ trong list cũ
+        if (!_isFirstFetch && !_skipNextNotification) {
+          // Tìm những ID có trong list mới mà CHƯA TỪNG BIẾT
           final brandNewIds = newCaseIds.difference(_knownCaseIds);
           for (final newId in brandNewIds) {
             final newCase = cases.firstWhere(
@@ -160,9 +180,11 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
         } else {
           _isFirstFetch = false;
         }
+        _skipNextNotification = false;
 
-        // Cập nhật bộ nhớ đã biết
-        _knownCaseIds = newCaseIds;
+        // Cập nhật bộ nhớ: chỉ THÊM, không xóa → ca đã biết sẽ không bị
+        // coi là "mới" khi user đổi bộ lọc mở rộng rồi thu hẹp rồi mở lại
+        _knownCaseIds.addAll(newCaseIds);
 
         setState(() {
           _cases = cases;
@@ -192,7 +214,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
     _stopPolling();
 
     // Navigate to Active Mission and wait until it is popped
-    await Navigator.push(
+    final resolvedCaseId = await Navigator.push<String>(
       context,
       MaterialPageRoute(
         builder: (_) => ActiveMissionScreen(
@@ -207,7 +229,12 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
 
     // Bật lại poll khi TNV quay lại trang chủ
     if (mounted) {
-      // Gọi API ngay với GPS cached (KHÔNG chờ GPS) → UI cập nhật nhanh
+      // Optimistic UI: xóa ca resolved ngay trước khi fetch API
+      // → Tránh user thấy ca cũ và bấm "Cứu" lại
+      if (resolvedCaseId != null) {
+        _removeLocalCase(resolvedCaseId);
+      }
+      _skipNextNotification = true; // Quay về từ mission ≠ ca mới
       await _fetchCasesOnly();
       _startPolling();
     }
@@ -234,6 +261,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
             setState(() {
               _currentFilter = params;
               _isLoading = true; // Hiện loading ngay khi lọc
+              _skipNextNotification = true; // Đổi filter ≠ ca mới → skip notification
             });
             _fetchCasesOnly(); // Không chờ GPS → nhanh hơn
           },

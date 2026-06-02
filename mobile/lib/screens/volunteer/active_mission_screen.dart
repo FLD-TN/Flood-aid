@@ -210,7 +210,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
       final success = await ApiService.resolveCase(widget.caseId, 'volunteer');
       if (success && mounted) {
         _stopGpsTracking();
-        Navigator.pop(context);
+        Navigator.pop(context, widget.caseId); // Trả caseId về cho HomeScreen xóa ngay
       } else if (mounted) {
         setState(() => _isResolving = false);
         ScaffoldMessenger.of(context).showSnackBar(

@@ -7,6 +7,7 @@ import 'theme/app_theme.dart';
 import 'screens/role_selection_screen.dart';
 import 'services/local_notification_service.dart';
 import 'services/fcm_service.dart';
+import 'services/event_bus.dart';
 import 'screens/volunteer/volunteer_home_screen.dart';
 
 /// Global navigator key — dùng để navigate từ FCM callback (ngoài widget tree)
@@ -49,6 +50,10 @@ void main() async {
         urgencyLevel: int.tryParse(data['urgencyLevel'] ?? '3') ?? 3,
         summary: message.notification?.body,
       );
+
+      // Báo cho VolunteerHomeScreen refresh list ngay lập tức
+      // thay vì chờ poll 15 giây
+      EventBus.fire('new_sos', {'caseId': data['caseId'] ?? ''});
     }
   });
 
