@@ -9,6 +9,7 @@ import 'services/local_notification_service.dart';
 import 'services/fcm_service.dart';
 import 'services/event_bus.dart';
 import 'screens/volunteer/volunteer_home_screen.dart';
+import 'widgets/connectivity_banner.dart';
 
 /// Global navigator key — dùng để navigate từ FCM callback (ngoài widget tree)
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -110,6 +111,10 @@ class FloodAidApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
       home: const RoleSelectionScreen(),
+      // Fix #13: Global connectivity banner — hiện khi mất mạng
+      builder: (context, child) {
+        return ConnectivityBanner(child: child ?? const SizedBox.shrink());
+      },
     );
   }
 }

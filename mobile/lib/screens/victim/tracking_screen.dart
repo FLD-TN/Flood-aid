@@ -210,6 +210,75 @@ class _TrackingScreenState extends State<TrackingScreen> {
     }
   }
 
+  /// Fix #4: Confirmation dialog trước khi nạn nhân đóng ca
+  void _handleResolveWithConfirm() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Xác nhận an toàn'),
+        content: Text(
+          _hasVolunteer
+              ? 'Đội cứu hộ đang trên đường đến bạn.\n\nBạn chắc chắn đã an toàn và không cần hỗ trợ nữa?'
+              : 'Bạn xác nhận đã an toàn và không cần hỗ trợ nữa?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Tôi vẫn cần giúp đỡ'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _handleResolve();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+            ),
+            child: const Text(
+              'Xác nhận — Tôi đã an toàn ✓',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Fix #5: Guard nút back khi TNV đang đến
+  Future<bool> _onWillPop() async {
+    if (_status == 'responding' && _hasVolunteer) {
+      final shouldPop = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Đội cứu hộ đang đến!'),
+          content: const Text(
+            'Tình nguyện viên đang trên đường đến bạn.\n\n'
+            'Nếu rời trang này, bạn sẽ không theo dõi được vị trí cứu hộ. '
+            'Bạn có chắc muốn rời đi?',
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.alertRed,
+              ),
+              child: const Text(
+                'Ở lại theo dõi',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Rời đi'),
+            ),
+          ],
+        ),
+      );
+      return shouldPop ?? false;
+    }
+    return true;
+  }
+
   StatusConfig get _statusConfig {
     if (_status == 'responding' && _distanceM != null && _distanceM! < 100) {
       return getStatusConfig('on_scene');
@@ -330,7 +399,14 @@ class _TrackingScreenState extends State<TrackingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: !(_status == 'responding' && _hasVolunteer),
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final canPop = await _onWillPop();
+        if (canPop && mounted) Navigator.pop(context);
+      },
+      child: Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
@@ -416,6 +492,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
           ],
         ),
       ),
+      ),
     );
   }
 
@@ -426,7 +503,11 @@ class _TrackingScreenState extends State<TrackingScreen> {
       child: Row(
         children: [
           GestureDetector(
-            onTap: () => Navigator.pop(context),
+            onTap: () async {
+              // Fix #5: Guard back button
+              final canPop = await _onWillPop();
+              if (canPop && mounted) Navigator.pop(context);
+            },
             child: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
           ),
           const Spacer(),
@@ -615,9 +696,9 @@ class _TrackingScreenState extends State<TrackingScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Resolve button
+                    // Resolve button — Fix #4: uses confirm dialog
                     ElevatedButton.icon(
-                      onPressed: _isResolving ? null : _handleResolve,
+                      onPressed: _isResolving ? null : _handleResolveWithConfirm,
                       icon: _isResolving
                           ? const SizedBox(
                               width: 18, height: 18,

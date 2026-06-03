@@ -168,12 +168,37 @@ async function acceptCase(req, res) {
 
     // Kiểm tra ca còn active
     const caseRow = await db.query(
-      `SELECT id, coords, status FROM cases WHERE id = $1 AND status IN ('pending', 'responding')`,
+      `SELECT id, coords, status FROM cases WHERE id = $1`,
       [id]
     );
     if (caseRow.rows.length === 0) {
-      return res.status(404).json({ error: 'Case not found or already resolved' });
+      return res.status(404).json({ error: 'Case not found' });
     }
+
+    const caseStatus = caseRow.rows[0].status;
+
+    // Ca đã resolved/cancelled → reject
+    if (caseStatus === 'resolved' || caseStatus === 'cancelled') {
+      return res.status(409).json({ error: 'Case already resolved/cancelled' });
+    }
+
+    // Ca đang responding → kiểm tra có phải TNV này đã nhận không (idempotent)
+    if (caseStatus === 'responding') {
+      const existingAssignment = await db.query(
+        `SELECT id FROM case_assignments 
+         WHERE case_id = $1 AND volunteer_id = $2 AND revoked_at IS NULL`,
+        [id, volunteerId]
+      );
+      if (existingAssignment.rows.length > 0) {
+        // CÙNG TNV đã nhận ca này → return success (idempotent)
+        console.log(`[sosController] TNV ${volunteerId} re-accepted case ${id} (idempotent)`);
+        return res.json({ success: true, idempotent: true });
+      }
+      // TNV KHÁC đã nhận ca → reject
+      return res.status(409).json({ error: 'Case already accepted by another volunteer' });
+    }
+
+    // status === 'pending' → proceed normally
 
     // Tính khoảng cách ban đầu
     const volRow = await db.query(
@@ -473,5 +498,121 @@ async function getNearbyCases(req, res) {
     res.status(500).json({ error: 'Internal error' });
   }
 }
+/**
+ * GET /api/case/:id/my-assignment?volunteerId=xxx
+ * TNV kiểm tra xem mình đã được assign vào ca này chưa
+ */
+async function checkMyAssignment(req, res) {
+  try {
+    const { id } = req.params;
+    const { volunteerId } = req.query;
+    if (!volunteerId) {
+      return res.status(400).json({ error: 'Missing volunteerId' });
+    }
 
-module.exports = { createSos, getCaseById, getTnvLocation, acceptCase, resolveCase, getActiveByPhone, getNearbyCases };
+    const result = await db.query(
+      `SELECT ca.id, ca.assigned_at, c.status
+       FROM case_assignments ca
+       JOIN cases c ON c.id = ca.case_id
+       WHERE ca.case_id = $1 AND ca.volunteer_id = $2 AND ca.revoked_at IS NULL
+       LIMIT 1`,
+      [id, volunteerId]
+    );
+
+    if (result.rows.length > 0) {
+      return res.json({
+        isAssigned: true,
+        caseStatus: result.rows[0].status,
+        assignedAt: result.rows[0].assigned_at,
+      });
+    }
+
+    // Check case status anyway
+    const caseResult = await db.query(
+      `SELECT status FROM cases WHERE id = $1`,
+      [id]
+    );
+
+    return res.json({
+      isAssigned: false,
+      caseStatus: caseResult.rows[0]?.status || 'unknown',
+    });
+  } catch (err) {
+    console.error('[sosController][checkMyAssignment]', err.message);
+    res.status(500).json({ error: 'Internal error' });
+  }
+}
+
+/**
+ * POST /api/case/:id/revoke — TNV chủ động hủy nhiệm vụ
+ * Body: { volunteerId }
+ */
+async function revokeCase(req, res) {
+  try {
+    const { id } = req.params;
+    const { volunteerId } = req.body;
+
+    if (!volunteerId) {
+      return res.status(400).json({ error: 'Missing volunteerId' });
+    }
+
+    // Đánh dấu assignment là đã revoke
+    const result = await db.query(
+      `UPDATE case_assignments SET revoked_at = NOW()
+       WHERE case_id = $1 AND volunteer_id = $2 AND revoked_at IS NULL AND completed_at IS NULL
+       RETURNING id`,
+      [id, volunteerId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Assignment not found' });
+    }
+
+    // Giải phóng TNV (đánh dấu available lại)
+    await db.query(
+      `UPDATE volunteers SET is_available = true WHERE id = $1`,
+      [volunteerId]
+    );
+
+    // Đếm xem còn TNV nào đang active cho ca này không
+    const remaining = await db.query(
+      `SELECT COUNT(*) AS cnt FROM case_assignments
+       WHERE case_id = $1 AND revoked_at IS NULL AND completed_at IS NULL`,
+      [id]
+    );
+    const remainingCount = parseInt(remaining.rows[0].cnt, 10);
+
+    if (remainingCount === 0) {
+      // Không còn TNV nào → trả ca về pending để TNV khác nhận
+      await db.query(
+        `UPDATE cases SET status = 'pending' WHERE id = $1 AND status = 'responding'`,
+        [id]
+      );
+      console.log(`[sosController] Case ${id} reverted to pending (no volunteers remaining)`);
+    }
+
+    console.log(`[sosController] TNV ${volunteerId} revoked assignment for case ${id}. Remaining: ${remainingCount}`);
+
+    // Broadcast qua WebSocket để Nạn nhân biết TNV đã hủy
+    broadcastToRoom(id, {
+      type: 'case:revoked',
+      volunteerId,
+      remainingCount,
+      caseId: id,
+    });
+
+    // Emit SSE cho Nạn nhân
+    emitCaseEvent(id, 'case:revoked', {
+      volunteerId,
+      remainingCount,
+      status: remainingCount > 0 ? 'responding' : 'pending',
+    });
+
+    res.json({ success: true, remainingCount });
+  } catch (err) {
+    console.error('[sosController][revokeCase]', err.message);
+    res.status(500).json({ error: 'Internal error' });
+  }
+}
+
+module.exports = { createSos, getCaseById, getTnvLocation, acceptCase, resolveCase, revokeCase, getActiveByPhone, getNearbyCases, checkMyAssignment };

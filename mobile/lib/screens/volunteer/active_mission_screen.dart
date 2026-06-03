@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../services/ws_gps_service.dart';
+import '../../services/active_mission_manager.dart';
 import '../../widgets/map_widget.dart';
 import '../../widgets/sos_legend_widget.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -37,9 +37,8 @@ class ActiveMissionScreen extends StatefulWidget {
 }
 
 class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
-  Timer? _gpsTimer;
-  WsGpsService? _wsGpsService;
   final MapController _mapController = MapController();
+  final ActiveMissionManager _manager = ActiveMissionManager();
 
   // TNV (volunteer) location — realtime GPS
   double? _myLat;
@@ -55,11 +54,15 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
   // Case state
   bool _accepted = false;
   bool _isResolving = false;
+  bool _isRevoking = false;
   bool _wsConnected = false;
   bool _caseResolved = false; // ca đã bị đóng từ bên ngoài (SSE)
 
   // SSE subscription (lắng nghe trước khi accept)
   StreamSubscription? _sseSub;
+
+  // GPS timer — chỉ dùng để cập nhật _myLat/_myLon cho UI bản đồ
+  Timer? _localGpsTimer;
 
   // Draggable sheet controller
   final DraggableScrollableController _sheetController =
@@ -71,14 +74,52 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
     _victimLat = widget.victimLat ?? 16.0544;
     _victimLon = widget.victimLon ?? 108.2022;
 
-    // Load volunteer UUID from SharedPreferences
+    // Kiểm tra Manager xem đã có mission đang chạy cho ca này chưa
+    if (_manager.hasActiveMission && _manager.activeCaseId == widget.caseId) {
+      // Re-entry: TNV quay lại từ HomeScreen → khôi phục state
+      _accepted = true;
+      _volunteerId = _manager.volunteerId ?? '';
+      _wsConnected = _manager.wsConnected;
+      // Đăng ký callback khi ca bị đóng từ bên ngoài
+      _manager.onMissionEndedExternally = _onMissionEndedExternally;
+      // Listen manager changes cho WS status
+      _manager.addListener(_onManagerChanged);
+    } else {
+      // Lần đầu vào — chưa accept
+      _connectCaseSSE();
+    }
+
+    // Load volunteer UUID
     _loadVolunteerId();
 
     // Get initial location once
     _getMyLocation();
 
-    // Connect SSE ngay lập tức — lắng nghe case:resolved TRƯỚC khi accept
-    _connectCaseSSE();
+    // Timer local — chỉ để cập nhật vị trí TNV trên bản đồ (UI)
+    _localGpsTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      _getMyLocation();
+    });
+  }
+
+  void _onManagerChanged() {
+    if (mounted) {
+      setState(() {
+        _wsConnected = _manager.wsConnected;
+      });
+    }
+  }
+
+  void _onMissionEndedExternally() {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Nạn nhân đã xác nhận được giúp đỡ. Ca đã đóng!'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      Navigator.pop(context);
+    }
   }
 
   /// Connect SSE cho case này để phát hiện ca bị đóng trước khi accept
@@ -130,66 +171,74 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
     if (mounted) {
       setState(() => _volunteerId = id);
     }
+
+    // Sau khi có volunteerId → kiểm tra xem TNV này đã accept ca chưa
+    if (id.isNotEmpty) {
+      _checkExistingAssignment(id);
+    }
+  }
+
+  /// Kiểm tra TNV đã được assign vào ca này chưa (xử lý re-entry)
+  Future<void> _checkExistingAssignment(String volunteerId) async {
+    // Nếu Manager đã biết rồi thì không cần hỏi API
+    if (_manager.hasActiveMission && _manager.activeCaseId == widget.caseId) {
+      return; // Đã xử lý trong initState
+    }
+
+    final result = await ApiService.checkMyAssignment(widget.caseId, volunteerId);
+    if (result == null || !mounted) return;
+
+    final isAssigned = result['isAssigned'] == true;
+    final caseStatus = result['caseStatus'] as String? ?? '';
+
+    if (isAssigned && caseStatus == 'responding') {
+      // TNV đã nhận ca này trước đó → khôi phục trạng thái qua Manager
+      debugPrint('[ActiveMission] Restored accepted state for case ${widget.caseId}');
+      setState(() => _accepted = true);
+      _sseSub?.cancel();
+      _startGpsTracking();
+    } else if (caseStatus == 'resolved' || caseStatus == 'cancelled') {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Ca này đã được đóng.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        Navigator.pop(context);
+      }
+    }
   }
 
   @override
   void dispose() {
-    _gpsTimer?.cancel();
-    _wsGpsService?.dispose();
+    _localGpsTimer?.cancel();
     _sseSub?.cancel();
     _sheetController.dispose();
+    _manager.removeListener(_onManagerChanged);
+    // KHÔNG dispose _manager.wsGpsService ở đây!
+    // GPS chạy ngầm ngay cả khi screen bị pop (giống Grab)
     super.dispose();
   }
 
-  /// Start GPS tracking via WebSocket (called after accepting case)
+  /// Start GPS tracking via Manager (global singleton)
   void _startGpsTracking() {
-    // Initialize WS GPS service
-    _wsGpsService = WsGpsService(
-      onConnectionChanged: (connected) {
-        if (mounted) {
-          setState(() => _wsConnected = connected);
-        }
-      },
-      onCaseResolved: (data) {
-        // Nạn nhân hoặc Admin đã đóng ca → TNV tự động thoát
-        if (mounted) {
-          final resolvedBy = data['resolvedBy'] ?? 'victim';
-          _stopGpsTracking();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                resolvedBy == 'victim'
-                    ? 'Nạn nhân đã xác nhận được giúp đỡ. Ca đã đóng!'
-                    : 'Ca đã được đóng bởi $resolvedBy.',
-              ),
-              backgroundColor: Colors.green,
-              duration: const Duration(seconds: 3),
-            ),
-          );
-          Navigator.pop(context);
-        }
-      },
-    );
-
-    // Connect WebSocket with real volunteer UUID
-    _wsGpsService!.connect(
+    _manager.startMission(
       caseId: widget.caseId,
-      role: 'volunteer',
       volunteerId: _volunteerId,
+      victimLat: _victimLat,
+      victimLon: _victimLon,
+      summary: widget.summary,
+      urgencyLevel: widget.urgencyLevel,
+      victimPhone: widget.victimPhone,
     );
-
-    // Start GPS timer — send GPS via WS (or REST fallback) every 10s
-    _gpsTimer = Timer.periodic(const Duration(seconds: 10), (_) {
-      _getMyLocation();
-    });
+    _manager.onMissionEndedExternally = _onMissionEndedExternally;
+    _manager.addListener(_onManagerChanged);
   }
 
-  /// Stop GPS tracking (when case is resolved or cancelled)
+  /// Stop GPS tracking — delegate cho Manager
   void _stopGpsTracking() {
-    _gpsTimer?.cancel();
-    _gpsTimer = null;
-    _wsGpsService?.dispose();
-    _wsGpsService = null;
+    _manager.endMission();
   }
 
   Future<void> _getMyLocation() async {
@@ -202,18 +251,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
           _myLat = pos.latitude;
           _myLon = pos.longitude;
         });
-
-        // Send GPS: prefer WebSocket, fallback to REST
-        if (_wsGpsService != null && _wsGpsService!.isConnected) {
-          _wsGpsService!.sendGps(pos.latitude, pos.longitude);
-        } else if (_accepted && _volunteerId.isNotEmpty) {
-          // REST fallback when WS is down
-          await ApiService.updateLocation(
-            volunteerId: _volunteerId,
-            lat: pos.latitude,
-            lon: pos.longitude,
-          );
-        }
+        // GPS gửi qua Manager (global), screen chỉ cập nhật UI
       }
     } catch (e) {
       debugPrint('[ActiveMission] GPS error: $e');
@@ -221,24 +259,45 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
   }
 
   Future<void> _handleAcceptCase() async {
-    // Pre-check: ca còn pending không?
-    final status = await ApiService.getCaseStatus(widget.caseId);
-    if (status != null && status != 'pending') {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              status == 'resolved'
-                  ? 'Ca này đã được xử lý rồi!'
-                  : 'Ca này không còn khả dụng (trạng thái: $status)',
+    // Pre-check: kiểm tra trạng thái ca VÀ assignment
+    final assignment = await ApiService.checkMyAssignment(widget.caseId, _volunteerId);
+    if (assignment != null) {
+      final caseStatus = assignment['caseStatus'] as String? ?? '';
+      final isAssigned = assignment['isAssigned'] == true;
+
+      if (caseStatus == 'resolved' || caseStatus == 'cancelled') {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Ca này đã được đóng.'),
+              backgroundColor: Colors.orange,
             ),
-            backgroundColor: Colors.orange,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-        Navigator.pop(context);
+          );
+          Navigator.pop(context);
+        }
+        return;
       }
-      return;
+
+      if (caseStatus == 'responding' && isAssigned) {
+        // TNV này đã nhận ca → khôi phục trạng thái (idempotent)
+        setState(() => _accepted = true);
+        _sseSub?.cancel();
+        _startGpsTracking();
+        return;
+      }
+
+      if (caseStatus == 'responding' && !isAssigned) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Ca này đã được TNV khác nhận.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+          Navigator.pop(context);
+        }
+        return;
+      }
     }
 
     // Optimistic UI: update immediately
@@ -288,13 +347,12 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
 
   Future<void> _handleResolve() async {
     if (_isResolving) return;
-    // Optimistic: show resolving state immediately
     setState(() => _isResolving = true);
     try {
       final success = await ApiService.resolveCase(widget.caseId, 'volunteer');
       if (success && mounted) {
-        _stopGpsTracking();
-        Navigator.pop(context, widget.caseId); // Trả caseId về cho HomeScreen xóa ngay
+        _manager.endMission();
+        Navigator.pop(context, widget.caseId);
       } else if (mounted) {
         setState(() => _isResolving = false);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -315,6 +373,63 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
         );
       }
       debugPrint('[ActiveMission] Resolve error: $e');
+    }
+  }
+
+  /// TNV chủ động hủy nhiệm vụ
+  Future<void> _handleRevokeMission() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Hủy nhiệm vụ cứu hộ?'),
+        content: const Text(
+          'Nạn nhân vẫn đang mắc kẹt và chờ đợi bạn.\n\n'
+          'Nếu bạn hủy, ca này sẽ được trả về bản đồ cho TNV khác nhận.',
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+            ),
+            child: const Text(
+              'Tiếp tục nhiệm vụ',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              'Xác nhận hủy',
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isRevoking = true);
+    final success = await _manager.revokeMission();
+    if (mounted) {
+      setState(() => _isRevoking = false);
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Đã hủy nhiệm vụ. Ca đã được trả về bản đồ.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        Navigator.pop(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Hủy thất bại. Thử lại sau.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
     }
   }
 
@@ -489,6 +604,8 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Không chặn Back — TNV pop tự do, GPS vẫn chạy ngầm (ActiveMissionManager)
+    // Việc hủy nhiệm vụ có nút riêng (_handleRevokeMission)
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -537,7 +654,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
-          // Fix #10: Chỉ giữ 1 nút back duy nhất ở đây, xóa header back
+          // Nút back — pop tự do, GPS vẫn chạy ngầm
           GestureDetector(
             onTap: () => Navigator.pop(context),
             child: const Icon(Icons.arrow_back, color: Colors.white, size: 18),
@@ -868,6 +985,32 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                             ),
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 16),
+                      // ── Nút Hủy Nhiệm Vụ ──
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: _isRevoking ? null : _handleRevokeMission,
+                          icon: _isRevoking
+                              ? const SizedBox(
+                                  width: 14, height: 14,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.grey),
+                                )
+                              : Icon(Icons.cancel_outlined, size: 16, color: Colors.grey.shade600),
+                          label: Text(
+                            _isRevoking ? 'Đang hủy...' : 'Hủy nhiệm vụ',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 12,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            side: BorderSide(color: Colors.grey.shade400),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
                       ),
                     ],
                   ],

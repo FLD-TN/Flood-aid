@@ -22,7 +22,9 @@ router.get('/case/:id/tnv-location', sosController.getTnvLocation);
 router.get('/case/:id/stream', sseController.streamCase);
 router.get('/sse/volunteer-feed', sseController.streamVolunteerFeed);
 router.post('/case/:id/accept', sosController.acceptCase);
+router.get('/case/:id/my-assignment', sosController.checkMyAssignment);
 router.post('/case/:id/resolve', sosController.resolveCase);
+router.post('/case/:id/revoke', sosController.revokeCase);
 
 // ====== Module 3: Location Tracking ======
 router.post('/location', locationController.updateVolunteerLocation);

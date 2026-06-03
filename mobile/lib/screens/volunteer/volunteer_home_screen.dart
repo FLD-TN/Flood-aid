@@ -12,6 +12,7 @@ import '../../services/event_bus.dart';
 import '../../widgets/map_widget.dart';
 import '../../widgets/sos_legend_widget.dart';
 import '../../widgets/filter_bottom_sheet.dart';
+import '../../services/active_mission_manager.dart';
 import 'active_mission_screen.dart';
 import 'volunteer_phone_screen.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -423,6 +424,8 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
       body: SafeArea(
         child: Column(
           children: [
+            // ── Banner nhiệm vụ đang active (nếu có) ──
+            _buildActiveMissionBanner(),
             _buildHeader(),
             Expanded(
               child: LayoutBuilder(
@@ -501,6 +504,73 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                 },
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Banner nhắc nhở TNV đang có nhiệm vụ chưa hoàn thành
+  Widget _buildActiveMissionBanner() {
+    final manager = ActiveMissionManager();
+    if (!manager.hasActiveMission) return const SizedBox.shrink();
+
+    return GestureDetector(
+      onTap: () {
+        // Navigate lại ActiveMissionScreen với thông tin từ Manager
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ActiveMissionScreen(
+              caseId: manager.activeCaseId!,
+              victimLat: manager.victimLat,
+              victimLon: manager.victimLon,
+              summary: manager.summary,
+              urgencyLevel: manager.urgencyLevel,
+              victimPhone: manager.victimPhone,
+            ),
+          ),
+        ).then((_) {
+          // Refresh khi quay về
+          if (mounted) setState(() {});
+        });
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [AppColors.alertRed, AppColors.alertRed.withOpacity(0.85)],
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 10, height: 10,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.white.withOpacity(0.6),
+                    blurRadius: 6,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                '🔴 Bạn đang có 1 nhiệm vụ chưa hoàn thành',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 14),
           ],
         ),
       ),

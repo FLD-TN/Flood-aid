@@ -104,6 +104,23 @@ class ApiService {
     }
   }
 
+  /// GET /api/case/:id/my-assignment?volunteerId=xxx
+  /// TNV kiểm tra xem mình đã được assign vào ca này chưa
+  static Future<Map<String, dynamic>?> checkMyAssignment(String caseId, String volunteerId) async {
+    try {
+      final response = await http
+          .get(Uri.parse('$_baseUrl/api/case/$caseId/my-assignment?volunteerId=$volunteerId'))
+          .timeout(const Duration(seconds: 5));
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   /// POST /api/case/:id/resolve — Đóng ca
   static Future<bool> resolveCase(String caseId, String resolvedBy) async {
     try {
@@ -112,6 +129,21 @@ class ApiService {
         Uri.parse('$_baseUrl/api/case/$caseId/resolve'),
         headers: headers,
         body: json.encode({'resolvedBy': resolvedBy}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// POST /api/case/:id/revoke — TNV chủ động hủy nhiệm vụ
+  static Future<bool> revokeCase(String caseId, String volunteerId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/case/$caseId/revoke'),
+        headers: headers,
+        body: json.encode({'volunteerId': volunteerId}),
       );
       return response.statusCode == 200;
     } catch (e) {

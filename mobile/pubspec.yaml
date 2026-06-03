@@ -36,6 +36,7 @@ dependencies:
 
   # Local Notifications (System-level, giống Messenger/MBBank)
   flutter_local_notifications: ^19.0.0
+  connectivity_plus: ^7.1.1
 
 dev_dependencies:
   flutter_test:
