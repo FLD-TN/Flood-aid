@@ -397,6 +397,24 @@ class _TrackingScreenState extends State<TrackingScreen> {
     return markers;
   }
 
+  /// Fix #8: Tính ETA ước tính dựa trên khoảng cách
+  /// Tốc độ trung bình xuồng cứu hộ vùng ngập ~15km/h
+  String _calculateEta(int distanceMeters) {
+    const double avgSpeedKmh = 15.0; // km/h trung bình vùng ngập
+    final double distanceKm = distanceMeters / 1000.0;
+    final double etaMinutes = (distanceKm / avgSpeedKmh) * 60;
+
+    if (etaMinutes < 1) {
+      return '⏱ Sắp đến nơi!';
+    } else if (etaMinutes < 60) {
+      return '⏱ Ước tính ~${etaMinutes.ceil()} phút nữa';
+    } else {
+      final hours = (etaMinutes / 60).floor();
+      final mins = (etaMinutes % 60).ceil();
+      return '⏱ Ước tính ~${hours}h${mins > 0 ? '${mins}p' : ''} nữa';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -663,9 +681,14 @@ class _TrackingScreenState extends State<TrackingScreen> {
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
+                                  // Fix #8: Hiển thị ETA ước tính
+                                  // Tốc độ trung bình xuồng cứu hộ vùng ngập ~15km/h
                                   Text(
-                                    'Cập nhật thời gian thực',
-                                    style: AppTypography.caption,
+                                    _calculateEta(_distanceM!),
+                                    style: AppTypography.caption.copyWith(
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
                                 ],
                               ),

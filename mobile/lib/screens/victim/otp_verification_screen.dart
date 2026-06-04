@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../theme/app_theme.dart';
@@ -28,10 +29,15 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   String _errorMessage = '';
   late String _verificationId;
 
+  // Fix #3: Countdown timer chống spam gửi lại OTP
+  int _resendCountdown = 60;
+  Timer? _resendTimer;
+
   @override
   void initState() {
     super.initState();
     _verificationId = widget.initialVerificationId;
+    _startResendTimer();
     // Auto focus when screen appears
     Future.delayed(const Duration(milliseconds: 300), () {
       if (mounted) _focusNode.requestFocus();
@@ -42,7 +48,22 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   void dispose() {
     _otpController.dispose();
     _focusNode.dispose();
+    _resendTimer?.cancel();
     super.dispose();
+  }
+
+  void _startResendTimer() {
+    _resendCountdown = 60;
+    _resendTimer?.cancel();
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) { timer.cancel(); return; }
+      setState(() {
+        _resendCountdown--;
+        if (_resendCountdown <= 0) {
+          timer.cancel();
+        }
+      });
+    });
   }
 
   Future<void> _verifyOtp(String smsCode) async {
@@ -91,6 +112,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Đã gửi lại mã OTP mới')),
             );
+            _startResendTimer();
           }
         },
         onVerificationFailed: (e) {
@@ -250,10 +272,16 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                 const CircularProgressIndicator(color: AppColors.primary)
               else
                 TextButton(
-                  onPressed: _resendOtp,
+                  onPressed: _resendCountdown > 0 ? null : _resendOtp,
                   child: Text(
-                    'Gửi lại mã OTP',
-                    style: AppTypography.labelMedium.copyWith(color: AppColors.primary),
+                    _resendCountdown > 0
+                        ? 'Gửi lại mã OTP (${_resendCountdown}s)'
+                        : 'Gửi lại mã OTP',
+                    style: AppTypography.labelMedium.copyWith(
+                      color: _resendCountdown > 0
+                          ? AppColors.textMuted
+                          : AppColors.primary,
+                    ),
                   ),
                 ),
                 

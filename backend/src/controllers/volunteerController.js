@@ -206,24 +206,23 @@ async function updateFcmToken(req, res) {
 }
 
 /**
- * PUT /api/volunteers/:id/radius — TNV cập nhật bán kính nhận thông báo SOS
- * Body: { radiusKm: number | null }
- *   - null hoặc 0 = Nhận mọi ca (không giới hạn)
- *   - 1–30 = Chỉ nhận ca trong bán kính đó (km)
+ * PUT /api/volunteers/:id/radius — TNV bật/tắt nhận thông báo SOS
+ * Body: { enabled: boolean }
+ *   - true  → notification_radius_km = NULL (nhận mọi thông báo)
+ *   - false → notification_radius_km = 0    (tắt thông báo)
  */
 async function updateNotificationRadius(req, res) {
   try {
     const { id } = req.params;
-    const { radiusKm } = req.body;
+    const { enabled, radiusKm } = req.body;
 
-    // Validate: null/0 = unlimited, hoặc số nguyên 1-999
-    let value = null;
-    if (radiusKm !== null && radiusKm !== undefined && radiusKm !== 0) {
-      const parsed = parseInt(radiusKm);
-      if (isNaN(parsed) || parsed < 1 || parsed > 999) {
-        return res.status(400).json({ error: 'radiusKm must be null, 0, or between 1-999' });
-      }
-      value = parsed;
+    // Backward-compat: nếu client cũ gửi radiusKm thì map sang enabled
+    let value;
+    if (enabled !== undefined) {
+      value = enabled ? null : 0;
+    } else {
+      // Legacy: radiusKm null/0 = ON, >0 giữ nguyên nhưng không dùng nữa
+      value = (radiusKm === null || radiusKm === undefined || radiusKm === 0) ? null : 0;
     }
 
     await db.query(
@@ -231,8 +230,9 @@ async function updateNotificationRadius(req, res) {
       [value, id]
     );
 
-    console.log(`[volunteerController] Notification radius updated for ${id}: ${value === null ? 'unlimited' : value + 'km'}`);
-    res.json({ success: true, notification_radius_km: value });
+    const isEnabled = value === null;
+    console.log(`[volunteerController] Notifications ${isEnabled ? 'ON' : 'OFF'} for volunteer ${id}`);
+    res.json({ success: true, notifications_enabled: isEnabled });
   } catch (err) {
     console.error('[volunteerController][updateNotificationRadius]', err.message);
     res.status(500).json({ error: 'Internal error' });

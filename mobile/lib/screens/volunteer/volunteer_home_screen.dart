@@ -19,6 +19,8 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:shimmer/shimmer.dart';
+import 'package:flutter/services.dart';
 
 class VolunteerHomeScreen extends StatefulWidget {
   const VolunteerHomeScreen({super.key});
@@ -209,20 +211,30 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
         if (!_isFirstFetch && !_skipNextNotification) {
           // Tìm những ID có trong list mới mà CHƯA TỪNG BIẾT
           final brandNewIds = newCaseIds.difference(_knownCaseIds);
-          for (final newId in brandNewIds) {
-            final newCase = cases.firstWhere(
-              (c) => c['id']?.toString() == newId,
-              orElse: () => <String, dynamic>{},
-            );
-            if (newCase.isNotEmpty) {
-              // Kích hoạt Local Notification banner cho TNV
-              LocalNotificationService.showNewSosForVolunteer(
-                caseId: newId,
-                urgencyLevel: newCase['urgency_level'] as int? ?? 3,
-                distanceM: (newCase['distance_km'] as num?)?.toInt(),
-                summary: newCase['summary_1line'] as String?,
-              );
-              debugPrint('[VolunteerHome] 🔔 New SOS detected: $newId → notification fired');
+          if (brandNewIds.isNotEmpty) {
+            // Kiểm tra TNV có bật thông báo không (setting trong Profile)
+            final prefs = await SharedPreferences.getInstance();
+            final notifEnabled = prefs.getBool('notification_enabled') ?? true;
+
+            if (notifEnabled) {
+              for (final newId in brandNewIds) {
+                final newCase = cases.firstWhere(
+                  (c) => c['id']?.toString() == newId,
+                  orElse: () => <String, dynamic>{},
+                );
+                if (newCase.isNotEmpty) {
+                  // Kích hoạt Local Notification banner cho TNV
+                  LocalNotificationService.showNewSosForVolunteer(
+                    caseId: newId,
+                    urgencyLevel: newCase['urgency_level'] as int? ?? 3,
+                    distanceM: (newCase['distance_km'] as num?)?.toInt(),
+                    summary: newCase['summary_1line'] as String?,
+                  );
+                  debugPrint('[VolunteerHome] 🔔 New SOS detected: $newId → notification fired');
+                }
+              }
+            } else {
+              debugPrint('[VolunteerHome] 🔕 ${brandNewIds.length} new SOS detected but notifications OFF → skipped');
             }
           }
         } else {
@@ -448,12 +460,9 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                       // ── SOS Legend ──
                       Positioned(
                         left: 16,
-                        top: 70,
+                        top: 16,
                         child: const SosLegendWidget(),
                       ),
-                      // ── Mode Pill ──
-                      _buildModePill(),
-                      // ── Floating Arrow Button ──
                       Positioned(
                         right: 16,
                         bottom: constraints.maxHeight * sheetSize + 16,
@@ -738,7 +747,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
             const SizedBox(height: 24),
 
             // ── Cài đặt bán kính nhận thông báo ──
-            if (volunteerId.isNotEmpty) RadiusSettingsWidget(volunteerId: volunteerId),
+            if (volunteerId.isNotEmpty) NotificationSettingsWidget(volunteerId: volunteerId),
             if (volunteerId.isNotEmpty) const SizedBox(height: 24),
 
             // Logout button
@@ -778,43 +787,6 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
               ),
             ),
             const SizedBox(height: 16),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildModePill() {
-    return Positioned(
-      top: 16,
-      left: 16,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            const Icon(
-              Icons.volunteer_activism,
-              color: AppColors.primary,
-              size: 16,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              'Chế độ: Tình nguyện viên',
-              style: AppTypography.labelMedium.copyWith(
-                color: AppColors.textPrimary,
-              ),
-            ),
           ],
         ),
       ),
@@ -956,9 +928,25 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
 
               // ── Case List ──
               if (_isLoading)
-                const SliverFillRemaining(
-                  child: Center(
-                    child: CircularProgressIndicator(color: AppColors.primary),
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Shimmer.fromColors(
+                          baseColor: Colors.grey.shade200,
+                          highlightColor: Colors.white,
+                          child: Container(
+                            height: 180,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                        ),
+                      );
+                    }, childCount: 3),
                   ),
                 )
               else if (_activeCases.isEmpty)
@@ -1230,7 +1218,10 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
-                    onPressed: () => _handleViewCase(caseData),
+                    onPressed: () {
+                      HapticFeedback.lightImpact();
+                      _handleViewCase(caseData);
+                    },
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
@@ -1254,91 +1245,50 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
   }
 }
 
-class RadiusSettingsWidget extends StatefulWidget {
+class NotificationSettingsWidget extends StatefulWidget {
   final String volunteerId;
-  const RadiusSettingsWidget({Key? key, required this.volunteerId}) : super(key: key);
+  const NotificationSettingsWidget({Key? key, required this.volunteerId}) : super(key: key);
 
   @override
-  State<RadiusSettingsWidget> createState() => _RadiusSettingsWidgetState();
+  State<NotificationSettingsWidget> createState() => _NotificationSettingsWidgetState();
 }
 
-class _RadiusSettingsWidgetState extends State<RadiusSettingsWidget> {
-  int _radiusKm = 5;
-  bool _receiveAll = false;
-  Timer? _debounce;
+class _NotificationSettingsWidgetState extends State<NotificationSettingsWidget> {
+  bool _enabled = true;
   bool _isLoading = true;
-  late TextEditingController _radiusController;
 
   @override
   void initState() {
     super.initState();
-    _radiusController = TextEditingController();
     _loadSettings();
   }
 
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
-    // Load local settings, default to receive all (null/0)
-    final savedRadius = prefs.getInt('notification_radius_km');
+    // notification_enabled: true = nhận thông báo, false = tắt
+    // Mặc định true nếu chưa từng cài đặt
+    final saved = prefs.getBool('notification_enabled') ?? true;
     setState(() {
-      if (savedRadius == null || savedRadius == 0) {
-        _receiveAll = true;
-        _radiusKm = 5; // Default when disabled
-      } else {
-        _receiveAll = false;
-        _radiusKm = savedRadius.clamp(1, 999);
-      }
-      _radiusController.text = _radiusKm.toString();
+      _enabled = saved;
       _isLoading = false;
     });
   }
 
-  void _onRadiusChanged(String value) {
-    final parsed = int.tryParse(value);
-    if (parsed != null && parsed > 0) {
-      setState(() {
-        _radiusKm = parsed;
-        _receiveAll = false;
-      });
-      _debouncedSave();
-    }
-  }
+  void _onToggle(bool value) async {
+    setState(() => _enabled = value);
 
-  void _onReceiveAllChanged(bool value) {
-    setState(() {
-      _receiveAll = value;
-      if (value) {
-        // Clear focus if turning on receive all
-        FocusScope.of(context).unfocus();
-      }
-    });
-    _debouncedSave();
-  }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('notification_enabled', value);
 
-  void _debouncedSave() {
-    if (_debounce?.isActive ?? false) _debounce!.cancel();
-    _debounce = Timer(const Duration(milliseconds: 500), () async {
-      final prefs = await SharedPreferences.getInstance();
-      final radiusToSave = _receiveAll ? 0 : _radiusKm;
-      await prefs.setInt('notification_radius_km', radiusToSave);
-
-      ApiService.updateNotificationRadius(
-        volunteerId: widget.volunteerId,
-        radiusKm: _receiveAll ? null : _radiusKm,
-      );
-    });
-  }
-
-  @override
-  void dispose() {
-    _debounce?.cancel();
-    _radiusController.dispose();
-    super.dispose();
+    ApiService.updateNotificationSetting(
+      volunteerId: widget.volunteerId,
+      enabled: value,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) return const SizedBox(height: 120, child: Center(child: CircularProgressIndicator()));
+    if (_isLoading) return const SizedBox(height: 80, child: Center(child: CircularProgressIndicator()));
 
     return Container(
       width: double.infinity,
@@ -1348,72 +1298,50 @@ class _RadiusSettingsWidgetState extends State<RadiusSettingsWidget> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.surfaceBorder),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              const Icon(Icons.radar, color: AppColors.primary, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                'Phạm vi nhận ca cứu hộ',
-                style: AppTypography.headingMedium,
-              ),
-            ],
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: _enabled
+                  ? AppColors.primary.withOpacity(0.1)
+                  : Colors.grey.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              _enabled ? Icons.notifications_active : Icons.notifications_off,
+              color: _enabled ? AppColors.primary : AppColors.textMuted,
+              size: 20,
+            ),
           ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Bán kính (km):',
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Nhận thông báo ca SOS mới',
                   style: AppTypography.bodyLarge.copyWith(
-                    color: _receiveAll ? AppColors.textMuted : AppColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
                   ),
                 ),
-              ),
-              SizedBox(
-                width: 80,
-                child: TextField(
-                  controller: _radiusController,
-                  keyboardType: TextInputType.number,
-                  enabled: !_receiveAll,
-                  onChanged: _onRadiusChanged,
-                  textAlign: TextAlign.center,
-                  style: AppTypography.bodyLarge.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: _receiveAll ? AppColors.textMuted : AppColors.textPrimary,
-                  ),
-                  decoration: InputDecoration(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                    isDense: true,
-                    filled: true,
-                    fillColor: _receiveAll ? AppColors.background : Colors.white,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: AppColors.surfaceBorder),
-                    ),
+                const SizedBox(height: 2),
+                Text(
+                  _enabled
+                      ? 'Bạn sẽ được thông báo khi có ca cứu hộ mới'
+                      : 'Bạn sẽ không nhận thông báo (vẫn xem được danh sách)',
+                  style: AppTypography.caption.copyWith(
+                    color: AppColors.textMuted,
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Nhận mọi ca (Không giới hạn)',
-                style: AppTypography.bodyMedium.copyWith(
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              Switch(
-                value: _receiveAll,
-                onChanged: _onReceiveAllChanged,
-                activeColor: AppColors.primary,
-              ),
-            ],
+          Switch(
+            value: _enabled,
+            onChanged: _onToggle,
+            activeColor: AppColors.primary,
           ),
         ],
       ),

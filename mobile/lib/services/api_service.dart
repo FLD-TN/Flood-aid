@@ -196,10 +196,10 @@ class ApiService {
     }
   }
 
-  /// PUT /api/volunteers/:id/radius — Cập nhật bán kính nhận thông báo
-  static Future<bool> updateNotificationRadius({
+  /// PUT /api/volunteers/:id/radius — Bật/tắt nhận thông báo SOS
+  static Future<bool> updateNotificationSetting({
     required String volunteerId,
-    int? radiusKm, // null = nhận tất cả
+    required bool enabled,
   }) async {
     try {
       final headers = await _getHeaders();
@@ -208,7 +208,7 @@ class ApiService {
             Uri.parse('$_baseUrl/api/volunteers/$volunteerId/radius'),
             headers: headers,
             body: json.encode({
-              'radiusKm': radiusKm,
+              'enabled': enabled,
             }),
           )
           .timeout(const Duration(seconds: 5));

@@ -334,7 +334,7 @@ class _VolunteerPhoneScreenState extends State<VolunteerPhoneScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'SĐT được xác thực qua OTP một lần duy nhất. Lần sau mở app sẽ tự đăng nhập.',
+                        'SĐT được xác thực qua OTP mỗi lần đăng nhập để đảm bảo an toàn.',
                         style: AppTypography.caption.copyWith(
                           color: AppColors.primary,
                         ),

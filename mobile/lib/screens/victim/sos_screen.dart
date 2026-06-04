@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:speech_to_text/speech_to_text.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
@@ -126,6 +127,7 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
 
   Future<void> _handleSendActual(
       LatLng location, String text) async {
+    HapticFeedback.heavyImpact(); // Rung mạnh khi gửi SOS
     if (_isSending) return;
     setState(() => _isSending = true);
 
@@ -210,7 +212,7 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
         children: [
           GestureDetector(
             onTap: () => Navigator.pop(context),
-            child: const Icon(Icons.menu, color: AppColors.alertRed),
+            child: const Icon(Icons.arrow_back, color: AppColors.alertRed),
           ),
           Text(
             'Cứu Hộ Miền Trung',
@@ -252,7 +254,10 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
     final bgColor = _hasActiveCase ? Colors.grey : AppColors.alertRed;
 
     return GestureDetector(
-      onTap: _isSending ? null : _showSosForm,
+      onTap: () {
+        HapticFeedback.vibrate(); // Rung khi nhấn mở form
+        if (!_isSending) _showSosForm();
+      },
       child: AnimatedBuilder(
         animation: _pulseAnim,
         builder: (context, child) => Transform.scale(
@@ -708,6 +713,21 @@ class _SosFormSheetState extends State<_SosFormSheet> {
             const SizedBox(height: 24),
             Text('Ghi chú', style: AppTypography.labelMedium),
             const SizedBox(height: 8),
+            // Quick-select Chips
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                _buildQuickTag('Có người bị thương'),
+                _buildQuickTag('Có trẻ em'),
+                _buildQuickTag('Có người già'),
+                _buildQuickTag('Nước ngập nóc'),
+                _buildQuickTag('Cần xuồng cứu hộ'),
+                _buildQuickTag('Nguy cơ điện giật'),
+                _buildQuickTag('Thiếu lương thực'),
+              ],
+            ),
+            const SizedBox(height: 12),
             Container(
               decoration: BoxDecoration(
                 color: AppColors.surfaceCard,
@@ -723,7 +743,7 @@ class _SosFormSheetState extends State<_SosFormSheet> {
                       controller: _textController,
                       maxLines: 3,
                       decoration: InputDecoration(
-                        hintText: 'Tình trạng của bạn...\n(VD: Nước ngập nóc, có trẻ em)',
+                        hintText: 'Mô tả tình trạng của bạn...',
                         hintStyle: AppTypography.bodyMedium.copyWith(color: AppColors.textMuted),
                         border: InputBorder.none,
                         enabledBorder: InputBorder.none,
@@ -792,7 +812,7 @@ class _SosFormSheetState extends State<_SosFormSheet> {
                     _textController.text,
                   );
                 },
-                child: Text('GỬI SOS',
+                child: Text('GỬI YÊU CẦU CỨU TRỢ',
                     style: AppTypography.labelLarge.copyWith(color: Colors.white)),
               ),
             ),
@@ -802,5 +822,38 @@ class _SosFormSheetState extends State<_SosFormSheet> {
     );
   }
 
+  Widget _buildQuickTag(String text) {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        final current = _textController.text;
+        if (current.contains(text)) return; // Tránh trùng
+        setState(() {
+          if (current.isEmpty) {
+            _textController.text = text;
+          } else {
+            _textController.text = '$current, $text';
+          }
+          _textController.selection = TextSelection.fromPosition(
+            TextPosition(offset: _textController.text.length),
+          );
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceCard,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.surfaceBorder),
+        ),
+        child: Text(
+          text,
+          style: AppTypography.bodySmall.copyWith(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
 }
-

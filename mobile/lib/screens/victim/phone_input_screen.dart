@@ -291,7 +291,7 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.emergency, size: 20),
+                      const Icon(Icons.arrow_forward, size: 20),
                       const SizedBox(width: 8),
                       Text(
                         'TIẾP TỤC ĐẾN SOS',

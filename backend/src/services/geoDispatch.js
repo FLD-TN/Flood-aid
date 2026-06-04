@@ -2,9 +2,9 @@
  * Geo-Dispatch Service — Module 2 (Smart Radius)
  * 
  * Luồng dispatch FCM khi có ca SOS mới:
- *   Phút 0  → dispatchToSkillMatchedVolunteers (tôn trọng radius cá nhân)
- *   Phút 2  → broadcastToAllVolunteers (tôn trọng radius cá nhân)
- *   Phút 5  → forceBroadcastOrphanCase (BỎ QUA radius, gửi hết trong 50km)
+ *   Phút 0  → dispatchToSkillMatchedVolunteers (chỉ gửi TNV bật thông báo)
+ *   Phút 2  → broadcastToAllVolunteers (chỉ gửi TNV bật thông báo)
+ *   Phút 5  → forceBroadcastOrphanCase (BỎ QUA toggle, gửi hết trong 50km)
  *   Phút 15 → alertAdminOrphanCase (thông báo Admin)
  */
 
@@ -77,11 +77,11 @@ async function dispatchToNearbyVolunteers(caseId) {
 }
 
 /**
- * Phase 1: Tìm TNV có skill khớp — TÔN TRỌNG notification_radius_km của từng TNV
+ * Phase 1: Tìm TNV có skill khớp — CHỈ GỬI cho TNV đã BẬT thông báo
  * 
  * Điều kiện lọc:
- *   - notification_radius_km IS NULL → nhận mọi ca (không giới hạn)
- *   - notification_radius_km > 0 → chỉ nhận ca nằm trong bán kính đó
+ *   - notification_radius_km IS NULL → BẬT (nhận thông báo)
+ *   - notification_radius_km = 0     → TẮT (không nhận)
  */
 async function dispatchToSkillMatchedVolunteers(sosCase) {
   const tags = typeof sosCase.tags === 'string' ? JSON.parse(sosCase.tags) : (sosCase.tags || []);
@@ -97,10 +97,7 @@ async function dispatchToSkillMatchedVolunteers(sosCase) {
       AND v.admin_approved = true
       AND v.current_coords IS NOT NULL
       AND v.skills ?| ARRAY['cpr', 'y_ta', 'bac_si']
-      AND (
-        v.notification_radius_km IS NULL
-        OR ST_Distance(v.current_coords::geography, $1::geography) <= (v.notification_radius_km * 1000)
-      )
+      AND v.notification_radius_km IS NULL
     ORDER BY ST_Distance(v.current_coords::geography, $1::geography)
     LIMIT 10
   `, [sosCase.coords]);
@@ -113,7 +110,7 @@ async function dispatchToSkillMatchedVolunteers(sosCase) {
 }
 
 /**
- * Phase 2: Broadcast tất cả TNV — TÔN TRỌNG notification_radius_km của từng TNV
+ * Phase 2: Broadcast tất cả TNV — CHỈ GỬI cho TNV đã BẬT thông báo
  * Loại bỏ TNV đã nhận ca (case_assignments) để không spam trùng
  */
 async function broadcastToAllVolunteers(sosCase) {
@@ -126,10 +123,7 @@ async function broadcastToAllVolunteers(sosCase) {
       AND v.admin_approved = true
       AND v.current_coords IS NOT NULL
       AND ca.id IS NULL
-      AND (
-        v.notification_radius_km IS NULL
-        OR ST_Distance(v.current_coords::geography, $2::geography) <= (v.notification_radius_km * 1000)
-      )
+      AND v.notification_radius_km IS NULL
     ORDER BY ST_Distance(v.current_coords::geography, $2::geography)
     LIMIT 50
   `, [sosCase.id, sosCase.coords]);
@@ -142,7 +136,7 @@ async function broadcastToAllVolunteers(sosCase) {
 
 /**
  * Phase 3 (CƯỠNG CHẾ): Gửi cho TẤT CẢ TNV trong bán kính 50km
- * BỎ QUA hoàn toàn notification_radius_km — ca SOS đã 5 phút chưa ai nhận
+ * BỎ QUA hoàn toàn toggle thông báo — ca SOS đã 5 phút chưa ai nhận
  * 
  * FCM payload có title đặc biệt để TNV biết đây là ca khẩn cấp
  */
