@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
+import '../../services/toast_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/active_mission_manager.dart';
 import '../../widgets/map_widget.dart';
@@ -19,6 +20,7 @@ class ActiveMissionScreen extends StatefulWidget {
   final double? victimLat;
   final double? victimLon;
   final String? summary;
+  final String? description;
   final int? urgencyLevel;
   final String? victimPhone;
 
@@ -28,6 +30,7 @@ class ActiveMissionScreen extends StatefulWidget {
     this.victimLat,
     this.victimLon,
     this.summary,
+    this.description,
     this.urgencyLevel,
     this.victimPhone,
   });
@@ -111,12 +114,10 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
 
   void _onMissionEndedExternally() {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Nạn nhân đã xác nhận được giúp đỡ. Ca đã đóng!'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 3),
-        ),
+      ToastService.show(
+        context: context,
+        type: ToastType.success,
+        message: 'Nạn nhân đã xác nhận được giúp đỡ. Ca đã đóng!',
       );
       Navigator.pop(context);
     }
@@ -142,16 +143,12 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
               final resolvedBy = data['resolvedBy'] ?? 'victim';
               _stopGpsTracking();
               _sseSub?.cancel();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    resolvedBy == 'victim'
-                        ? 'Nạn nhân đã xác nhận được giúp đỡ. Ca đã đóng!'
-                        : 'Ca đã được đóng bởi $resolvedBy.',
-                  ),
-                  backgroundColor: Colors.green,
-                  duration: const Duration(seconds: 3),
-                ),
+              ToastService.show(
+                context: context,
+                type: ToastType.success,
+                message: resolvedBy == 'victim'
+                    ? 'Nạn nhân đã xác nhận được giúp đỡ. Ca đã đóng!'
+                    : 'Ca đã được đóng bởi $resolvedBy.',
               );
               Navigator.pop(context);
             }
@@ -199,11 +196,10 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
       _startGpsTracking();
     } else if (caseStatus == 'resolved' || caseStatus == 'cancelled') {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Ca này đã được đóng.'),
-            backgroundColor: Colors.orange,
-          ),
+        ToastService.show(
+          context: context,
+          type: ToastType.warning,
+          message: 'Ca này đã được đóng.',
         );
         Navigator.pop(context);
       }
@@ -229,6 +225,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
       victimLat: _victimLat,
       victimLon: _victimLon,
       summary: widget.summary,
+      description: widget.description,
       urgencyLevel: widget.urgencyLevel,
       victimPhone: widget.victimPhone,
     );
@@ -267,11 +264,10 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
 
       if (caseStatus == 'resolved' || caseStatus == 'cancelled') {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Ca này đã được đóng.'),
-              backgroundColor: Colors.orange,
-            ),
+          ToastService.show(
+            context: context,
+            type: ToastType.warning,
+            message: 'Ca này đã được đóng.',
           );
           Navigator.pop(context);
         }
@@ -288,11 +284,10 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
 
       if (caseStatus == 'responding' && !isAssigned) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Ca này đã được TNV khác nhận.'),
-              backgroundColor: Colors.orange,
-            ),
+          ToastService.show(
+            context: context,
+            type: ToastType.warning,
+            message: 'Ca này đã được TNV khác nhận.',
           );
           Navigator.pop(context);
         }
@@ -320,11 +315,10 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
         setState(() => _accepted = false);
         // Reconnect SSE vì accept thất bại
         _connectCaseSSE();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Nhận ca thất bại. Thử lại sau.'),
-            backgroundColor: Colors.redAccent,
-          ),
+        ToastService.show(
+          context: context,
+          type: ToastType.error,
+          message: 'Nhận ca thất bại. Thử lại sau.',
         );
       } else if (mounted) {
         // Accept succeeded — start GPS tracking via WebSocket
@@ -334,11 +328,10 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
       if (mounted) {
         setState(() => _accepted = false);
         _connectCaseSSE();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Lỗi mạng. Thử lại sau.'),
-            backgroundColor: Colors.redAccent,
-          ),
+        ToastService.show(
+          context: context,
+          type: ToastType.error,
+          message: 'Lỗi mạng. Thử lại sau.',
         );
       }
       debugPrint('[ActiveMission] Accept error: $e');
@@ -355,21 +348,19 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
         Navigator.pop(context, widget.caseId);
       } else if (mounted) {
         setState(() => _isResolving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Đóng ca thất bại. Thử lại sau.'),
-            backgroundColor: Colors.redAccent,
-          ),
+        ToastService.show(
+          context: context,
+          type: ToastType.error,
+          message: 'Đóng ca thất bại. Thử lại sau.',
         );
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isResolving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Lỗi mạng. Thử lại sau.'),
-            backgroundColor: Colors.redAccent,
-          ),
+        ToastService.show(
+          context: context,
+          type: ToastType.error,
+          message: 'Lỗi mạng. Thử lại sau.',
         );
       }
       debugPrint('[ActiveMission] Resolve error: $e');
@@ -415,19 +406,17 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
     if (mounted) {
       setState(() => _isRevoking = false);
       if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Đã hủy nhiệm vụ. Ca đã được trả về bản đồ.'),
-            backgroundColor: Colors.orange,
-          ),
+        ToastService.show(
+          context: context,
+          type: ToastType.warning,
+          message: 'Đã hủy nhiệm vụ. Ca đã được trả về bản đồ.',
         );
         Navigator.pop(context);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Hủy thất bại. Thử lại sau.'),
-            backgroundColor: Colors.redAccent,
-          ),
+        ToastService.show(
+          context: context,
+          type: ToastType.error,
+          message: 'Hủy thất bại. Thử lại sau.',
         );
       }
     }
@@ -699,6 +688,14 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
     );
   }
 
+  /// Ẩn SĐT: 0901234567 → 090 •••• 567
+  String _maskPhone(String phone) {
+    if (phone.length >= 6) {
+      return '${phone.substring(0, 3)} •••• ${phone.substring(phone.length - 3)}';
+    }
+    return '••••••••';
+  }
+
   Widget _buildDraggableSheet() {
     final urgency = widget.urgencyLevel ?? 3;
     final urgencyColor = getUrgencyColor(urgency);
@@ -793,63 +790,151 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Urgency + summary
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: urgencyColor,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            'MỨC $urgency',
-                            style: const TextStyle(
-                              color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            widget.summary ?? 'Ca SOS',
-                            style: AppTypography.bodyLarge.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textPrimary,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
+                    // Tóm tắt AI (không lặp badge MỨC — badge đã có ở mini summary)
+                    Text(
+                      widget.summary ?? 'Ca SOS',
+                      style: AppTypography.bodyLarge.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
                     ),
+
+                    // Lời kêu cứu gốc (nguyên văn user nhập)
+                    if (widget.description != null && widget.description!.isNotEmpty && widget.description != widget.summary)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 10),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border(
+                              left: BorderSide(color: urgencyColor.withOpacity(0.5), width: 3),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Lời kêu cứu gốc:',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey.shade500,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '"${widget.description}"',
+                                style: TextStyle(
+                                  fontStyle: FontStyle.italic,
+                                  fontSize: 13,
+                                  color: Colors.grey.shade700,
+                                  height: 1.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
                     const SizedBox(height: 16),
 
-                    // Distance
+                    // Khoảng cách + ETA
                     if (distKm != null)
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.only(bottom: 12),
                         child: Row(
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: AppColors.primary.withOpacity(0.1),
-                                shape: BoxShape.circle,
+                            // Khoảng cách
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  Icon(Icons.straighten, size: 18, color: AppColors.primary),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    distKm >= 1
+                                        ? '${distKm.toStringAsFixed(1)} km'
+                                        : '${(distKm * 1000).toInt()}m',
+                                    style: AppTypography.bodyMedium.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              child: const Icon(Icons.navigation, color: AppColors.primary, size: 18),
                             ),
+                            Container(width: 1, height: 20, color: Colors.grey.shade200),
                             const SizedBox(width: 12),
-                            Text(
-                              distKm >= 1
-                                  ? 'Còn ${distKm.toStringAsFixed(1)}km đến nạn nhân'
-                                  : 'Còn ${(distKm * 1000).toInt()}m đến nạn nhân',
-                              style: AppTypography.bodyMedium.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.textPrimary,
+                            // ETA
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  Icon(Icons.timer_outlined, size: 18, color: Colors.orange.shade600),
+                                  const SizedBox(width: 8),
+                                  Builder(builder: (_) {
+                                    final etaMins = (distKm! / 4 * 60).ceil();
+                                    final etaStr = etaMins < 60
+                                        ? '~$etaMins phút'
+                                        : '~${(etaMins / 60).floor()}h${etaMins % 60 > 0 ? '${etaMins % 60}p' : ''}';
+                                    return Text(
+                                      etaStr,
+                                      style: AppTypography.bodyMedium.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    );
+                                  }),
+                                ],
                               ),
                             ),
                           ],
+                        ),
+                      ),
+
+                    // SĐT nạn nhân (ẩn/hiện theo trạng thái)
+                    if (widget.victimPhone != null && widget.victimPhone!.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: _accepted ? Colors.green.shade50 : Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                _accepted ? Icons.phone : Icons.phone_locked,
+                                size: 16,
+                                color: _accepted ? Colors.green.shade600 : Colors.grey.shade400,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                _accepted
+                                    ? widget.victimPhone!
+                                    : _maskPhone(widget.victimPhone!),
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: _accepted ? Colors.green.shade700 : Colors.grey.shade500,
+                                  letterSpacing: _accepted ? 0.5 : 1.5,
+                                ),
+                              ),
+                              const Spacer(),
+                              if (!_accepted)
+                                Text(
+                                  'Nhận ca để xem',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey.shade400,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
                       ),
 

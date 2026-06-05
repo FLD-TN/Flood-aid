@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
+import '../../services/fcm_service.dart';
+import '../../services/toast_service.dart';
 import '../../services/api_service.dart';
 import '../../services/sse_service.dart';
 import '../../services/ws_gps_service.dart';
@@ -147,11 +149,10 @@ class _TrackingScreenState extends State<TrackingScreen> {
             // Another party resolved the case — navigate back
             _wsGpsService?.dispose();
             if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Ca SOS đã được đóng.'),
-                  backgroundColor: Colors.green,
-                ),
+              ToastService.show(
+                context: context,
+                type: ToastType.success,
+                message: 'Ca SOS đã được đóng.',
               );
               Navigator.pop(context);
             }
@@ -187,11 +188,10 @@ class _TrackingScreenState extends State<TrackingScreen> {
           _status = prevStatus;
           _isResolving = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Đóng ca thất bại. Thử lại sau.'),
-            backgroundColor: Colors.redAccent,
-          ),
+        ToastService.show(
+          context: context,
+          type: ToastType.error,
+          message: 'Đóng ca thất bại. Thử lại sau.',
         );
       }
     } catch (e) {
@@ -200,11 +200,10 @@ class _TrackingScreenState extends State<TrackingScreen> {
           _status = prevStatus;
           _isResolving = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Lỗi mạng. Thử lại sau.'),
-            backgroundColor: Colors.redAccent,
-          ),
+        ToastService.show(
+          context: context,
+          type: ToastType.error,
+          message: 'Lỗi mạng. Thử lại sau.',
         );
       }
     }

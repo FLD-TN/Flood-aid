@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../theme/app_theme.dart';
 import '../../services/auth_service.dart';
+import '../../services/toast_service.dart';
 import 'otp_verification_screen.dart';
 import 'sos_screen.dart';
 
@@ -84,8 +85,10 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
         onVerificationFailed: (e) {
           if (!mounted) return;
           setState(() => _isLoading = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Lỗi gửi OTP: ${e.message}')),
+          ToastService.show(
+            context: context,
+            type: ToastType.error,
+            message: 'Lỗi gửi OTP: ${e.message}',
           );
         },
         onCodeAutoRetrievalTimeout: (String verificationId) {
@@ -108,8 +111,10 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã xảy ra lỗi khi gửi mã OTP')),
+      ToastService.show(
+        context: context,
+        type: ToastType.error,
+        message: 'Đã xảy ra lỗi khi gửi mã OTP',
       );
     }
   }

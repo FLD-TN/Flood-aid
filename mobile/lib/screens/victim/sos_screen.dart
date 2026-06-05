@@ -7,6 +7,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
+import '../../services/ws_gps_service.dart';
+import '../../services/toast_service.dart';
 import '../../services/local_notification_service.dart';
 import 'tracking_screen.dart';
 import 'location_picker_screen.dart';
@@ -166,11 +168,10 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
     } else {
       setState(() => _isSending = false);
       _checkActiveCase();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Tín hiệu đã được gửi hoặc bạn đang có ca đang xử lý.'),
-          backgroundColor: Colors.orange,
-        ),
+      ToastService.show(
+        context: context,
+        type: ToastType.warning,
+        message: 'Tín hiệu đã được gửi hoặc bạn đang có ca đang xử lý.',
       );
     }
   }
@@ -336,8 +337,10 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
                       ),
                     ).then((_) => _checkActiveCase());
                   } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Bạn chưa có ca SOS nào.')),
+                    ToastService.show(
+                      context: context,
+                      type: ToastType.warning,
+                      message: 'Bạn chưa có ca SOS nào.',
                     );
                   }
                 },
@@ -490,12 +493,10 @@ class _SosFormSheetState extends State<_SosFormSheet> {
         print('[SpeechError] Lỗi nhận diện giọng nói: ${error.errorMsg}');
         if (mounted) {
           setState(() => _isListening = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Chi tiết lỗi: ${error.errorMsg}'),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 5),
-            ),
+          ToastService.show(
+            context: context,
+            type: ToastType.error,
+            message: 'Chi tiết lỗi: ${error.errorMsg}',
           );
         }
       },
@@ -525,8 +526,10 @@ class _SosFormSheetState extends State<_SosFormSheet> {
           listenMode: ListenMode.dictation,
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không thể khởi tạo nhận dạng giọng nói.')),
+        ToastService.show(
+          context: context,
+          type: ToastType.error,
+          message: 'Không thể khởi tạo nhận dạng giọng nói.',
         );
       }
     }
@@ -802,8 +805,10 @@ class _SosFormSheetState extends State<_SosFormSheet> {
                 ),
                 onPressed: () {
                   if (_currentLocation == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Vui lòng cung cấp vị trí của bạn.')),
+                    ToastService.show(
+                      context: context,
+                      type: ToastType.error,
+                      message: 'Vui lòng cung cấp vị trí của bạn.',
                     );
                     return;
                   }

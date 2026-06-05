@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import '../../theme/app_theme.dart';
+import '../../services/toast_service.dart';
 
 class LocationPickerScreen extends StatefulWidget {
   final double? initialLat;
@@ -88,14 +89,18 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
             _mapController.move(_selectedLocation!, 15.0);
           });
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Không tìm thấy địa điểm.')),
+          ToastService.show(
+            context: context,
+            type: ToastType.error,
+            message: 'Không tìm thấy địa điểm.',
           );
         }
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lỗi khi tìm kiếm địa điểm.')),
+      ToastService.show(
+        context: context,
+        type: ToastType.error,
+        message: 'Lỗi khi tìm kiếm địa điểm.',
       );
     } finally {
       setState(() => _isSearching = false);

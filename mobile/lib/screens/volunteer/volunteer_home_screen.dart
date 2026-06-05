@@ -279,6 +279,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
           victimLat: (caseData['lat'] as num?)?.toDouble(),
           victimLon: (caseData['lon'] as num?)?.toDouble(),
           summary: caseData['ai_summary'] as String? ?? caseData['summary_1line'] as String?,
+          description: caseData['description'] as String?,
           urgencyLevel: (caseData['urgency_level'] as num?)?.toInt(),
           victimPhone: caseData['victim_phone']?.toString(),
         ),
@@ -535,6 +536,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
               victimLat: manager.victimLat,
               victimLon: manager.victimLon,
               summary: manager.summary,
+              description: manager.description,
               urgencyLevel: manager.urgencyLevel,
               victimPhone: manager.victimPhone,
             ),
@@ -1042,9 +1044,10 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
     final summary =
         caseData['ai_summary'] as String? ??
         caseData['summary_1line'] as String? ??
-        caseData['description'] as String? ??
         'Yêu cầu cứu trợ';
+    final description = caseData['description'] as String?;
     final createdAt = caseData['created_at'] as String?;
+    final victimPhone = caseData['victim_phone']?.toString();
 
     // Real tags from backend
     final List<dynamic> rawTags = caseData['tags_vi'] ?? [];
@@ -1053,8 +1056,14 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
     final responderCount = caseData['responder_count'] ?? 0;
     
     // Real distance
-    final distM = caseData['distance_m'] ?? 0;
-    final distanceStr = distM > 1000 ? '${(distM / 1000).toStringAsFixed(1)} km' : '${distM}m';
+    final distM = (caseData['distance_m'] as num?)?.toDouble() ?? 0;
+    final distanceStr = distM > 1000 ? '${(distM / 1000).toStringAsFixed(1)} km' : '${distM.toInt()}m';
+
+    // ETA: ước tính đi bộ ~4km/h (vùng ngập chậm hơn bình thường)
+    final etaMinutes = (distM / 1000 / 4 * 60).ceil();
+    final etaStr = etaMinutes < 60
+        ? '~$etaMinutes phút'
+        : '~${(etaMinutes / 60).floor()}h${etaMinutes % 60 > 0 ? '${etaMinutes % 60}p' : ''}';
 
     // Real time
     final mins = caseData['time_ago_minutes'] ?? 0;
@@ -1066,6 +1075,14 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
       if (dt != null) {
         timeSent = '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
       }
+    }
+
+    // Ẩn SĐT: 0901234567 → 090 •••• 567
+    String maskedPhone = '';
+    if (victimPhone != null && victimPhone.length >= 6) {
+      maskedPhone = '${victimPhone.substring(0, 3)} •••• ${victimPhone.substring(victimPhone.length - 3)}';
+    } else if (victimPhone != null) {
+      maskedPhone = '••••••••';
     }
 
     return Container(
@@ -1084,7 +1101,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Red top border line matching design
+          // Thanh màu trên cùng
           Container(
             height: 4,
             decoration: BoxDecoration(
@@ -1097,127 +1114,187 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Row 1: Mức khẩn cấp & Xem vị trí
+                // ── Row 1: Badge mức + Thời gian ──
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Expanded(
+                    // Badge mức khẩn cấp (DUY NHẤT, không lặp)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: color,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
                       child: Text(
-                        'MỨC $urgency — $label',
-                        style: TextStyle(
-                          color: color,
+                        label,
+                        style: const TextStyle(
+                          color: Colors.white,
                           fontWeight: FontWeight.w800,
-                          fontSize: 14,
-                          letterSpacing: 0.5,
+                          fontSize: 11,
                         ),
                       ),
                     ),
-                    GestureDetector(
-                      onTap: () {
-                        final lat = (caseData['lat'] as num?)?.toDouble();
-                        final lon = (caseData['lon'] as num?)?.toDouble();
-                        if (lat != null && lon != null) {
-                          _mapController.move(LatLng(lat, lon), 15.0);
-                          _sheetController.animateTo(
-                            0.08,
-                            duration: const Duration(milliseconds: 300),
-                            curve: Curves.easeInOut,
-                          );
-                        }
-                      },
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: const [
-                          Icon(Icons.location_on_outlined, size: 14, color: Colors.blue),
-                          SizedBox(width: 4),
-                          Text(
-                            'Xem vị trí',
-                            style: TextStyle(
-                              color: Colors.blue,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
+                    const Spacer(),
+                    Text(
+                      timeSent.isNotEmpty ? '$timeSent · $timeAgo' : timeAgo,
+                      style: TextStyle(
+                        color: Colors.grey.shade500,
+                        fontSize: 12,
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
 
-                // Row 2: Summary
+                // ── Row 2: Tóm tắt AI ──
                 Text(
-                  '"$summary"',
+                  summary,
                   style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
                     color: Colors.black87,
-                    height: 1.3,
+                    height: 1.35,
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 16),
 
-                // Row 3: Details
+                // ── Row 2b: Lời kêu cứu gốc (nếu có và khác summary) ──
+                if (description != null && description.isNotEmpty && description != summary)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border(
+                          left: BorderSide(color: color.withOpacity(0.5), width: 3),
+                        ),
+                      ),
+                      child: Text(
+                        '"$description"',
+                        style: TextStyle(
+                          fontStyle: FontStyle.italic,
+                          fontSize: 13,
+                          color: Colors.grey.shade700,
+                          height: 1.4,
+                        ),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+
+                const SizedBox(height: 14),
+
+                // ── Row 3: Khoảng cách + ETA + Số TNV (Grid 3 cột) ──
                 Row(
                   children: [
-                    const Icon(Icons.location_on_outlined, size: 18, color: Colors.grey),
-                    const SizedBox(width: 8),
-                    Text('Cách bạn: $distanceStr', style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500)),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Icon(Icons.schedule, size: 18, color: Colors.grey),
-                    const SizedBox(width: 8),
-                    Text('Gửi lúc: $timeSent ($timeAgo)', style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500)),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Icon(Icons.group_outlined, size: 18, color: Colors.grey),
-                    const SizedBox(width: 8),
-                    Text(
-                      'TNV đang đến: $responderCount người',
-                      style: TextStyle(color: responderCount == 0 ? AppColors.alertRed : Colors.black87, fontSize: 14, fontWeight: responderCount == 0 ? FontWeight.bold : FontWeight.w500),
+                    // Khoảng cách
+                    Expanded(
+                      child: _buildStatItem(
+                        icon: Icons.straighten,
+                        iconColor: AppColors.primary,
+                        value: distanceStr,
+                        label: 'khoảng cách',
+                      ),
+                    ),
+                    Container(width: 1, height: 32, color: Colors.grey.shade200),
+                    // ETA
+                    Expanded(
+                      child: _buildStatItem(
+                        icon: Icons.timer_outlined,
+                        iconColor: Colors.orange.shade600,
+                        value: etaStr,
+                        label: 'di chuyển',
+                      ),
+                    ),
+                    Container(width: 1, height: 32, color: Colors.grey.shade200),
+                    // Số TNV
+                    Expanded(
+                      child: _buildStatItem(
+                        icon: Icons.people_alt_outlined,
+                        iconColor: responderCount == 0 ? AppColors.alertRed : AppColors.success,
+                        value: '$responderCount',
+                        label: 'TNV đến',
+                      ),
                     ),
                   ],
                 ),
+
+                const SizedBox(height: 14),
+
+                // ── Row 4: SĐT nạn nhân (ẩn) ──
+                if (maskedPhone.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.phone_locked, size: 16, color: Colors.grey.shade400),
+                        const SizedBox(width: 8),
+                        Text(
+                          maskedPhone,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey.shade500,
+                            letterSpacing: 1.5,
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          'Nhận ca để gọi',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey.shade400,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                // ── Tags ──
+                if (tags.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: tags.map((tag) {
+                      Color bgColor = Colors.grey.shade100;
+                      Color textColor = Colors.grey.shade700;
+                      if (tag.toLowerCase().contains('trẻ em') || tag.toLowerCase().contains('người già')) {
+                        bgColor = AppColors.alertRed.withOpacity(0.1);
+                        textColor = AppColors.alertRed;
+                      } else if (tag.toLowerCase().contains('y tế')) {
+                        bgColor = Colors.blue.withOpacity(0.1);
+                        textColor = Colors.blue;
+                      }
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: bgColor,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          tag,
+                          style: TextStyle(color: textColor, fontSize: 11, fontWeight: FontWeight.bold),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+
                 const SizedBox(height: 16),
 
-                // Tags
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: tags.map((tag) {
-                    Color bgColor = Colors.grey.shade100;
-                    Color textColor = Colors.grey.shade700;
-                    if (tag.toLowerCase().contains('trẻ em') || tag.toLowerCase().contains('người già')) {
-                      bgColor = AppColors.alertRed.withOpacity(0.1);
-                      textColor = AppColors.alertRed;
-                    } else if (tag.toLowerCase().contains('y tế')) {
-                      bgColor = Colors.blue.withOpacity(0.1);
-                      textColor = Colors.blue;
-                    }
-                    return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: bgColor,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        tag,
-                        style: TextStyle(color: textColor, fontSize: 11, fontWeight: FontWeight.bold),
-                      ),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 20),
-
-                // Fix #1: Đổi từ "Nhận ca" thành "Xem ca"
+                // ── Nút Xem ca ──
                 SizedBox(
                   width: double.infinity,
-                  child: OutlinedButton.icon(
+                  child: OutlinedButton(
                     onPressed: () {
                       HapticFeedback.lightImpact();
                       _handleViewCase(caseData);
@@ -1229,9 +1306,8 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                       ),
                       side: BorderSide(color: Colors.blue.shade400, width: 1.5),
                     ),
-                    icon: Icon(Icons.visibility_outlined, color: Colors.blue.shade400, size: 20),
-                    label: Text(
-                      'Xem ca \u25B8',
+                    child: Text(
+                      'Xem chi tiết  ▸',
                       style: TextStyle(color: Colors.blue.shade400, fontSize: 15, fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -1241,6 +1317,29 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  /// Widget nhỏ hiển thị 1 chỉ số thống kê (Khoảng cách / ETA / Số TNV)
+  Widget _buildStatItem({
+    required IconData icon,
+    required Color iconColor,
+    required String value,
+    required String label,
+  }) {
+    return Column(
+      children: [
+        Icon(icon, size: 18, color: iconColor),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Colors.black87),
+        ),
+        Text(
+          label,
+          style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
+        ),
+      ],
     );
   }
 }

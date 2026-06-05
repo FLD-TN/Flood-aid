@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../theme/app_theme.dart';
 import '../../services/auth_service.dart';
+import '../../services/toast_service.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
   final String phoneNumber;
@@ -109,8 +110,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
               _verificationId = verificationId;
               _isLoading = false;
             });
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Đã gửi lại mã OTP mới')),
+            ToastService.show(
+              context: context,
+              type: ToastType.success,
+              message: 'Đã gửi lại mã OTP mới',
             );
             _startResendTimer();
           }

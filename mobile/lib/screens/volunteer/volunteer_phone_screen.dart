@@ -5,6 +5,7 @@ import '../../theme/app_theme.dart';
 import '../../services/auth_service.dart';
 import '../../services/api_service.dart';
 import '../../services/fcm_service.dart';
+import '../../services/toast_service.dart';
 import '../victim/otp_verification_screen.dart';
 import 'volunteer_home_screen.dart';
 
@@ -67,8 +68,10 @@ class _VolunteerPhoneScreenState extends State<VolunteerPhoneScreen> {
         onVerificationFailed: (e) {
           if (!mounted) return;
           setState(() => _isSendingOtp = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Lỗi gửi OTP: ${e.message}')),
+          ToastService.show(
+            context: context,
+            type: ToastType.error,
+            message: 'Lỗi gửi OTP: ${e.message}',
           );
         },
         onCodeAutoRetrievalTimeout: (String verificationId) {},
@@ -85,8 +88,10 @@ class _VolunteerPhoneScreenState extends State<VolunteerPhoneScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isSendingOtp = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã xảy ra lỗi khi gửi mã OTP')),
+      ToastService.show(
+        context: context,
+        type: ToastType.error,
+        message: 'Đã xảy ra lỗi khi gửi mã OTP',
       );
     }
   }
