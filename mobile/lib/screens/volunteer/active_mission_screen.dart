@@ -14,6 +14,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../widgets/slide_to_confirm.dart';
 
 class ActiveMissionScreen extends StatefulWidget {
   final String caseId;
@@ -66,10 +67,6 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
 
   // GPS timer — chỉ dùng để cập nhật _myLat/_myLon cho UI bản đồ
   Timer? _localGpsTimer;
-
-  // Draggable sheet controller
-  final DraggableScrollableController _sheetController =
-      DraggableScrollableController();
 
   @override
   void initState() {
@@ -210,7 +207,6 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
   void dispose() {
     _localGpsTimer?.cancel();
     _sseSub?.cancel();
-    _sheetController.dispose();
     _manager.removeListener(_onManagerChanged);
     // KHÔNG dispose _manager.wsGpsService ở đây!
     // GPS chạy ngầm ngay cả khi screen bị pop (giống Grab)
@@ -605,13 +601,16 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
             Expanded(
               child: Stack(
                 children: [
-                  // ── Map (full area) ──
-                  FloodAidMap(
-                    mapController: _mapController,
-                    initialCenter: LatLng(_victimLat, _victimLon),
-                    initialZoom: 14.0,
-                    markers: _buildMarkers(),
-                    onMyLocationTap: _centerOnMe,
+                  // ── Map (full area with padding) ──
+                  Padding(
+                    padding: EdgeInsets.only(bottom: _accepted ? 320 : 250),
+                    child: FloodAidMap(
+                      mapController: _mapController,
+                      initialCenter: LatLng(_victimLat, _victimLon),
+                      initialZoom: 14.0,
+                      markers: _buildMarkers(),
+                      onMyLocationTap: _centerOnMe,
+                    ),
                   ),
                   // ── SOS Legend ──
                   Positioned(
@@ -619,8 +618,11 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                     top: 16,
                     child: const SosLegendWidget(),
                   ),
-                  // ── Draggable Bottom Sheet ──
-                  _buildDraggableSheet(),
+                  // ── Fixed Bottom Mission Board ──
+                  Align(
+                    alignment: Alignment.bottomCenter,
+                    child: _buildFixedMissionBoard(),
+                  ),
                 ],
               ),
             ),
@@ -696,415 +698,274 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
     return '••••••••';
   }
 
-  Widget _buildDraggableSheet() {
+  Widget _buildFixedMissionBoard() {
     final urgency = widget.urgencyLevel ?? 3;
     final urgencyColor = getUrgencyColor(urgency);
     final distKm = _distanceKm;
 
-    return DraggableScrollableSheet(
-      controller: _sheetController,
-      initialChildSize: 0.35,
-      minChildSize: 0.08,
-      maxChildSize: 0.65,
-      snap: true,
-      snapSizes: const [0.08, 0.35, 0.65],
-      builder: (context, scrollController) {
-        return Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.15),
-                blurRadius: 20,
-                offset: const Offset(0, -4),
-              ),
-            ],
+    return Container(
+      width: double.infinity,
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.65,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.12),
+            blurRadius: 24,
+            offset: const Offset(0, -8),
           ),
-          child: ListView(
-            controller: scrollController,
-            padding: EdgeInsets.zero,
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Drag handle ──
-              Center(
-                child: Container(
-                  margin: const EdgeInsets.only(top: 10, bottom: 6),
-                  width: 40, height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceBorder,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+              // ── Header Row (Status) ──
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: urgencyColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(100),
+                  border: Border.all(color: urgencyColor.withOpacity(0.2)),
                 ),
-              ),
-
-              // ── Mini summary (visible when collapsed) — Fix #8: không trùng lặp ──
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      width: 8, height: 8,
                       decoration: BoxDecoration(
                         color: urgencyColor,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        'MỨC $urgency',
-                        style: const TextStyle(
-                          color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold,
-                        ),
+                        shape: BoxShape.circle,
                       ),
                     ),
                     const SizedBox(width: 8),
-                    if (distKm != null)
-                      Text(
-                        distKm >= 1
-                            ? 'Còn ${distKm.toStringAsFixed(1)}km'
-                            : 'Còn ${(distKm * 1000).toInt()}m',
-                        style: AppTypography.bodyMedium.copyWith(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    const Spacer(),
                     Text(
-                      _accepted ? '✅ Đã nhận' : '⏳ Chưa nhận',
-                      style: TextStyle(
-                        fontSize: 11,
+                      'MỨC ĐỘ KHẨN CẤP: $urgency',
+                      style: AppTypography.labelMedium.copyWith(
+                        color: urgencyColor,
+                        fontSize: 10,
                         fontWeight: FontWeight.bold,
-                        color: _accepted ? AppColors.success : AppColors.textMuted,
                       ),
                     ),
-                    const SizedBox(width: 4),
-                    const Icon(Icons.keyboard_arrow_up, color: AppColors.textMuted, size: 20),
                   ],
                 ),
               ),
+              const SizedBox(height: 16),
 
-              const Divider(height: 1),
-
-              // ── Full content ──
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Tóm tắt AI (không lặp badge MỨC — badge đã có ở mini summary)
-                    Text(
-                      widget.summary ?? 'Ca SOS',
-                      style: AppTypography.bodyLarge.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-
-                    // Lời kêu cứu gốc (nguyên văn user nhập)
-                    if (widget.description != null && widget.description!.isNotEmpty && widget.description != widget.summary)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 10),
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade50,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border(
-                              left: BorderSide(color: urgencyColor.withOpacity(0.5), width: 3),
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Lời kêu cứu gốc:',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.grey.shade500,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '"${widget.description}"',
-                                style: TextStyle(
-                                  fontStyle: FontStyle.italic,
-                                  fontSize: 13,
-                                  color: Colors.grey.shade700,
-                                  height: 1.5,
-                                ),
-                              ),
-                            ],
-                          ),
+              // ── Hồ sơ Chi tiết (Cuộn được nếu quá dài) ──
+              Flexible(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Title / Summary
+                      Text(
+                        widget.summary ?? 'Yêu cầu cứu hộ khẩn cấp',
+                        style: AppTypography.headingMedium.copyWith(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                          color: AppColors.textPrimary,
+                          height: 1.3,
                         ),
                       ),
-
-                    const SizedBox(height: 16),
-
-                    // Khoảng cách + ETA
-                    if (distKm != null)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Row(
-                          children: [
-                            // Khoảng cách
-                            Expanded(
-                              child: Row(
-                                children: [
-                                  Icon(Icons.straighten, size: 18, color: AppColors.primary),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    distKm >= 1
-                                        ? '${distKm.toStringAsFixed(1)} km'
-                                        : '${(distKm * 1000).toInt()}m',
-                                    style: AppTypography.bodyMedium.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.textPrimary,
-                                    ),
-                                  ),
-                                ],
+                      
+                      // Full Description (nếu có và khác summary)
+                      if (widget.description != null && widget.description!.isNotEmpty && widget.description != widget.summary)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 12),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceElevated,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppColors.surfaceBorder),
+                            ),
+                            child: Text(
+                              '"${widget.description}"',
+                              style: AppTypography.bodyMedium.copyWith(
+                                fontStyle: FontStyle.italic,
+                                color: AppColors.textSecondary,
+                                height: 1.5,
                               ),
                             ),
-                            Container(width: 1, height: 20, color: Colors.grey.shade200),
-                            const SizedBox(width: 12),
-                            // ETA
+                          ),
+                        ),
+
+                      const SizedBox(height: 20),
+
+                      // Hero Metrics (Luôn hiển thị để TNV ước lượng)
+                      if (distKm != null)
+                        Row(
+                          children: [
                             Expanded(
-                              child: Row(
-                                children: [
-                                  Icon(Icons.timer_outlined, size: 18, color: Colors.orange.shade600),
-                                  const SizedBox(width: 8),
-                                  Builder(builder: (_) {
-                                    final etaMins = (distKm! / 4 * 60).ceil();
-                                    final etaStr = etaMins < 60
-                                        ? '~$etaMins phút'
-                                        : '~${(etaMins / 60).floor()}h${etaMins % 60 > 0 ? '${etaMins % 60}p' : ''}';
-                                    return Text(
-                                      etaStr,
-                                      style: AppTypography.bodyMedium.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.textPrimary,
-                                      ),
-                                    );
-                                  }),
-                                ],
+                              child: _buildMetricBox(
+                                'Khoảng cách',
+                                distKm >= 1 ? '${distKm.toStringAsFixed(1)} km' : '${(distKm * 1000).toInt()} m',
+                                Colors.blue.shade700,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _buildMetricBox(
+                                'Dự kiến tới',
+                                _formatEta(distKm),
+                                Colors.orange.shade700,
                               ),
                             ),
                           ],
                         ),
-                      ),
 
-                    // SĐT nạn nhân (ẩn/hiện theo trạng thái)
-                    if (widget.victimPhone != null && widget.victimPhone!.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: _accepted ? Colors.green.shade50 : Colors.grey.shade50,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                _accepted ? Icons.phone : Icons.phone_locked,
-                                size: 16,
-                                color: _accepted ? Colors.green.shade600 : Colors.grey.shade400,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                _accepted
-                                    ? widget.victimPhone!
-                                    : _maskPhone(widget.victimPhone!),
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: _accepted ? Colors.green.shade700 : Colors.grey.shade500,
-                                  letterSpacing: _accepted ? 0.5 : 1.5,
+                      const SizedBox(height: 20),
+
+                      // ── Các nút liên lạc (CHỈ HIỂN THỊ KHI ĐÃ NHẬN CA) ──
+                      if (_accepted) ...[
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () async {
+                                  final phone = widget.victimPhone ?? '';
+                                  if (phone.isEmpty) return;
+                                  final Uri url = Uri(scheme: 'tel', path: phone);
+                                  if (await canLaunchUrl(url)) {
+                                    await launchUrl(url);
+                                  }
+                                },
+                                icon: const Icon(Icons.phone, color: Colors.white, size: 16),
+                                label: Text(
+                                  widget.victimPhone != null ? widget.victimPhone! : 'Gọi',
+                                  style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
                                 ),
-                              ),
-                              const Spacer(),
-                              if (!_accepted)
-                                Text(
-                                  'Nhận ca để xem',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.grey.shade400,
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                    // Case ID
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppColors.background,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.tag, size: 12, color: AppColors.textMuted),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Ca: ${widget.caseId.length > 8 ? widget.caseId.substring(0, 8).toUpperCase() : widget.caseId.toUpperCase()}',
-                            style: AppTypography.mono.copyWith(fontSize: 11),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Action Buttons
-                    if (!_accepted)
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: _handleAcceptCase,
-                          icon: const Icon(Icons.check, color: Colors.white, size: 18),
-                          label: const Text(
-                            'Nhận ca cứu hộ',
-                            style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                        ),
-                      ),
-                    if (_accepted) ...[
-                      // Fix #7: Nút Gọi + Maps chỉ hiện SAU KHI accept
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () async {
-                                final phone = widget.victimPhone ?? '';
-                                if (phone.isEmpty) return;
-                                final Uri url = Uri(scheme: 'tel', path: phone);
-                                if (await canLaunchUrl(url)) {
-                                  await launchUrl(url);
-                                }
-                              },
-                              icon: const Icon(Icons.phone, color: Colors.white, size: 16),
-                              label: const Text(
-                                'Gọi nạn nhân',
-                                style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green.shade400,
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () async {
-                                final Uri url = Uri.parse(
-                                  'https://www.google.com/maps/dir/?api=1&destination=$_victimLat,$_victimLon',
-                                );
-                                if (await canLaunchUrl(url)) {
-                                  await launchUrl(url, mode: LaunchMode.externalApplication);
-                                }
-                              },
-                              icon: const Icon(Icons.directions, color: Colors.white, size: 16),
-                              label: const Text(
-                                'Chỉ đường',
-                                style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.orange.shade400,
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      // Fix #5 + #6: Nút chính sau accept
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: _handleReportObstacle,
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                side: const BorderSide(color: AppColors.alertRed),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              ),
-                              child: const Text(
-                                'Báo chướng ngại',
-                                style: TextStyle(
-                                  color: AppColors.alertRed, fontSize: 12, fontWeight: FontWeight.bold,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green.shade600,
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  elevation: 0,
                                 ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: _isResolving ? null : _handleResolveWithConfirm,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: _isResolving ? Colors.grey : AppColors.success,
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () async {
+                                  final Uri url = Uri.parse(
+                                    'https://www.google.com/maps/dir/?api=1&destination=$_victimLat,$_victimLon',
+                                  );
+                                  if (await canLaunchUrl(url)) {
+                                    await launchUrl(url, mode: LaunchMode.externalApplication);
+                                  }
+                                },
+                                icon: const Icon(Icons.directions, color: Colors.white, size: 16),
+                                label: const Text(
+                                  'Chỉ đường',
+                                  style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blue.shade600,
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  elevation: 0,
+                                ),
                               ),
-                              child: _isResolving
-                                  ? const SizedBox(
-                                      width: 18, height: 18,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2, color: Colors.white,
-                                      ),
-                                    )
-                                  : const Text(
-                                      'Tiếp cận xong',
-                                      style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                                    ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      // ── Nút Hủy Nhiệm Vụ ──
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: _isRevoking ? null : _handleRevokeMission,
-                          icon: _isRevoking
-                              ? const SizedBox(
-                                  width: 14, height: 14,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.grey),
-                                )
-                              : Icon(Icons.cancel_outlined, size: 16, color: Colors.grey.shade600),
-                          label: Text(
-                            _isRevoking ? 'Đang hủy...' : 'Hủy nhiệm vụ',
-                            style: TextStyle(
-                              color: Colors.grey.shade600,
-                              fontSize: 12,
-                            ),
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            side: BorderSide(color: Colors.grey.shade400),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
+                          ],
                         ),
-                      ),
+                        const SizedBox(height: 12),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
+
+              const SizedBox(height: 16),
+
+              // ── Action Slider ──
+              if (!_accepted)
+                SlideToConfirm(
+                  key: const ValueKey('slider_accept'),
+                  text: 'TRƯỢT ĐỂ NHẬN CA',
+                  isLoading: _accepted,
+                  onConfirm: _handleAcceptCase,
+                ),
+
+              if (_accepted)
+                SlideToConfirm(
+                  key: const ValueKey('slider_resolve'),
+                  text: 'TRƯỢT ĐỂ ĐÓNG CA',
+                  isLoading: _isResolving,
+                  onConfirm: () async {
+                    await _handleResolve();
+                  },
+                ),
+
+              // ── Nút Hủy phụ khi đã nhận ca ──
+              if (_accepted) ...[
+                const SizedBox(height: 16),
+                Center(
+                  child: TextButton(
+                    onPressed: _isRevoking ? null : _handleRevokeMission,
+                    child: Text(
+                      _isRevoking ? 'Đang hủy...' : 'Tôi không thể tiếp tục, hủy nhiệm vụ',
+                      style: TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 12,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
-        );
-      },
+        ),
+      ),
     );
+  }
+
+  Widget _buildMetricBox(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: AppTypography.bodySmall.copyWith(
+              color: AppColors.textMuted,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: AppTypography.displayMedium.copyWith(
+              color: color,
+              fontWeight: FontWeight.w900,
+              fontSize: 20,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatEta(double distKm) {
+    final etaMins = (distKm / 4 * 60).ceil();
+    if (etaMins < 60) return '$etaMins phút';
+    return '${(etaMins / 60).floor()}h${etaMins % 60 > 0 ? '${etaMins % 60}p' : ''}';
   }
 }
