@@ -841,85 +841,48 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                     Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
-                        vertical: 8,
+                        vertical: 12,
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'Yêu cầu cứu trợ',
-                            style: AppTypography.headingMedium.copyWith(
-                              color: AppColors.textPrimary,
+                            'Hiển thị ${pendingCases.length} kết quả gần đây',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.alertRed,
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: Text(
-                                  '${pendingCases.length} chờ xử lý',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
+                          InkWell(
+                            onTap: _showFilterBottomSheet,
+                            borderRadius: BorderRadius.circular(20),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
                               ),
-                              const SizedBox(width: 8),
-                              GestureDetector(
-                                onTap: _showFilterBottomSheet,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    border: Border.all(color: AppColors.alertRed),
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  child: Row(
-                                    children: const [
-                                      Icon(Icons.tune, size: 14, color: AppColors.alertRed),
-                                      SizedBox(width: 4),
-                                      Text(
-                                        '2 bộ lọc',
-                                        style: TextStyle(
-                                          color: AppColors.alertRed,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                border: Border.all(color: Colors.grey.shade300),
+                                borderRadius: BorderRadius.circular(20),
                               ),
-                            ],
+                              child: Row(
+                                children: [
+                                  Icon(Icons.tune, size: 16, color: Colors.grey.shade700),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Lọc',
+                                    style: TextStyle(
+                                      color: Colors.grey.shade700,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
-                        ],
-                      ),
-                    ),
-                    const Divider(height: 1),
-                    // Quick Filters Row
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      child: Row(
-                        children: [
-                          _buildQuickFilter(5, '0.8km', true),
-                          const SizedBox(width: 8),
-                          _buildQuickFilter(5, '1.5km', false),
-                          const SizedBox(width: 8),
-                          _buildQuickFilter(4, '1.2km', false),
-                          const SizedBox(width: 8),
-                          _buildQuickFilter(1, '2.1km', false),
                         ],
                       ),
                     ),
@@ -996,44 +959,71 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
     );
   }
 
-  Widget _buildQuickFilter(int urgency, String distance, bool isSelected) {
-    final color = _getUrgencyColor(urgency);
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.15),
-            border: Border.all(color: color.withOpacity(0.8), width: 1.5),
-            borderRadius: BorderRadius.circular(8),
+  Widget _buildQuickFilterChips() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          _buildFilterChip('Tất cả', _currentFilter == null, () {
+            setState(() { _currentFilter = null; _isLoading = true; _skipNextNotification = true; });
+            _fetchCasesOnly();
+          }),
+          const SizedBox(width: 8),
+          _buildFilterChip('Khẩn cấp', _currentFilter?.urgencyLevels.contains(4) == true || _currentFilter?.urgencyLevels.contains(5) == true, () {
+            setState(() { 
+              _currentFilter = const FilterParams(urgencyLevels: [4, 5], maxDistance: 50.0);
+              _isLoading = true; 
+              _skipNextNotification = true;
+            });
+            _fetchCasesOnly();
+          }),
+          const SizedBox(width: 8),
+          _buildFilterChip('< 5km', _currentFilter?.maxDistance == 5.0, () {
+            setState(() { 
+              _currentFilter = const FilterParams(urgencyLevels: [], maxDistance: 5.0);
+              _isLoading = true; 
+              _skipNextNotification = true;
+            });
+            _fetchCasesOnly();
+          }),
+          const SizedBox(width: 8),
+          ActionChip(
+            label: const Row(
+              children: [
+                Icon(Icons.tune, size: 14, color: Colors.white),
+                SizedBox(width: 4),
+                Text('Tùy chỉnh', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            backgroundColor: AppColors.textPrimary,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Colors.transparent)),
+            onPressed: _showFilterBottomSheet,
           ),
-          child: Column(
-            children: [
-              Text(
-                'Mức $urgency',
-                style: TextStyle(color: color.withOpacity(0.9), fontWeight: FontWeight.bold, fontSize: 12),
-              ),
-              Text(
-                distance,
-                style: TextStyle(color: color.withOpacity(0.9), fontSize: 10),
-              ),
-            ],
-          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String label, bool isSelected, VoidCallback onTap) {
+    return FilterChip(
+      selected: isSelected,
+      label: Text(
+        label,
+        style: TextStyle(
+          color: isSelected ? Colors.white : AppColors.textPrimary,
+          fontWeight: FontWeight.bold,
+          fontSize: 13,
         ),
-        const SizedBox(height: 4),
-        if (isSelected)
-          Container(
-            width: 4,
-            height: 4,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          )
-        else
-          Container(
-            width: 4,
-            height: 4,
-            decoration: BoxDecoration(color: Colors.grey.shade300, shape: BoxShape.circle),
-          ),
-      ],
+      ),
+      backgroundColor: Colors.white,
+      selectedColor: AppColors.primary,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: isSelected ? AppColors.primary : Colors.grey.shade300),
+      ),
+      showCheckmark: false,
+      onSelected: (_) => onTap(),
     );
   }
 
@@ -1085,6 +1075,26 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
       maskedPhone = '••••••••';
     }
 
+    // Logic chọn Icon dựa trên tag hoặc text
+    IconData cardIcon = Icons.warning_amber_rounded;
+    Color iconBgColor = color.withOpacity(0.1);
+    Color iconColor = color;
+    
+    final String searchStr = '${tags.join(' ')} $summary $description'.toLowerCase();
+    if (searchStr.contains('y tế') || searchStr.contains('thương') || searchStr.contains('bệnh') || searchStr.contains('máu')) {
+      cardIcon = Icons.medical_services;
+      iconBgColor = AppColors.alertRed.withOpacity(0.1);
+      iconColor = AppColors.alertRed;
+    } else if (searchStr.contains('thực phẩm') || searchStr.contains('nước') || searchStr.contains('đói') || searchStr.contains('mì tôm')) {
+      cardIcon = Icons.water_drop;
+      iconBgColor = Colors.blue.withOpacity(0.1);
+      iconColor = Colors.blue;
+    } else if (searchStr.contains('trẻ em') || searchStr.contains('người già') || searchStr.contains('phụ nữ')) {
+      cardIcon = Icons.family_restroom;
+      iconBgColor = Colors.orange.withOpacity(0.1);
+      iconColor = Colors.orange;
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -1114,76 +1124,80 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── Row 1: Badge mức + Thời gian ──
+                // ── Row 1: Icon + Tiêu đề + Badge ──
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Badge mức khẩn cấp (DUY NHẤT, không lặp)
+                    // Icon đại diện
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      width: 44,
+                      height: 44,
                       decoration: BoxDecoration(
-                        color: color,
-                        borderRadius: BorderRadius.circular(6),
+                        color: iconBgColor,
+                        shape: BoxShape.circle,
                       ),
-                      child: Text(
-                        label,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 11,
-                        ),
-                      ),
+                      child: Icon(cardIcon, color: iconColor, size: 24),
                     ),
-                    const Spacer(),
-                    Text(
-                      timeSent.isNotEmpty ? '$timeSent · $timeAgo' : timeAgo,
-                      style: TextStyle(
-                        color: Colors.grey.shade500,
-                        fontSize: 12,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  summary,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 16,
+                                    color: Colors.black87,
+                                    height: 1.35,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              // Badge mức khẩn cấp (ở góc phải)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: color.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: color.withOpacity(0.3)),
+                                ),
+                                child: Text(
+                                  label,
+                                  style: TextStyle(
+                                    color: color,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              Icon(Icons.access_time, size: 14, color: Colors.grey.shade500),
+                              const SizedBox(width: 4),
+                              Text(
+                                timeSent.isNotEmpty ? '$timeSent · $timeAgo' : timeAgo,
+                                style: TextStyle(
+                                  color: Colors.grey.shade500,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-
-                // ── Row 2: Tóm tắt AI ──
-                Text(
-                  summary,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                    color: Colors.black87,
-                    height: 1.35,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-
-                // ── Row 2b: Lời kêu cứu gốc (nếu có và khác summary) ──
-                if (description != null && description.isNotEmpty && description != summary)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border(
-                          left: BorderSide(color: color.withOpacity(0.5), width: 3),
-                        ),
-                      ),
-                      child: Text(
-                        '"$description"',
-                        style: TextStyle(
-                          fontStyle: FontStyle.italic,
-                          fontSize: 13,
-                          color: Colors.grey.shade700,
-                          height: 1.4,
-                        ),
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
 
                 const SizedBox(height: 14),
 
@@ -1294,21 +1308,22 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                 // ── Nút Xem ca ──
                 SizedBox(
                   width: double.infinity,
-                  child: OutlinedButton(
+                  child: ElevatedButton(
                     onPressed: () {
                       HapticFeedback.lightImpact();
                       _handleViewCase(caseData);
                     },
-                    style: OutlinedButton.styleFrom(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(24),
                       ),
-                      side: BorderSide(color: Colors.blue.shade400, width: 1.5),
+                      elevation: 0,
                     ),
-                    child: Text(
-                      'Xem chi tiết  ▸',
-                      style: TextStyle(color: Colors.blue.shade400, fontSize: 15, fontWeight: FontWeight.bold),
+                    child: const Text(
+                      'Xem Hồ Sơ Nhiệm Vụ  ▸',
+                      style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
