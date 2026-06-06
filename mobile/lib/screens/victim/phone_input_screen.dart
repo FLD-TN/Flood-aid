@@ -229,6 +229,7 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
                     Expanded(
                       child: TextField(
                         controller: _phoneController,
+                        autofocus: true,
                         keyboardType: TextInputType.phone,
                         maxLength: 12,
                         onChanged: _onPhoneChanged,

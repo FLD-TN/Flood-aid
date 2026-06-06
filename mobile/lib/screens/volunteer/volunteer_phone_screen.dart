@@ -229,6 +229,7 @@ class _VolunteerPhoneScreenState extends State<VolunteerPhoneScreen> {
                     Expanded(
                       child: TextField(
                         controller: _phoneController,
+                        autofocus: true,
                         keyboardType: TextInputType.phone,
                         maxLength: 12,
                         onChanged: _onPhoneChanged,
