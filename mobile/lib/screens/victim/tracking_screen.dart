@@ -149,6 +149,30 @@ class _TrackingScreenState extends State<TrackingScreen> {
               Navigator.pop(context);
             }
             break;
+          case 'case:revoked':
+            // TNV đã hủy nhiệm vụ
+            final remainingCount = event.data['remainingCount'] as int? ?? 0;
+            final newStatus = event.data['status'] as String? ?? 'pending';
+            if (remainingCount == 0) {
+              // Không còn TNV nào → trở về trạng thái chờ
+              _wsGpsService?.dispose();
+              _wsGpsService = null;
+              setState(() {
+                _status = newStatus; // 'pending'
+                _hasVolunteer = false;
+                _tnvLat = null;
+                _tnvLon = null;
+                _distanceM = null;
+              });
+              if (mounted) {
+                ToastService.show(
+                  context: context,
+                  type: ToastType.warning,
+                  message: 'Tình nguyện viên đã hủy. Đang tìm người khác...',
+                );
+              }
+            }
+            break;
           case 'case:orphaned':
             setState(() {
               _status = 'orphaned';
