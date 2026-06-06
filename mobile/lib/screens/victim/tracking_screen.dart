@@ -10,6 +10,7 @@ import '../../widgets/map_widget.dart';
 import '../../widgets/sos_legend_widget.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import '../../widgets/slide_to_confirm.dart';
 
 class TrackingScreen extends StatefulWidget {
   final String caseId;
@@ -44,19 +45,11 @@ class _TrackingScreenState extends State<TrackingScreen> {
   late double _victimLat;
   late double _victimLon;
 
-  // Draggable sheet controller
-  final DraggableScrollableController _sheetController =
-      DraggableScrollableController();
-
   @override
   void initState() {
     super.initState();
     _victimLat = widget.victimLat ?? 16.0544;
     _victimLon = widget.victimLon ?? 108.2022;
-
-    _sheetController.addListener(() {
-      if (mounted) setState(() {});
-    });
 
     // SSE: listen for case status changes (replaces status polling)
     _startSseListener();
@@ -69,7 +62,6 @@ class _TrackingScreenState extends State<TrackingScreen> {
   void dispose() {
     _sseSubscription?.cancel();
     _wsGpsService?.dispose();
-    _sheetController.dispose();
     super.dispose();
   }
 
@@ -317,20 +309,27 @@ class _TrackingScreenState extends State<TrackingScreen> {
                   ),
                 ],
               ),
-              child: const Icon(Icons.person, color: Colors.white, size: 18),
+              child: Icon(Icons.person, color: AppColors.alertRed, size: 20),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: AppColors.alertRed,
-                borderRadius: BorderRadius.circular(12),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: const Text(
-                'Bạn',
+                'Vị trí của bạn',
                 style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
+                  color: AppColors.textPrimary,
+                  fontSize: 11,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -365,24 +364,31 @@ class _TrackingScreenState extends State<TrackingScreen> {
                     ),
                   ],
                 ),
-                child: const Icon(
-                  Icons.directions_boat,
+              child: const Icon(
+                  Icons.local_shipping_rounded,
                   color: Colors.white,
-                  size: 18,
+                  size: 20,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 6),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withOpacity(0.4),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
                 child: const Text(
-                  'Cứu hộ',
+                  'Đội Cứu Hộ',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 10,
+                    fontSize: 11,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -430,80 +436,31 @@ class _TrackingScreenState extends State<TrackingScreen> {
           children: [
             _buildHeader(),
             Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  double sheetSize = 0.35;
-                  if (_sheetController.isAttached) {
-                    sheetSize = _sheetController.size;
-                  }
-
-                  final isExpanded = sheetSize > 0.2;
-
-                  return Stack(
-                    children: [
-                      // ── Map (full area) ──
-                      FloodAidMap(
-                        mapController: _mapController,
-                        initialCenter: LatLng(_victimLat, _victimLon),
-                        initialZoom: 15.0,
-                        markers: _buildMarkers(),
-                        onMyLocationTap: _centerOnVictim,
-                      ),
-                      // ── SOS Legend ──
-                      Positioned(
-                        left: 16,
-                        top: 16,
-                        child: const SosLegendWidget(),
-                      ),
-                      // ── Floating Arrow Button ──
-                      Positioned(
-                        right: 16,
-                        bottom: constraints.maxHeight * sheetSize + 16,
-                        child: GestureDetector(
-                          onTap: () {
-                            if (isExpanded) {
-                              _sheetController.animateTo(
-                                0.15,
-                                duration: const Duration(milliseconds: 300),
-                                curve: Curves.easeInOut,
-                              );
-                            } else {
-                              _sheetController.animateTo(
-                                0.65,
-                                duration: const Duration(milliseconds: 300),
-                                curve: Curves.easeInOut,
-                              );
-                            }
-                          },
-                          child: Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.15),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Icon(
-                              isExpanded
-                                  ? Icons.keyboard_arrow_down
-                                  : Icons.keyboard_arrow_up,
-                              color: AppColors.alertRed,
-                              size: 28,
-                            ),
-                          ),
-                        ),
-                      ),
-                      // ── Draggable Bottom Sheet ──
-                      _buildDraggableSheet(),
-                    ],
-                  );
-                },
+              child: Stack(
+                children: [
+                  // ── Map (full area with bottom padding) ──
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 280), // Nhường chỗ cho Status Board
+                    child: FloodAidMap(
+                      mapController: _mapController,
+                      initialCenter: LatLng(_victimLat, _victimLon),
+                      initialZoom: 15.0,
+                      markers: _buildMarkers(),
+                      onMyLocationTap: _centerOnVictim,
+                    ),
+                  ),
+                  // ── SOS Legend ──
+                  Positioned(
+                    left: 16,
+                    top: 16,
+                    child: const SosLegendWidget(),
+                  ),
+                  // ── Fixed Bottom Status Board ──
+                  Align(
+                    alignment: Alignment.bottomCenter,
+                    child: _buildFixedStatusBoard(),
+                  ),
+                ],
               ),
             ),
           ],
@@ -571,188 +528,140 @@ class _TrackingScreenState extends State<TrackingScreen> {
     );
   }
 
-  Widget _buildDraggableSheet() {
+  Widget _buildFixedStatusBoard() {
     final config = _statusConfig;
+    
+    // Tạo Icon tương ứng với status thay vì dùng Emoji
+    IconData statusIcon = Icons.search;
+    if (_status == 'pending') statusIcon = Icons.radar;
+    if (_status == 'responding' || _status == 'near' || _status == 'on_scene') statusIcon = Icons.local_shipping_rounded;
+    if (_status == 'resolved') statusIcon = Icons.check_circle_rounded;
 
-    return DraggableScrollableSheet(
-      controller: _sheetController,
-      initialChildSize: 0.35,
-      minChildSize: 0.15,
-      maxChildSize: 0.65,
-      snap: true,
-      snapSizes: const [0.15, 0.35, 0.65],
-      builder: (context, scrollController) {
-        return Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.15),
-                blurRadius: 20,
-                offset: const Offset(0, -4),
-              ),
-            ],
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.12),
+            blurRadius: 24,
+            offset: const Offset(0, -8),
           ),
-          child: ListView(
-            controller: scrollController,
-            padding: EdgeInsets.zero,
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Drag handle ──
-              Center(
-                child: Container(
-                  margin: const EdgeInsets.only(top: 10, bottom: 6),
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceBorder,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+              // ── Status Badge ──
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: config.color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(100),
+                  border: Border.all(color: config.color.withOpacity(0.2)),
                 ),
-              ),
-
-              // ── Full content ──
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Status banner
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: config.color.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: config.color.withOpacity(0.3),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Text(
-                            config.emoji,
-                            style: const TextStyle(fontSize: 22),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              config.message,
-                              style: AppTypography.bodyMedium.copyWith(
-                                color: config.color,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Distance info (only when volunteer assigned)
-                    if (_hasVolunteer && _distanceM != null)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: AppColors.primary.withOpacity(0.1),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.directions_walk,
-                                color: AppColors.primary,
-                                size: 20,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    _distanceM! >= 1000
-                                        ? 'Cứu hộ cách bạn ~${(_distanceM! / 1000).toStringAsFixed(1)}km'
-                                        : 'Cứu hộ cách bạn ~${_distanceM}m',
-                                    style: AppTypography.bodyMedium.copyWith(
-                                      color: AppColors.textPrimary,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  // Fix #8: Hiển thị ETA ước tính
-                                  // Tốc độ trung bình xuồng cứu hộ vùng ngập ~15km/h
-                                  Text(
-                                    _calculateEta(_distanceM!),
-                                    style: AppTypography.caption.copyWith(
-                                      color: AppColors.primary,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                    // Case ID
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.background,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.tag, size: 14, color: AppColors.textMuted),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              'Ca: ${widget.caseId.substring(0, widget.caseId.length > 8 ? 8 : widget.caseId.length).toUpperCase()}',
-                              style: AppTypography.mono.copyWith(fontSize: 12),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Resolve button — Fix #4: uses confirm dialog
-                    ElevatedButton.icon(
-                      onPressed: _isResolving ? null : _handleResolveWithConfirm,
-                      icon: _isResolving
-                          ? const SizedBox(
-                              width: 18, height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white,
-                              ),
-                            )
-                          : const Icon(
-                              Icons.check_circle_outline,
-                              color: Colors.white,
-                            ),
-                      label: Text(
-                        _isResolving ? 'Đang xử lý...' : 'Tôi đã được giúp đỡ / An toàn',
-                        style: AppTypography.labelLarge.copyWith(
-                          color: Colors.white,
-                        ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _isResolving ? Colors.grey : AppColors.primary,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                    Icon(statusIcon, color: config.color, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      _status == 'pending' ? 'Đang tìm kiếm cứu hộ' : 'Đội cứu hộ đang đến',
+                      style: AppTypography.labelMedium.copyWith(
+                        color: config.color,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(height: 24),
+
+              // ── Hero Metrics (Chỉ hiện khi có TNV) ──
+              if (_hasVolunteer && _distanceM != null)
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Thời gian dự kiến',
+                            style: AppTypography.bodySmall.copyWith(
+                              color: AppColors.textMuted,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _calculateEta(_distanceM!).replaceAll('⏱ ', '').replaceAll(' Ước tính ~', ''),
+                            style: AppTypography.displayMedium.copyWith(
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 32,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          'Khoảng cách',
+                          style: AppTypography.bodySmall.copyWith(
+                            color: AppColors.textMuted,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _distanceM! >= 1000
+                              ? '${(_distanceM! / 1000).toStringAsFixed(1)} km'
+                              : '${_distanceM} m',
+                          style: AppTypography.headingLarge.copyWith(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              
+              if (!_hasVolunteer)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Text(
+                    'Hệ thống đang phát tín hiệu khẩn cấp đến các đội cứu hộ gần nhất trong khu vực của bạn. Vui lòng giữ vị trí và điện thoại bên mình.',
+                    style: AppTypography.bodyMedium.copyWith(height: 1.6),
+                  ),
+                ),
+
+              const SizedBox(height: 32),
+
+              // ── Resolve Slider ──
+              SlideToConfirm(
+                text: 'TRƯỢT ĐỂ XÁC NHẬN AN TOÀN',
+                isLoading: _isResolving,
+                onConfirm: () async {
+                  await _handleResolve();
+                },
+              ),
             ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }

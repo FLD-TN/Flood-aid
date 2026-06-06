@@ -138,7 +138,7 @@ class _ToastWidgetState extends State<_ToastWidget>
 
     switch (widget.type) {
       case ToastType.success:
-        bgColor = const Color(0xFFEFFFF4); // Xanh nhạt
+        bgColor = const Color(0xCC93EEAA); // Xanh nhạt
         borderColor = const Color(0xFFC7F3D6); // Xanh lá viền
         iconColor = const Color(0xFF1CB052);
         icon = Icons.check_circle_outline;

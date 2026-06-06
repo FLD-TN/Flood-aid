@@ -12,6 +12,8 @@ import '../../services/toast_service.dart';
 import '../../services/local_notification_service.dart';
 import 'tracking_screen.dart';
 import 'location_picker_screen.dart';
+import 'phone_input_screen.dart';
+import '../../services/auth_service.dart';
 
 class SosScreen extends StatefulWidget {
   const SosScreen({super.key});
@@ -347,7 +349,10 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
                 child: _navItem(Icons.map_outlined, 'Bản đồ', false),
               ),
               _navItemSos(),
-              _navItem(Icons.person_outline, 'Cá nhân', false),
+              GestureDetector(
+                onTap: _showVictimProfile,
+                child: _navItem(Icons.person_outline, 'Cá nhân', false),
+              ),
             ],
           ),
 
@@ -365,30 +370,38 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
                 },
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
+                    horizontal: 14,
+                    vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.alertRed,
-                    borderRadius: BorderRadius.circular(20),
+                    color: AppColors.textPrimary, // Dark, sleek contrast
+                    borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.alertRed.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
+                        color: AppColors.textPrimary.withOpacity(0.25),
+                        blurRadius: 12,
+                        offset: const Offset(0, 6),
                       ),
                     ],
                   ),
                   child: Row(
-                    children: const [
-                      Icon(Icons.info_outline, color: Colors.white, size: 14),
-                      SizedBox(width: 6),
-                      Text(
-                        'Bạn đang có 1 ca SOS',
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Red recording/live dot
+                      Container(
+                        width: 8, height: 8,
+                        decoration: const BoxDecoration(
+                          color: AppColors.alertRed,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Đang theo dõi ca SOS',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 12,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
@@ -445,6 +458,164 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
           ),
         ),
       ],
+    );
+  }
+
+  void _showVictimProfile() async {
+    final user = AuthService.currentUser;
+    String phoneDisplay = 'Chưa xác thực';
+    if (user?.phoneNumber != null) {
+      String phone = user!.phoneNumber!;
+      if (phone.startsWith('+84')) {
+        phone = '0${phone.substring(3)}';
+      }
+      phoneDisplay = phone;
+    } else if (_phone.isNotEmpty) {
+      phoneDisplay = _phone;
+    }
+
+    if (!mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Drag handle
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.surfaceBorder,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Avatar
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: AppColors.alertRed.withOpacity(0.1),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: AppColors.alertRed.withOpacity(0.3),
+                  width: 2,
+                ),
+              ),
+              child: const Icon(
+                Icons.person,
+                color: AppColors.alertRed,
+                size: 36,
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            Text(
+              'Thông tin cá nhân',
+              style: AppTypography.headingMedium,
+            ),
+            const SizedBox(height: 24),
+
+            // Phone info
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceElevated,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.surfaceBorder),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: AppColors.success.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.verified,
+                      color: AppColors.success,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Số điện thoại đã xác thực',
+                          style: AppTypography.caption,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          phoneDisplay,
+                          style: AppTypography.bodyLarge.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Logout button
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  Navigator.pop(ctx); // Đóng bottom sheet
+                  await AuthService.signOut();
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.remove('user_phone');
+                  if (!mounted) return;
+                  // Quay về màn hình nhập SĐT để xác thực OTP lại
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const PhoneInputScreen(),
+                    ),
+                    (route) => false,
+                  );
+                },
+                icon: const Icon(Icons.logout, size: 18),
+                label: Text(
+                  'Đăng xuất',
+                  style: AppTypography.labelMedium.copyWith(
+                    color: AppColors.danger,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.danger,
+                  side: const BorderSide(color: AppColors.danger),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
     );
   }
 }
