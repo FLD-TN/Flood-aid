@@ -236,11 +236,16 @@ async function acceptCase(req, res) {
       );
     }
 
-    // Tạo assignment
+    // Tạo assignment (hoặc reset nếu TNV đã revoke trước đó)
     await db.query(
       `INSERT INTO case_assignments (case_id, volunteer_id, initial_distance_m)
        VALUES ($1, $2, $3)
-       ON CONFLICT (case_id, volunteer_id) DO NOTHING`,
+       ON CONFLICT (case_id, volunteer_id) DO UPDATE SET
+         revoked_at = NULL,
+         completed_at = NULL,
+         assigned_at = NOW(),
+         initial_distance_m = EXCLUDED.initial_distance_m
+       WHERE case_assignments.revoked_at IS NOT NULL`,
       [id, volunteerId, initialDistance]
     );
 
