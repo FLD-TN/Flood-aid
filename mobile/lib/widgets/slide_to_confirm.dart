@@ -24,6 +24,17 @@ class _SlideToConfirmState extends State<SlideToConfirm>
   bool _isConfirmed = false;
   final double _thumbSize = 56.0;
 
+  @override
+  void didUpdateWidget(covariant SlideToConfirm oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Reset slider state khi widget được rebuild với text/loading khác
+    // (ví dụ chuyển từ "NHẬN CA" → "ĐÓNG CA")
+    if (oldWidget.text != widget.text || oldWidget.isLoading != widget.isLoading) {
+      _dragPosition = 0.0;
+      _isConfirmed = false;
+    }
+  }
+
   void _onHorizontalDragUpdate(DragUpdateDetails details, double maxWidth) {
     if (_isConfirmed || widget.isLoading) return;
     
