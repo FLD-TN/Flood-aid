@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:latlong2/latlong.dart' hide Path;
 import 'package:speech_to_text/speech_to_text.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -14,6 +14,8 @@ import 'tracking_screen.dart';
 import 'location_picker_screen.dart';
 import 'phone_input_screen.dart';
 import '../../services/auth_service.dart';
+import 'sos_history_screen.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 class SosScreen extends StatefulWidget {
   const SosScreen({super.key});
@@ -181,29 +183,56 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _buildTitle(),
-                    const SizedBox(height: 64),
-                    _buildGiantSosButton(),
-                    const SizedBox(height: 64),
-                  ],
-                ),
+      extendBody: true, // Cho phép body kéo dài xuống dưới BottomAppBar để notch hiển thị background gradient
+      backgroundColor: const Color(0xFFF7F9FC), // Fallback
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.white,
+              Color(0xFFE8ECEF), // Màu xám nhạt tạo độ sâu
+            ],
+            stops: [0.3, 1.0], // Để nửa trên trắng, nửa dưới bắt đầu chuyển xám
+          ),
+        ),
+        child: SafeArea(
+          bottom: false, // Để tránh chừa viền trắng dưới cùng trên iOS/Android
+          child: Stack(
+            children: [
+              Column(
+                children: [
+                  _buildHeader(),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _buildTitle(),
+                          const SizedBox(height: 64),
+                          _buildGiantSosButton(),
+                          const SizedBox(height: 100), // Khoảng trống cho BottomBar
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-            _buildMockBottomNav(),
-          ],
+              if (_hasActiveCase)
+                Positioned(
+                  left: 16,
+                  bottom: 80, // Đẩy lên để tránh bị che bởi BottomBar
+                  child: _buildActiveCaseBanner(),
+                ),
+            ],
+          ),
         ),
       ),
+      floatingActionButtonLocation: const _LowerDockedFabLocation(),
+      floatingActionButton: _buildSosFab(),
+      bottomNavigationBar: _buildBottomAppBar(),
     );
   }
 
@@ -254,210 +283,296 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildGiantSosButton() {
-    final bgColor = _hasActiveCase ? Colors.grey : AppColors.alertRed;
+    // A slightly lighter red for the main button
+    final lighterRed = const Color(0xFFEF5350); 
+    // Outer halo ring color
+    final outerRingColor = lighterRed.withOpacity(0.25);
+    
+    final innerColor = _hasActiveCase ? Colors.grey : lighterRed;
+    final ringColor = _hasActiveCase ? Colors.grey.shade300 : outerRingColor;
 
     return GestureDetector(
       onTap: () {
         HapticFeedback.vibrate(); // Rung khi nhấn mở form
         if (!_isSending) _showSosForm();
       },
-      child: AnimatedBuilder(
-        animation: _pulseAnim,
-        builder: (context, child) => Transform.scale(
-          scale: _hasActiveCase ? 1.0 : _pulseAnim.value,
-          child: child,
-        ),
-        child: Container(
-          width: 260,
-          height: 260,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: bgColor,
-            boxShadow: [
-              if (!_hasActiveCase)
-                BoxShadow(
-                  color: AppColors.alertRed.withOpacity(0.3),
-                  blurRadius: 40,
-                  spreadRadius: 10,
-                ),
-            ],
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Vòng ngoài: Có animation toả ra
+          AnimatedBuilder(
+            animation: _pulseAnim,
+            builder: (context, child) => Transform.scale(
+              scale: _hasActiveCase ? 1.0 : _pulseAnim.value,
+              child: child,
+            ),
+            child: Container(
+              width: 280,
+              height: 280,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: ringColor, // Vòng halo ngoài cùng
+                boxShadow: [
+                  if (!_hasActiveCase)
+                    BoxShadow(
+                      color: lighterRed.withOpacity(0.4),
+                      blurRadius: 30,
+                      spreadRadius: 5,
+                    ),
+                ],
+              ),
+            ),
           ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (_isSending)
-                const CircularProgressIndicator(color: Colors.white)
-              else ...[
-                Text(
-                  'SOS',
-                  style: AppTypography.displayLarge.copyWith(
-                    color: Colors.white,
-                    fontSize: 72,
-                    height: 1.0,
+          
+          // Vòng trong: Tĩnh, không thay đổi kích thước
+          Container(
+            width: 220,
+            height: 220,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: innerColor, // Nút chính bên trong
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (_isSending)
+                  const CircularProgressIndicator(color: Colors.white)
+                else ...[
+                  Text(
+                    'SOS',
+                    style: AppTypography.displayLarge.copyWith(
+                      color: Colors.white,
+                      fontSize: 64, // Giảm một chút cho cân đối với nút
+                      height: 1.0,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _hasActiveCase ? 'ĐÃ GỬI' : 'NHẤN ĐỂ TẠO SOS',
-                  style: AppTypography.labelMedium.copyWith(
-                    color: Colors.white,
-                    letterSpacing: 1.2,
+                  const SizedBox(height: 8),
+                  Text(
+                    _hasActiveCase ? 'ĐÃ GỬI' : 'NHẤN ĐỂ TẠO SOS',
+                    style: AppTypography.labelMedium.copyWith(
+                      color: Colors.white,
+                      letterSpacing: 1.2,
+                    ),
                   ),
-                ),
+                ],
               ],
-            ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActiveCaseBanner() {
+    return AnimatedBuilder(
+      animation: _shakeAnim,
+      builder: (context, child) {
+        return Transform.translate(
+          offset: Offset(_shakeAnim.value, 0),
+          child: child,
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 8,
+        ),
+        decoration: BoxDecoration(
+          color: AppColors.textPrimary, // Dark, sleek contrast
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.textPrimary.withOpacity(0.25),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Red recording/live dot
+            Container(
+              width: 8, height: 8,
+              decoration: const BoxDecoration(
+                color: AppColors.alertRed,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              'Đang theo dõi ca SOS',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSosFab() {
+    return Container(
+      width: 68, // To hơn một xíu để nhìn rõ hiệu ứng lõm
+      height: 68,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white,
+        border: Border.all(color: AppColors.alertRed, width: 3.5),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.alertRed.withOpacity(0.4),
+            blurRadius: 12,
+            spreadRadius: 3,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: FloatingActionButton(
+        onPressed: () {
+          HapticFeedback.vibrate();
+          if (!_hasActiveCase && !_isSending) _showSosForm();
+        },
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        hoverElevation: 0,
+        highlightElevation: 0,
+        shape: const CircleBorder(),
+        child: const Text(
+          'SOS',
+          style: TextStyle(
+            color: AppColors.alertRed,
+            fontWeight: FontWeight.w900, // Đậm hơn
+            fontSize: 19,
           ),
         ),
       ),
     );
   }
 
-  Widget _buildMockBottomNav() {
-    return Container(
-      height: 80,
-      decoration: BoxDecoration(
-        color: AppColors.surfaceCard,
-        border: const Border(top: BorderSide(color: AppColors.surfaceBorder)),
-      ),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              GestureDetector(
-                onTap: () {
-                  if (_activeCaseId != null) {
+  Widget _buildBottomAppBar() {
+    return BottomAppBar(
+      shape: const CircularNotchedRectangle(),
+      notchMargin: 14.0, // Tăng notch để phần lõm to hơn
+      color: Colors.white,
+      surfaceTintColor: Colors.white, // Loại bỏ ám màu Material 3
+      shadowColor: Colors.black.withOpacity(0.5), // Bóng xám rõ rệt cho thanh điều hướng
+      elevation: 20, // Tăng bóng cho thanh
+      child: SizedBox(
+        height: 60,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // Trái
+            Row(
+              children: [
+                _buildBottomNavItem(
+                  icon: Icons.map_outlined,
+                  label: 'Bản đồ',
+                  isActive: true,
+                  onTap: () {
+                    if (_activeCaseId != null) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => TrackingScreen(
+                            caseId: _activeCaseId!,
+                            victimLat: _activeLat,
+                            victimLon: _activeLon,
+                          ),
+                        ),
+                      ).then((_) => _checkActiveCase());
+                    } else {
+                      ToastService.show(
+                        context: context,
+                        type: ToastType.warning,
+                        message: 'Bạn chưa có ca SOS nào.',
+                      );
+                    }
+                  },
+                ),
+                const SizedBox(width: 8),
+                _buildBottomNavItem(
+                  icon: LucideIcons.history,
+                  label: 'Lịch sử',
+                  isActive: false,
+                  onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => TrackingScreen(
-                          caseId: _activeCaseId!,
-                          victimLat: _activeLat,
-                          victimLon: _activeLon,
-                        ),
-                      ),
-                    ).then((_) => _checkActiveCase());
-                  } else {
+                      MaterialPageRoute(builder: (_) => const SosHistoryScreen()),
+                    );
+                  },
+                ),
+              ],
+            ),
+            // Phải
+            Row(
+              children: [
+                _buildBottomNavItem(
+                  icon: Icons.notifications_none,
+                  label: 'Thông báo',
+                  isActive: false,
+                  onTap: () {
                     ToastService.show(
                       context: context,
-                      type: ToastType.warning,
-                      message: 'Bạn chưa có ca SOS nào.',
+                      type: ToastType.info,
+                      message: 'Tính năng Thông báo đang phát triển',
                     );
-                  }
-                },
-                child: _navItem(Icons.map_outlined, 'Bản đồ', false),
+                  },
+                ),
+                const SizedBox(width: 8),
+                _buildBottomNavItem(
+                  icon: Icons.person_outline,
+                  label: 'Cá nhân',
+                  isActive: false,
+                  onTap: _showVictimProfile,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomNavItem({
+    required IconData icon,
+    required String label,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      type: MaterialType.transparency,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                color: isActive ? AppColors.alertRed : AppColors.textMuted,
+                size: 24,
               ),
-              _navItemSos(),
-              GestureDetector(
-                onTap: _showVictimProfile,
-                child: _navItem(Icons.person_outline, 'Cá nhân', false),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isActive ? AppColors.alertRed : AppColors.textMuted,
+                  fontSize: 10,
+                  fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                ),
               ),
             ],
           ),
-
-          if (_hasActiveCase)
-            Positioned(
-              left: 10,
-              top: -30,
-              child: AnimatedBuilder(
-                animation: _shakeAnim,
-                builder: (context, child) {
-                  return Transform.translate(
-                    offset: Offset(_shakeAnim.value, 0),
-                    child: child,
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.textPrimary, // Dark, sleek contrast
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.textPrimary.withOpacity(0.25),
-                        blurRadius: 12,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Red recording/live dot
-                      Container(
-                        width: 8, height: 8,
-                        decoration: const BoxDecoration(
-                          color: AppColors.alertRed,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'Đang theo dõi ca SOS',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _navItem(IconData icon, String label, bool isActive) {
-    return Container(
-      width: 60,
-      color: Colors.transparent, // expand touch area
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            icon,
-            color: isActive ? AppColors.alertRed : AppColors.textMuted,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: AppTypography.caption.copyWith(
-              color: isActive ? AppColors.alertRed : AppColors.textMuted,
-              fontSize: 10,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _navItemSos() {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: AppColors.alertRed,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: const Text(
-            'SOS',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 12,
-            ),
-          ),
         ),
-      ],
+      ),
     );
   }
 
@@ -1031,5 +1146,22 @@ class _SosFormSheetState extends State<_SosFormSheet> {
         ),
       ),
     );
+  }
+}
+
+/// Custom location để đẩy nút SOS chìm sâu hơn vào trong BottomAppBar
+class _LowerDockedFabLocation extends FloatingActionButtonLocation {
+  const _LowerDockedFabLocation();
+
+  @override
+  Offset getOffset(ScaffoldPrelayoutGeometry scaffoldGeometry) {
+    // Lấy X chuẩn ở chính giữa
+    final double fabX = (scaffoldGeometry.scaffoldSize.width - scaffoldGeometry.floatingActionButtonSize.width) / 2.0;
+    
+    // Lấy Y chuẩn của centerDocked
+    final double fabY = scaffoldGeometry.contentBottom - (scaffoldGeometry.floatingActionButtonSize.height / 2.0);
+    
+    // Đẩy Y xuống thêm 15 pixels để nút chìm sâu xuống lõm
+    return Offset(fabX, fabY + 15.0);
   }
 }

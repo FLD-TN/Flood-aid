@@ -331,6 +331,28 @@ class ApiService {
       return [];
     }
   }
+  /// GET /api/sos/history — Lấy lịch sử tất cả ca SOS của user
+  static Future<List<Map<String, dynamic>>> getSosHistory() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http
+          .get(Uri.parse('$_baseUrl/api/sos/history'), headers: headers)
+          .timeout(const Duration(seconds: 8));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data is List) {
+          return List<Map<String, dynamic>>.from(data);
+        }
+        return [];
+      }
+      return [];
+    } catch (e) {
+      print('[ApiService] getSosHistory error: $e');
+      return [];
+    }
+  }
+
   /// PUT /api/volunteers/:id/fcm-token — Gửi FCM token lên Backend
   static Future<bool> updateFcmToken({
     required String volunteerId,
