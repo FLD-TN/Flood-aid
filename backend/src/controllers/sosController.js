@@ -740,7 +740,7 @@ async function cancelCase(req, res) {
     }
 
     // Transaction: cập nhật status + revoke assignments cùng lúc
-    const client = await db.connect();
+    const client = await db.getPool().connect();
     try {
       await client.query('BEGIN');
       
