@@ -259,6 +259,122 @@ class _TrackingScreenState extends State<TrackingScreen> {
     );
   }
 
+  /// Huỷ ca SOS — Gọi API cancel
+  bool _isCancelling = false;
+  Future<void> _handleCancel({String? reason}) async {
+    if (_isCancelling) return;
+    setState(() => _isCancelling = true);
+    try {
+      final success = await ApiService.cancelSos(widget.caseId, reason: reason);
+      if (success && mounted) {
+        _wsGpsService?.dispose();
+        ToastService.show(
+          context: context,
+          type: ToastType.success,
+          message: 'Đã huỷ tín hiệu SOS thành công.',
+        );
+        Navigator.pop(context);
+      } else if (mounted) {
+        setState(() => _isCancelling = false);
+        ToastService.show(
+          context: context,
+          type: ToastType.error,
+          message: 'Huỷ ca thất bại. Thử lại sau.',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isCancelling = false);
+        ToastService.show(
+          context: context,
+          type: ToastType.error,
+          message: 'Lỗi mạng. Thử lại sau.',
+        );
+      }
+    }
+  }
+
+  /// Popup xác nhận huỷ ca SOS (2 bước an toàn)
+  void _handleCancelWithConfirm() {
+    final hasVolunteerWarning = _hasVolunteer && _status == 'responding';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: AppColors.alertRed, size: 24),
+            const SizedBox(width: 8),
+            const Text('Huỷ tín hiệu SOS?'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (hasVolunteerWarning) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF3C7),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFFBBF24)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.directions_boat, color: Color(0xFFD97706), size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Đội cứu hộ đang trên đường đến bạn!',
+                        style: TextStyle(
+                          color: const Color(0xFF92400E),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+            Text(
+              hasVolunteerWarning
+                ? 'Nếu bạn huỷ bây giờ, đội cứu hộ sẽ ngừng di chuyển đến vị trí của bạn.\n\nBạn có chắc chắn muốn huỷ?'
+                : 'Tín hiệu SOS sẽ bị gỡ khỏi hệ thống.\n\nNếu bạn cần giúp đỡ lại, hãy tạo tín hiệu mới.',
+              style: const TextStyle(fontSize: 14, height: 1.5),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              'Giữ lại',
+              style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _handleCancel(reason: hasVolunteerWarning ? 'Huỷ khi TNV đang đến' : 'Nạn nhân tự huỷ');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.alertRed,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text(
+              'Xác nhận huỷ',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Fix #5: Guard nút back khi TNV đang đến
   Future<bool> _onWillPop() async {
     if (_status == 'responding' && _hasVolunteer) {
@@ -681,6 +797,36 @@ class _TrackingScreenState extends State<TrackingScreen> {
                 onConfirm: () async {
                   await _handleResolve();
                 },
+              ),
+
+              const SizedBox(height: 16),
+
+              // ── Cancel Button ──
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: _isCancelling ? null : _handleCancelWithConfirm,
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: Colors.grey.shade300),
+                    ),
+                  ),
+                  child: _isCancelling
+                    ? const SizedBox(
+                        width: 20, height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(
+                        'Huỷ tín hiệu SOS',
+                        style: TextStyle(
+                          color: AppColors.textMuted,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                ),
               ),
             ],
           ),

@@ -136,6 +136,25 @@ class ApiService {
     }
   }
 
+  /// POST /api/sos/cancel — Nạn nhân huỷ ca SOS
+  static Future<bool> cancelSos(String caseId, {String? reason}) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/sos/cancel'),
+        headers: headers,
+        body: json.encode({
+          'caseId': caseId,
+          'reason': reason,
+        }),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('[ApiService] cancelSos error: $e');
+      return false;
+    }
+  }
+
   /// POST /api/case/:id/revoke — TNV chủ động hủy nhiệm vụ
   static Future<bool> revokeCase(String caseId, String volunteerId) async {
     try {
