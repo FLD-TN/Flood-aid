@@ -285,6 +285,19 @@ async function resolveCase(req, res) {
     const { id } = req.params;
     const { resolvedBy } = req.body; // 'victim' | 'volunteer' | 'admin'
 
+    // Guard: kiểm tra ca chưa resolved/cancelled
+    const caseCheck = await db.query(
+      `SELECT status FROM cases WHERE id = $1`,
+      [id]
+    );
+    if (caseCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Case not found' });
+    }
+    const currentStatus = caseCheck.rows[0].status;
+    if (currentStatus === 'resolved' || currentStatus === 'cancelled') {
+      return res.status(409).json({ error: 'Case already closed' });
+    }
+
     await db.query(
       `UPDATE cases SET status = 'resolved', resolved_at = NOW() WHERE id = $1`,
       [id]
@@ -737,8 +750,17 @@ async function cancelCase(req, res) {
         [caseId]
       );
 
-      // Nếu có TNV đang nhận ca, revoke hết
+      // Nếu có TNV đang nhận ca, revoke hết + giải phóng TNV
       if (caseData.status === 'responding') {
+        // Giải phóng TNV (đánh dấu available lại) TRƯỚC KHI revoke
+        await client.query(`
+          UPDATE volunteers SET is_available = true 
+          WHERE id IN (
+            SELECT volunteer_id FROM case_assignments 
+            WHERE case_id = $1 AND revoked_at IS NULL
+          )
+        `, [caseId]);
+
         await client.query(
           `UPDATE case_assignments SET revoked_at = NOW() WHERE case_id = $1 AND revoked_at IS NULL`,
           [caseId]
