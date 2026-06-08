@@ -344,7 +344,7 @@ async function getActiveByPhone(req, res) {
               ST_X(coords::geometry) AS lon, ST_Y(coords::geometry) AS lat,
               created_at
        FROM cases
-       WHERE phone_hash = $1 AND status != 'resolved'
+       WHERE phone_hash = $1 AND status NOT IN ('resolved', 'cancelled')
        ORDER BY created_at DESC
        LIMIT 1`,
       [phoneHash]
@@ -726,18 +726,31 @@ async function cancelCase(req, res) {
       return res.status(409).json({ error: 'Case already closed' });
     }
 
-    // Cập nhật status → cancelled
-    await db.query(
-      `UPDATE cases SET status = 'cancelled', resolved_at = NOW() WHERE id = $1`,
-      [caseId]
-    );
-
-    // Nếu có TNV đang nhận ca, revoke hết
-    if (caseData.status === 'responding') {
-      await db.query(
-        `UPDATE case_assignments SET revoked_at = NOW() WHERE case_id = $1 AND revoked_at IS NULL`,
+    // Transaction: cập nhật status + revoke assignments cùng lúc
+    const client = await db.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // Cập nhật status → cancelled
+      await client.query(
+        `UPDATE cases SET status = 'cancelled', resolved_at = NOW() WHERE id = $1`,
         [caseId]
       );
+
+      // Nếu có TNV đang nhận ca, revoke hết
+      if (caseData.status === 'responding') {
+        await client.query(
+          `UPDATE case_assignments SET revoked_at = NOW() WHERE case_id = $1 AND revoked_at IS NULL`,
+          [caseId]
+        );
+      }
+
+      await client.query('COMMIT');
+    } catch (txErr) {
+      await client.query('ROLLBACK');
+      throw txErr;
+    } finally {
+      client.release();
     }
 
     // Broadcast SSE event để TNV biết ca đã bị huỷ

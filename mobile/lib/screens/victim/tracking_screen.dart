@@ -40,6 +40,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
   double? _tnvLon;
   bool _hasVolunteer = false;
   bool _isResolving = false;
+  bool _isCancelling = false;
 
   // Victim position
   late double _victimLat;
@@ -173,6 +174,18 @@ class _TrackingScreenState extends State<TrackingScreen> {
               }
             }
             break;
+          case 'case:cancelled':
+            // Ca bị huỷ (từ thiết bị khác hoặc Admin)
+            _wsGpsService?.dispose();
+            if (mounted) {
+              ToastService.show(
+                context: context,
+                type: ToastType.warning,
+                message: 'Ca SOS đã bị huỷ.',
+              );
+              Navigator.pop(context);
+            }
+            break;
           case 'case:orphaned':
             setState(() {
               _status = 'orphaned';
@@ -260,7 +273,6 @@ class _TrackingScreenState extends State<TrackingScreen> {
   }
 
   /// Huỷ ca SOS — Gọi API cancel
-  bool _isCancelling = false;
   Future<void> _handleCancel({String? reason}) async {
     if (_isCancelling) return;
     setState(() => _isCancelling = true);
