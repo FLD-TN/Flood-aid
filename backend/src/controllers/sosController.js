@@ -42,7 +42,7 @@ async function createSos(req, res) {
 
     // Anti-spam: 1 SĐT chỉ có 1 ca active (RULE-1)
     const existing = await db.query(
-      `SELECT id FROM cases WHERE phone_hash = $1 AND status != 'resolved' LIMIT 1`,
+      `SELECT id FROM cases WHERE phone_hash = $1 AND status NOT IN ('resolved', 'cancelled') LIMIT 1`,
       [phoneHash]
     );
     if (existing.rows.length > 0) {
@@ -685,4 +685,75 @@ async function getHistoryByPhone(req, res) {
   }
 }
 
-module.exports = { createSos, getCaseById, getTnvLocation, acceptCase, resolveCase, revokeCase, getActiveByPhone, getNearbyCases, checkMyAssignment, getHistoryByPhone };
+/**
+ * POST /api/sos/cancel — Nạn nhân huỷ ca SOS của mình
+ * Chỉ cho phép hủy khi ca đang ở trạng thái 'pending' (chưa có TNV nhận).
+ * Nếu ca đã 'responding' (TNV đang trên đường), vẫn cho hủy nhưng cần xác nhận.
+ */
+async function cancelCase(req, res) {
+  try {
+    const phone = req.user?.phone_number;
+    if (!phone) {
+      return res.status(401).json({ error: 'Unauthorized — no phone' });
+    }
+
+    const phoneHash = hashPhone(phone);
+    const { caseId, reason } = req.body;
+
+    if (!caseId) {
+      return res.status(400).json({ error: 'Missing caseId' });
+    }
+
+    // Verify case belongs to this user and is still active
+    const caseRow = await db.query(
+      `SELECT id, status, phone_hash FROM cases WHERE id = $1`,
+      [caseId]
+    );
+
+    if (caseRow.rows.length === 0) {
+      return res.status(404).json({ error: 'Case not found' });
+    }
+
+    const caseData = caseRow.rows[0];
+
+    // Xác minh quyền: chỉ chủ ca mới được huỷ
+    if (caseData.phone_hash !== phoneHash) {
+      return res.status(403).json({ error: 'Forbidden — you are not the owner of this case' });
+    }
+
+    // Chỉ cho huỷ khi ca chưa resolved/cancelled
+    if (caseData.status === 'resolved' || caseData.status === 'cancelled') {
+      return res.status(409).json({ error: 'Case already closed' });
+    }
+
+    // Cập nhật status → cancelled
+    await db.query(
+      `UPDATE cases SET status = 'cancelled', resolved_at = NOW() WHERE id = $1`,
+      [caseId]
+    );
+
+    // Nếu có TNV đang nhận ca, revoke hết
+    if (caseData.status === 'responding') {
+      await db.query(
+        `UPDATE case_assignments SET revoked_at = NOW() WHERE case_id = $1 AND revoked_at IS NULL`,
+        [caseId]
+      );
+    }
+
+    // Broadcast SSE event để TNV biết ca đã bị huỷ
+    try {
+      emitCaseEvent(caseId, 'case:cancelled', { reason: reason || 'Nạn nhân đã hủy ca' });
+      broadcastToRoom(`case:${caseId}`, { type: 'case:cancelled', caseId, reason: reason || 'Nạn nhân đã hủy ca' });
+    } catch (broadcastErr) {
+      console.warn('[sosController][cancelCase] broadcast error:', broadcastErr.message);
+    }
+
+    console.log(`[sosController] Case ${caseId} cancelled by victim. Reason: ${reason || 'N/A'}`);
+    res.json({ success: true, message: 'Ca SOS đã được hủy thành công' });
+  } catch (err) {
+    console.error('[sosController][cancelCase]', err.message);
+    res.status(500).json({ error: 'Internal error' });
+  }
+}
+
+module.exports = { createSos, getCaseById, getTnvLocation, acceptCase, resolveCase, revokeCase, getActiveByPhone, getNearbyCases, checkMyAssignment, getHistoryByPhone, cancelCase };
