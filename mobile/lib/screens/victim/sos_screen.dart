@@ -459,8 +459,7 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
       notchMargin: 14.0, // Tăng notch để phần lõm to hơn
       color: Colors.white,
       surfaceTintColor: Colors.white, // Loại bỏ ám màu Material 3
-      shadowColor: Colors.black.withOpacity(0.5), // Bóng xám rõ rệt cho thanh điều hướng
-      elevation: 20, // Tăng bóng cho thanh
+      elevation: 8, // Giảm elevation để tránh lỗi vạch đen trên một số máy Android
       child: SizedBox(
         height: 60,
         child: Row(

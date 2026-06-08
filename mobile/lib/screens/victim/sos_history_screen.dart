@@ -73,11 +73,11 @@ class SosHistoryItem {
 
 // Tag display mapping
 const Map<String, String> _tagLabels = {
-  'y_te': '💊 Y tế',
-  'tre_em': '👶 Trẻ em',
-  'nguoi_gia': '👴 Người già',
-  'ngap_noc': '🌊 Ngập nóc',
-  'phuong_tien': '🚤 Cần thuyền',
+  'y_te': 'Y tế',
+  'tre_em': 'Trẻ em',
+  'nguoi_gia': 'Người già',
+  'ngap_noc': 'Ngập nóc',
+  'phuong_tien': 'Cần thuyền',
 };
 
 // --- SCREEN ---
@@ -90,7 +90,7 @@ class SosHistoryScreen extends StatefulWidget {
 
 class _SosHistoryScreenState extends State<SosHistoryScreen> {
   String _selectedFilter = 'Tất cả';
-  final List<String> _filters = ['Tất cả', 'Đang chờ', 'Đang xử lý', 'Hoàn thành'];
+  final List<String> _filters = ['Tất cả', 'Đang chờ', 'Hoàn thành', 'Đã huỷ'];
 
   bool _isLoading = true;
   List<SosHistoryItem> _allItems = [];
@@ -115,8 +115,8 @@ class _SosHistoryScreenState extends State<SosHistoryScreen> {
   List<SosHistoryItem> get _filteredData {
     if (_selectedFilter == 'Tất cả') return _allItems;
     if (_selectedFilter == 'Đang chờ') return _allItems.where((e) => e.status == SosStatus.pending).toList();
-    if (_selectedFilter == 'Đang xử lý') return _allItems.where((e) => e.status == SosStatus.responding).toList();
     if (_selectedFilter == 'Hoàn thành') return _allItems.where((e) => e.status == SosStatus.completed).toList();
+    if (_selectedFilter == 'Đã huỷ') return _allItems.where((e) => e.status == SosStatus.cancelled).toList();
     return _allItems;
   }
 
@@ -239,6 +239,8 @@ class _SosHistoryScreenState extends State<SosHistoryScreen> {
                         fontSize: 15,
                       ),
                     ),
+                    const SizedBox(width: 8),
+                    _buildUrgencyBadge(item.urgencyLevel),
                   ],
                 ),
                 _buildStatusBadge(item.status),
@@ -291,17 +293,26 @@ class _SosHistoryScreenState extends State<SosHistoryScreen> {
                     runSpacing: 8,
                     children: item.tags.map((tag) {
                       final label = _tagLabels[tag] ?? tag;
+                      Color bgColor = Colors.grey.shade100;
+                      Color textColor = Colors.grey.shade700;
+                      if (label.toLowerCase().contains('trẻ em') || label.toLowerCase().contains('người già')) {
+                        bgColor = AppColors.alertRed.withOpacity(0.1);
+                        textColor = AppColors.alertRed;
+                      } else if (label.toLowerCase().contains('y tế')) {
+                        bgColor = Colors.blue.withOpacity(0.1);
+                        textColor = Colors.blue;
+                      }
                       return Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: AppColors.surfaceElevated,
-                          borderRadius: BorderRadius.circular(6),
+                          color: bgColor,
+                          borderRadius: BorderRadius.circular(10), // Giống giao diện TNV
                         ),
                         child: Text(
                           label,
                           style: AppTypography.bodySmall.copyWith(
-                            color: AppColors.textSecondary,
-                            fontWeight: FontWeight.w500,
+                            color: textColor,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       );
@@ -361,14 +372,14 @@ class _SosHistoryScreenState extends State<SosHistoryScreen> {
 
     switch (status) {
       case SosStatus.pending:
-        bgColor = const Color(0xFFFEE2E2);
-        textColor = const Color(0xFFDC2626);
+        bgColor = const Color(0xFFFEF9C3); // Vàng nhạt theo yêu cầu
+        textColor = const Color(0xFFCA8A04);
         label = 'Đang chờ';
         icon = LucideIcons.loader;
         break;
       case SosStatus.responding:
-        bgColor = const Color(0xFFFEF9C3);
-        textColor = const Color(0xFFCA8A04);
+        bgColor = const Color(0xFFDBEAFE); // Đổi sang xanh dương nhạt để tránh trùng màu vàng của Đang chờ
+        textColor = const Color(0xFF2563EB);
         label = 'Đang xử lý';
         icon = LucideIcons.ship;
         break;
@@ -406,6 +417,50 @@ class _SosHistoryScreenState extends State<SosHistoryScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildUrgencyBadge(int level) {
+    Color color;
+    String label;
+    switch (level) {
+      case 5:
+        color = AppColors.urgency5;
+        label = 'MỨC 5';
+        break;
+      case 4:
+        color = AppColors.urgency4;
+        label = 'MỨC 4';
+        break;
+      case 3:
+        color = AppColors.urgency3;
+        label = 'MỨC 3';
+        break;
+      case 2:
+        color = AppColors.urgency2;
+        label = 'MỨC 2';
+        break;
+      default:
+        color = AppColors.urgency1;
+        label = 'MỨC 1';
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        border: Border.all(color: color.withOpacity(0.5)),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }

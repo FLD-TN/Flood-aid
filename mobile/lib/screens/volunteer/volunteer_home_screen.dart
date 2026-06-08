@@ -346,15 +346,15 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
   String _getUrgencyLabel(int level) {
     switch (level) {
       case 5:
-        return 'CỰC KỲ NGUY HIỂM';
+        return 'MỨC 5';
       case 4:
-        return 'KHẨN CẤP';
+        return 'MỨC 4';
       case 3:
-        return 'CẦN HỖ TRỢ';
+        return 'MỨC 3';
       case 2:
-        return 'ƯU TIÊN THẤP';
+        return 'MỨC 2';
       default:
-        return 'THÔNG TIN';
+        return 'MỨC 1';
     }
   }
 
