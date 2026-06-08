@@ -195,6 +195,13 @@ const migration006 = `
 ALTER TABLE volunteers ADD COLUMN IF NOT EXISTS notification_radius_km INTEGER DEFAULT NULL;
 `;
 
+const migration007 = `
+-- Thêm 'cancelled' và 'orphaned' vào enum case_status
+-- ALTER TYPE ... ADD VALUE là idempotent nếu dùng IF NOT EXISTS (PG 9.3+)
+ALTER TYPE case_status ADD VALUE IF NOT EXISTS 'cancelled';
+ALTER TYPE case_status ADD VALUE IF NOT EXISTS 'orphaned';
+`;
+
 async function runMigrations() {
   const client = await pool.connect();
   try {
@@ -221,6 +228,10 @@ async function runMigrations() {
     console.log('[Migration] Running migration 006: Smart Notification Radius...');
     await client.query(migration006);
     console.log('[Migration] ✓ Migration 006 complete');
+
+    console.log('[Migration] Running migration 007: Add cancelled/orphaned to case_status enum...');
+    await client.query(migration007);
+    console.log('[Migration] ✓ Migration 007 complete');
 
     console.log('[Migration] All migrations completed successfully!');
   } catch (err) {
