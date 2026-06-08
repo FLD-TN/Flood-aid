@@ -15,6 +15,7 @@ const { authMiddleware } = require('./middleware/authMiddleware');
 
 // ====== Module 1: SOS ======
 router.get('/sos/active', authMiddleware, sosController.getActiveByPhone);
+router.get('/sos/history', authMiddleware, sosController.getHistoryByPhone);
 router.post('/sos', authMiddleware, sosController.createSos);
 router.get('/cases/nearby', sosController.getNearbyCases);
 router.get('/case/:id', sosController.getCaseById);

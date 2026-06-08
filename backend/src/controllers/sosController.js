@@ -620,4 +620,69 @@ async function revokeCase(req, res) {
   }
 }
 
-module.exports = { createSos, getCaseById, getTnvLocation, acceptCase, resolveCase, revokeCase, getActiveByPhone, getNearbyCases, checkMyAssignment };
+/**
+ * GET /api/sos/history — Lịch sử tất cả ca SOS của user (theo phone)
+ * Trả về danh sách ca SOS đã tạo, sắp xếp mới nhất trước.
+ * Bao gồm thông tin TNV đã nhận ca (nếu có).
+ */
+async function getHistoryByPhone(req, res) {
+  try {
+    const phone = req.user?.phone_number || req.query.phone;
+    if (!phone) {
+      return res.status(400).json({ error: 'Missing phone' });
+    }
+
+    const phoneHash = hashPhone(phone);
+
+    const result = await db.query(
+      `SELECT 
+        c.id,
+        c.urgency_level,
+        c.tags,
+        c.summary_1line,
+        c.text_raw,
+        c.status,
+        ST_X(c.coords::geometry) AS lon,
+        ST_Y(c.coords::geometry) AS lat,
+        c.created_at,
+        c.resolved_at,
+        v.full_name AS volunteer_name,
+        v.id AS volunteer_id
+      FROM cases c
+      LEFT JOIN case_assignments ca 
+        ON ca.case_id = c.id 
+        AND ca.revoked_at IS NULL
+      LEFT JOIN volunteers v 
+        ON v.id = ca.volunteer_id
+      WHERE c.phone_hash = $1
+      ORDER BY c.created_at DESC
+      LIMIT 50`,
+      [phoneHash]
+    );
+
+    const history = result.rows.map(row => {
+      const rawTags = typeof row.tags === 'string' ? JSON.parse(row.tags) : (row.tags || []);
+      return {
+        id: row.id,
+        urgency_level: row.urgency_level,
+        tags: rawTags,
+        summary: row.summary_1line,
+        description: row.text_raw,
+        status: row.status,
+        lat: row.lat,
+        lon: row.lon,
+        created_at: row.created_at,
+        resolved_at: row.resolved_at,
+        volunteer_name: row.volunteer_name,
+        volunteer_id: row.volunteer_id,
+      };
+    });
+
+    res.json(history);
+  } catch (err) {
+    console.error('[sosController][getHistoryByPhone]', err.message);
+    res.status(500).json({ error: 'Internal error' });
+  }
+}
+
+module.exports = { createSos, getCaseById, getTnvLocation, acceptCase, resolveCase, revokeCase, getActiveByPhone, getNearbyCases, checkMyAssignment, getHistoryByPhone };
