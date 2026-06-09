@@ -17,7 +17,6 @@ import 'active_mission_screen.dart';
 import 'volunteer_phone_screen.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:flutter/services.dart';
@@ -37,7 +36,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
 
   /// Lưu Set các caseId đã biết — dùng để Diffing phát hiện ca SOS mới
   /// Chỉ addAll(), không bao giờ ghi đè → tránh spam khi đổi bộ lọc
-  Set<String> _knownCaseIds = {};
+  final Set<String> _knownCaseIds = {};
   /// Lần fetch đầu tiên không hiện notification (tránh spam khi vừa mở app)
   bool _isFirstFetch = true;
   /// Skip notification cho lần fetch ngay sau khi user đổi bộ lọc
@@ -1361,7 +1360,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
 
 class NotificationSettingsWidget extends StatefulWidget {
   final String volunteerId;
-  const NotificationSettingsWidget({Key? key, required this.volunteerId}) : super(key: key);
+  const NotificationSettingsWidget({super.key, required this.volunteerId});
 
   @override
   State<NotificationSettingsWidget> createState() => _NotificationSettingsWidgetState();
@@ -1455,7 +1454,7 @@ class _NotificationSettingsWidgetState extends State<NotificationSettingsWidget>
           Switch(
             value: _enabled,
             onChanged: _onToggle,
-            activeColor: AppColors.primary,
+            activeThumbColor: AppColors.primary,
           ),
         ],
       ),

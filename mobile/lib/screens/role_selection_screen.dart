@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../theme/app_theme.dart';
 import 'victim/phone_input_screen.dart';
 import 'volunteer/volunteer_phone_screen.dart';
@@ -14,14 +15,14 @@ class RoleSelectionScreen extends StatelessWidget {
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: EdgeInsets.symmetric(horizontal: 24.w),
           child: Column(
             children: [
-              const SizedBox(height: 56),
+              SizedBox(height: 56.h),
 
               // ── Logo ──
               _buildLogo(),
-              const SizedBox(height: 20),
+              SizedBox(height: 20.h),
 
               // ── Brand Title ──
               Text(
@@ -31,25 +32,25 @@ class RoleSelectionScreen extends StatelessWidget {
                   letterSpacing: -1,
                 ),
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: 6.h),
               Text(
                 'Nền tảng Điều phối Cứu trợ Lũ lụt',
                 style: AppTypography.bodyMedium,
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: 4.h),
               Text(
                 'MIỀN TRUNG VIỆT NAM',
                 style: AppTypography.caption.copyWith(
                   letterSpacing: 2.5,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.primary.withOpacity(0.7),
+                  color: AppColors.primary.withValues(alpha: 0.7),
                 ),
               ),
 
               // ── Divider ──
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 32),
+                padding: EdgeInsets.symmetric(vertical: 32.h),
                 child: Row(
                   children: [
                     Expanded(
@@ -59,7 +60,7 @@ class RoleSelectionScreen extends StatelessWidget {
                       ),
                     ),
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: EdgeInsets.symmetric(horizontal: 16.w),
                       child: Text(
                         'CHỌN VAI TRÒ',
                         style: AppTypography.caption.copyWith(
@@ -89,7 +90,7 @@ class RoleSelectionScreen extends StatelessWidget {
                   MaterialPageRoute(builder: (_) => const PhoneInputScreen()),
                 ),
               ),
-              const SizedBox(height: 14),
+              SizedBox(height: 14.h),
 
               // ── Volunteer Card ──
               _RoleCard(
@@ -112,7 +113,7 @@ class RoleSelectionScreen extends StatelessWidget {
                 style: AppTypography.caption,
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16.h),
             ],
           ),
         ),
@@ -122,15 +123,15 @@ class RoleSelectionScreen extends StatelessWidget {
 
   Widget _buildLogo() {
     return Container(
-      width: 76,
-      height: 76,
+      width: 76.w,
+      height: 76.w,
       decoration: BoxDecoration(
         color: AppColors.surfaceCard,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.primary.withOpacity(0.4), width: 1.5),
+        borderRadius: BorderRadius.circular(20.r),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.4), width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withOpacity(0.25),
+            color: AppColors.primary.withValues(alpha: 0.25),
             blurRadius: 24,
             spreadRadius: 2,
             offset: const Offset(0, 8),
@@ -140,7 +141,7 @@ class RoleSelectionScreen extends StatelessWidget {
       child: Center(
         child: Text(
           '⚡',
-          style: const TextStyle(fontSize: 36),
+          style: TextStyle(fontSize: 36.sp),
         ),
       ),
     );
@@ -215,19 +216,19 @@ class _RoleCardState extends State<_RoleCard>
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+          padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 20.h),
           decoration: BoxDecoration(
             color: AppColors.surfaceCard,
             borderRadius: BorderRadius.circular(AppRadius.lg),
             border: Border.all(
               color: _pressed
-                  ? widget.accentColor.withOpacity(0.6)
+                  ? widget.accentColor.withValues(alpha: 0.6)
                   : AppColors.surfaceBorder,
               width: _pressed ? 1.5 : 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: widget.accentColor.withOpacity(_pressed ? 0.25 : 0.1),
+                color: widget.accentColor.withValues(alpha: _pressed ? 0.25 : 0.1),
                 blurRadius: _pressed ? 20 : 10,
                 spreadRadius: _pressed ? 2 : 0,
                 offset: const Offset(0, 4),
@@ -238,23 +239,23 @@ class _RoleCardState extends State<_RoleCard>
             children: [
               // Icon container
               Container(
-                width: 52,
-                height: 52,
+                width: 52.w,
+                height: 52.w,
                 decoration: BoxDecoration(
-                  color: widget.accentColor.withOpacity(0.12),
+                  color: widget.accentColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(AppRadius.md),
                   border: Border.all(
-                    color: widget.accentColor.withOpacity(0.25),
+                    color: widget.accentColor.withValues(alpha: 0.25),
                   ),
                 ),
                 child: Center(
                   child: Text(
                     widget.icon,
-                    style: const TextStyle(fontSize: 26),
+                    style: TextStyle(fontSize: 26.sp),
                   ),
                 ),
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: 16.w),
               // Text
               Expanded(
                 child: Column(
@@ -264,11 +265,11 @@ class _RoleCardState extends State<_RoleCard>
                       widget.title,
                       style: AppTypography.labelLarge.copyWith(
                         color: AppColors.textPrimary,
-                        fontSize: 15,
+                        fontSize: 15.sp,
                         letterSpacing: 1.0,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4.h),
                     Text(
                       widget.subtitle,
                       style: AppTypography.bodySmall,
@@ -276,12 +277,12 @@ class _RoleCardState extends State<_RoleCard>
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8.w),
               // Arrow
               Icon(
                 Icons.arrow_forward_ios_rounded,
-                color: widget.accentColor.withOpacity(0.7),
-                size: 16,
+                color: widget.accentColor.withValues(alpha: 0.7),
+                size: 16.r,
               ),
             ],
           ),

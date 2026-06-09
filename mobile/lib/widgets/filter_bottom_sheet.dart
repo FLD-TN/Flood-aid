@@ -284,14 +284,18 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                     final isSelected = _selectedTags.contains(tag);
                     final label = _tagLabels[tag] ?? tag;
                     Color color = isSelected ? AppColors.alertRed : Colors.grey;
-                    if (isSelected && (tag == 'tre_em' || tag == 'nguoi_gia')) color = AppColors.alertRed;
-                    else if (isSelected && tag == 'y_te') color = AppColors.primary;
+                    if (isSelected && (tag == 'tre_em' || tag == 'nguoi_gia')) {
+                      color = AppColors.alertRed;
+                    } else if (isSelected && tag == 'y_te') color = AppColors.primary;
 
                     return GestureDetector(
                       onTap: () {
                         setState(() {
-                          if (isSelected) _selectedTags.remove(tag);
-                          else _selectedTags.add(tag);
+                          if (isSelected) {
+                            _selectedTags.remove(tag);
+                          } else {
+                            _selectedTags.add(tag);
+                          }
                         });
                       },
                       child: Container(

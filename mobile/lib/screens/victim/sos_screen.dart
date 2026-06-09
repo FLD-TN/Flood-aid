@@ -7,7 +7,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
-import '../../services/ws_gps_service.dart';
 import '../../services/toast_service.dart';
 import '../../services/local_notification_service.dart';
 import 'tracking_screen.dart';
@@ -737,7 +736,7 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
 class _SosFormSheet extends StatefulWidget {
   final Function(LatLng location, String text) onSubmit;
 
-  const _SosFormSheet({Key? key, required this.onSubmit}) : super(key: key);
+  const _SosFormSheet({required this.onSubmit});
 
   @override
   State<_SosFormSheet> createState() => _SosFormSheetState();

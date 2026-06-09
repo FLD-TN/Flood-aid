@@ -150,7 +150,7 @@ class _FloodAidMapState extends State<FloodAidMap>
             interactionOptions: const InteractionOptions(
               flags: InteractiveFlag.all,
             ),
-            onTap: (_, __) {
+            onTap: (_, _) {
               if (_showLayerPicker) {
                 setState(() => _showLayerPicker = false);
               }

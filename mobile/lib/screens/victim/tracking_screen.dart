@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
-import '../../services/fcm_service.dart';
 import '../../services/toast_service.dart';
 import '../../services/api_service.dart';
 import '../../services/sse_service.dart';
@@ -780,7 +779,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
                         Text(
                           _distanceM! >= 1000
                               ? '${(_distanceM! / 1000).toStringAsFixed(1)} km'
-                              : '${_distanceM} m',
+                              : '$_distanceM m',
                           style: AppTypography.headingLarge.copyWith(
                             color: AppColors.primary,
                             fontWeight: FontWeight.w800,

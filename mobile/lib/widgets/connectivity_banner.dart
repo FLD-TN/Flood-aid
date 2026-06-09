@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import '../theme/app_theme.dart';
 
 /// Fix #13: Global connectivity banner — hiện "Mất kết nối mạng"
 /// khi thiết bị offline. Dùng wrap toàn app hoặc từng screen.

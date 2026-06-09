@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 // ══════════════════════════════════════════════════════
 // FLOODAID DESIGN SYSTEM — Tactical Calm
@@ -51,7 +52,7 @@ class AppColors {
 class AppTypography {
   // Display — số lớn, tiêu đề màn hình
   static TextStyle get displayLarge => GoogleFonts.inter(
-        fontSize: 40,
+        fontSize: 40.sp,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.5,
         color: AppColors.textPrimary,
@@ -59,7 +60,7 @@ class AppTypography {
       );
 
   static TextStyle get displayMedium => GoogleFonts.inter(
-        fontSize: 28,
+        fontSize: 28.sp,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.3,
         color: AppColors.textPrimary,
@@ -68,14 +69,14 @@ class AppTypography {
 
   // Heading — section title, card header
   static TextStyle get headingLarge => GoogleFonts.inter(
-        fontSize: 22,
+        fontSize: 22.sp,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.2,
         color: AppColors.textPrimary,
       );
 
   static TextStyle get headingMedium => GoogleFonts.inter(
-        fontSize: 18,
+        fontSize: 18.sp,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.1,
         color: AppColors.textPrimary,
@@ -83,14 +84,14 @@ class AppTypography {
 
   // Label — button text, tag, badge
   static TextStyle get labelLarge => GoogleFonts.inter(
-        fontSize: 18,
+        fontSize: 18.sp,
         fontWeight: FontWeight.w600,
         letterSpacing: 1.5,
         color: AppColors.textPrimary,
       );
 
   static TextStyle get labelMedium => GoogleFonts.inter(
-        fontSize: 14,
+        fontSize: 14.sp,
         fontWeight: FontWeight.w600,
         letterSpacing: 1.0,
         color: AppColors.textPrimary,
@@ -98,21 +99,21 @@ class AppTypography {
 
   // Body — mô tả, nội dung SOS text
   static TextStyle get bodyLarge => GoogleFonts.inter(
-        fontSize: 16,
+        fontSize: 16.sp,
         fontWeight: FontWeight.w400,
         color: AppColors.textPrimary,
         height: 1.6,
       );
 
   static TextStyle get bodyMedium => GoogleFonts.inter(
-        fontSize: 14,
+        fontSize: 14.sp,
         fontWeight: FontWeight.w400,
         color: AppColors.textSecondary,
         height: 1.5,
       );
 
   static TextStyle get bodySmall => GoogleFonts.inter(
-        fontSize: 13,
+        fontSize: 13.sp,
         fontWeight: FontWeight.w400,
         color: AppColors.textSecondary,
         height: 1.4,
@@ -120,7 +121,7 @@ class AppTypography {
 
   // Caption — timestamp, metadata
   static TextStyle get caption => GoogleFonts.inter(
-        fontSize: 12,
+        fontSize: 12.sp,
         fontWeight: FontWeight.w400,
         color: AppColors.textMuted,
         letterSpacing: 0.3,
@@ -128,7 +129,7 @@ class AppTypography {
 
   // Mono — tọa độ GPS, ID, số kỹ thuật
   static TextStyle get mono => GoogleFonts.robotoMono(
-        fontSize: 13,
+        fontSize: 13.sp,
         fontWeight: FontWeight.w400,
         color: AppColors.textSecondary,
         letterSpacing: 0.5,
@@ -141,32 +142,30 @@ class AppTypography {
 
 class AppSpacing {
   // Base unit: 4px
-  static const double xs = 4;
-  static const double sm = 8;
-  static const double md = 16;
-  static const double lg = 24;
-  static const double xl = 32;
-  static const double xxl = 48;
-  static const double xxxl = 64;
+  static double get xs => 4.w;
+  static double get sm => 8.w;
+  static double get md => 16.w;
+  static double get lg => 24.w;
+  static double get xl => 32.w;
+  static double get xxl => 48.w;
+  static double get xxxl => 64.w;
 
   // Touch targets — TỐI THIỂU 56px cho mọi interactive element
-  static const double touchMin = 56;
-  static const double touchLarge = 72; // SOS button
+  static double get touchMin => 56.h;
+  static double get touchLarge => 72.h; // SOS button
 
   // Screen padding
-  static const EdgeInsets screenPadding =
-      EdgeInsets.symmetric(horizontal: 20, vertical: 24);
-  static const EdgeInsets cardPadding = EdgeInsets.all(16);
-  static const EdgeInsets chipPadding =
-      EdgeInsets.symmetric(horizontal: 12, vertical: 6);
+  static EdgeInsets get screenPadding => EdgeInsets.symmetric(horizontal: 20.w, vertical: 24.h);
+  static EdgeInsets get cardPadding => EdgeInsets.all(16.w);
+  static EdgeInsets get chipPadding => EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h);
 }
 
 class AppRadius {
-  static const double sm = 8;
-  static const double md = 12;
-  static const double lg = 16;
-  static const double xl = 24;
-  static const double full = 999; // pill shape
+  static double get sm => 8.r;
+  static double get md => 12.r;
+  static double get lg => 16.r;
+  static double get xl => 24.r;
+  static double get full => 999.r; // pill shape
 }
 
 // ══════════════════════════════════════════════════════
@@ -201,9 +200,9 @@ ThemeData buildAppTheme() {
       ),
       hintStyle: GoogleFonts.inter(
         color: AppColors.textMuted,
-        fontSize: 14,
+        fontSize: 14.sp,
       ),
-      contentPadding: const EdgeInsets.all(AppSpacing.md),
+      contentPadding: EdgeInsets.all(AppSpacing.md),
     ),
     // App bar
     appBarTheme: AppBarTheme(

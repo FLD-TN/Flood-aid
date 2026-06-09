@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'firebase_options.dart';
 import 'theme/app_theme.dart';
 import 'screens/role_selection_screen.dart';
@@ -105,15 +106,22 @@ class FloodAidApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      navigatorKey: navigatorKey,
-      title: 'FloodAid',
-      debugShowCheckedModeBanner: false,
-      theme: buildAppTheme(),
-      home: const RoleSelectionScreen(),
-      // Fix #13: Global connectivity banner — hiện khi mất mạng
+    return ScreenUtilInit(
+      designSize: const Size(375, 812), // Kích thước thiết kế gốc trên Figma
+      minTextAdapt: true,
+      splitScreenMode: true,
       builder: (context, child) {
-        return ConnectivityBanner(child: child ?? const SizedBox.shrink());
+        return MaterialApp(
+          navigatorKey: navigatorKey,
+          title: 'FloodAid',
+          debugShowCheckedModeBanner: false,
+          theme: buildAppTheme(),
+          home: const RoleSelectionScreen(),
+          // Fix #13: Global connectivity banner — hiện khi mất mạng
+          builder: (context, widget) {
+            return ConnectivityBanner(child: widget ?? const SizedBox.shrink());
+          },
+        );
       },
     );
   }

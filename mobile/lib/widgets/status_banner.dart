@@ -88,7 +88,7 @@ class _PulseDotState extends State<_PulseDot>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _anim,
-      builder: (_, __) => Container(
+      builder: (_, _) => Container(
         width: 8,
         height: 8,
         decoration: BoxDecoration(
