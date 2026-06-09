@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../theme/app_theme.dart';
 
 // ══════════════════════════════════════════════════════
@@ -33,17 +34,17 @@ class SosActionButton extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 100),
         width: double.infinity,
-        height: height,
+        height: height.h,
         decoration: BoxDecoration(
           color: isDisabled ? AppColors.surfaceElevated : bg,
-          borderRadius: BorderRadius.circular(AppRadius.lg),
+          borderRadius: BorderRadius.circular(AppRadius.lg.r),
           boxShadow: !isDisabled
               ? [
                   BoxShadow(
-                    color: bg.withOpacity(0.45),
-                    blurRadius: 20,
-                    spreadRadius: 2,
-                    offset: const Offset(0, 4),
+                    color: bg.withValues(alpha: 0.45),
+                    blurRadius: 20.r,
+                    spreadRadius: 2.r,
+                    offset: Offset(0, 4.h),
                   ),
                 ]
               : [],
@@ -51,11 +52,11 @@ class SosActionButton extends StatelessWidget {
         child: Center(
           child: isLoading
               ? SizedBox(
-                  width: 28,
-                  height: 28,
+                  width: 28.w,
+                  height: 28.w,
                   child: CircularProgressIndicator(
                     color: Colors.white,
-                    strokeWidth: 2.5,
+                    strokeWidth: 2.5.w,
                   ),
                 )
               : Text(
@@ -64,8 +65,8 @@ class SosActionButton extends StatelessWidget {
                     color: isDisabled
                         ? AppColors.textMuted
                         : Colors.white,
-                    fontSize: 20,
-                    letterSpacing: 1.8,
+                    fontSize: 20.sp,
+                    letterSpacing: 1.8.w,
                   ),
                   textAlign: TextAlign.center,
                 ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../theme/app_theme.dart';
 
 /// Filter parameters returned to parent
@@ -105,26 +106,26 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
         (_maxDistance < 10 ? 1 : 0);
 
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
       ),
       child: Column(
         children: [
           // Handle
-          const SizedBox(height: 12),
+          SizedBox(height: 12.h),
           Container(
-            width: 40,
-            height: 4,
+            width: 40.w,
+            height: 4.h,
             decoration: BoxDecoration(
               color: Colors.grey[300],
-              borderRadius: BorderRadius.circular(2),
+              borderRadius: BorderRadius.circular(2.r),
             ),
           ),
           
           // Header
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -141,22 +142,22 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                     style: TextStyle(
                       color: AppColors.alertRed,
                       fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                      fontSize: 14.sp,
                     ),
                   ),
                 ),
               ],
             ),
           ),
-          const Divider(height: 1),
+          Divider(height: 1),
 
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
               children: [
                 // 1. MỨC ĐỘ KHẨN CẤP
                 _buildSectionHeader('MỨC ĐỘ KHẨN CẤP', trailing: 'Chọn nhiều'),
-                const SizedBox(height: 12),
+                SizedBox(height: 12.h),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: List.generate(5, (index) {
@@ -174,77 +175,77 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                         });
                       },
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
                         decoration: BoxDecoration(
-                          color: isSelected ? color.withOpacity(0.15) : Colors.white,
+                          color: isSelected ? color.withValues(alpha: 0.15) : Colors.white,
                           border: Border.all(
-                            color: isSelected ? color : color.withOpacity(0.8),
-                            width: 1.5,
+                            color: isSelected ? color : color.withValues(alpha: 0.8),
+                            width: 1.5.w,
                           ),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(8.r),
                         ),
                         child: Text(
                           'Mức $level',
                           style: TextStyle(
-                            color: isSelected ? color : color.withOpacity(0.9),
+                            color: isSelected ? color : color.withValues(alpha: 0.9),
                             fontWeight: FontWeight.bold,
-                            fontSize: 13,
+                            fontSize: 13.sp,
                           ),
                         ),
                       ),
                     );
                   }),
                 ),
-                const SizedBox(height: 24),
-                const Divider(height: 1),
-                const SizedBox(height: 24),
+                SizedBox(height: 24.h),
+                Divider(height: 1),
+                SizedBox(height: 24.h),
 
                 // 2. KHOẢNG CÁCH
                 _buildSectionHeader('KHOẢNG CÁCH', trailing: 'Sắp xếp & giới hạn'),
-                const SizedBox(height: 12),
+                SizedBox(height: 12.h),
                 Row(
                   children: [
                     Expanded(child: _buildSortButton(true, _sortNearest, 'Gần ➔ xa', Icons.sort)),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12.w),
                     Expanded(child: _buildSortButton(false, !_sortNearest, 'Xa ➔ gần', Icons.sort)),
                   ],
                 ),
-                const SizedBox(height: 24),
-                const SizedBox(height: 24),
+                SizedBox(height: 24.h),
+                SizedBox(height: 24.h),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Bán kính', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                    Text('Bán kính', style: TextStyle(color: Colors.grey, fontSize: 13.sp)),
                     Text(
                       _maxDistance == -1 ? 'Toàn quốc' : '${_maxDistance.toInt()} km', 
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15.sp),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12.h),
                 Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
+                  spacing: 10.w,
+                  runSpacing: 10.h,
                   children: [5.0, 10.0, 20.0, 50.0, -1.0].map((dist) {
                     final isSelected = _maxDistance == dist;
                     final label = dist == -1.0 ? 'Toàn quốc' : '${dist.toInt()} km';
                     return GestureDetector(
                       onTap: () => setState(() => _maxDistance = dist),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
                         decoration: BoxDecoration(
-                          color: isSelected ? AppColors.alertRed.withOpacity(0.1) : Colors.white,
+                          color: isSelected ? AppColors.alertRed.withValues(alpha: 0.1) : Colors.white,
                           border: Border.all(
                             color: isSelected ? AppColors.alertRed : Colors.grey.shade400,
-                            width: 1.5,
+                            width: 1.5.w,
                           ),
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(20.r),
                         ),
                         child: Text(
                           label,
                           style: TextStyle(
                             color: isSelected ? AppColors.alertRed : Colors.grey.shade800,
-                            fontSize: 13,
+                            fontSize: 13.sp,
                             fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
                           ),
                         ),
@@ -252,34 +253,34 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                     );
                   }).toList(),
                 ),
-                const SizedBox(height: 24),
-                const Divider(height: 1),
-                const SizedBox(height: 24),
+                SizedBox(height: 24.h),
+                Divider(height: 1),
+                SizedBox(height: 24.h),
 
                 // 3. THỜI GIAN GỬI SOS
                 _buildSectionHeader('THỜI GIAN GỬI SOS', trailing: 'Sắp xếp'),
-                const SizedBox(height: 12),
+                SizedBox(height: 12.h),
                 Row(
                   children: [
                     Expanded(
                       child: _buildTimeSortButton(true, _sortNewest, 'Mới nhất', 'Vừa gửi lên đầu', Icons.schedule),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12.w),
                     Expanded(
                       child: _buildTimeSortButton(false, !_sortNewest, 'Chờ lâu nhất', 'Đợi lâu lên đầu', Icons.history),
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
-                const Divider(height: 1),
-                const SizedBox(height: 24),
+                SizedBox(height: 24.h),
+                Divider(height: 1),
+                SizedBox(height: 24.h),
 
                 // 4. TAGS ĐẶC BIỆT
                 _buildSectionHeader('TAGS ĐẶC BIỆT', trailing: 'Chọn nhiều'),
-                const SizedBox(height: 12),
+                SizedBox(height: 12.h),
                 Wrap(
-                  spacing: 10,
-                  runSpacing: 12,
+                  spacing: 10.w,
+                  runSpacing: 12.h,
                   children: _allTags.map((tag) {
                     final isSelected = _selectedTags.contains(tag);
                     final label = _tagLabels[tag] ?? tag;
@@ -299,20 +300,20 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                         });
                       },
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
                         decoration: BoxDecoration(
-                          color: isSelected ? color.withOpacity(0.1) : Colors.white,
+                          color: isSelected ? color.withValues(alpha: 0.1) : Colors.white,
                           border: Border.all(
                             color: isSelected ? color : Colors.grey.shade400,
-                            width: 1.5,
+                            width: 1.5.w,
                           ),
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(20.r),
                         ),
                         child: Text(
                           label,
                           style: TextStyle(
                             color: isSelected ? color : Colors.grey.shade800,
-                            fontSize: 13,
+                            fontSize: 13.sp,
                             fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
                           ),
                         ),
@@ -320,38 +321,38 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                     );
                   }).toList(),
                 ),
-                const SizedBox(height: 32),
+                SizedBox(height: 32.h),
               ],
             ),
           ),
 
           // Bottom Action
           Padding(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(20.w),
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: _apply,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.alertRed,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
                   elevation: 0,
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.check, color: Colors.white, size: 20),
-                    const SizedBox(width: 8),
+                    Icon(Icons.check, color: Colors.white, size: 20),
+                    SizedBox(width: 8.w),
                     Text(
                       activeFilterCount > 0
                           ? 'Áp dụng ($activeFilterCount bộ lọc)'
                           : 'Áp dụng',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
-                        fontSize: 15,
+                        fontSize: 15.sp,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -371,9 +372,9 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
       children: [
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.bold,
-            fontSize: 13,
+            fontSize: 13.sp,
             color: Colors.black54,
             letterSpacing: 0.5,
           ),
@@ -383,7 +384,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
             trailing,
             style: TextStyle(
               color: Colors.grey.shade600,
-              fontSize: 11,
+              fontSize: 11.sp,
             ),
           ),
       ],
@@ -394,26 +395,26 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
     return GestureDetector(
       onTap: () => setState(() => _sortNearest = isNearest),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.alertRed.withOpacity(0.08) : Colors.white,
+          color: isSelected ? AppColors.alertRed.withValues(alpha: 0.08) : Colors.white,
           border: Border.all(
             color: isSelected ? AppColors.alertRed : Colors.grey.shade400,
-            width: 1.5,
+            width: 1.5.w,
           ),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(8.r),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 16, color: isSelected ? AppColors.alertRed : Colors.grey.shade600),
-            const SizedBox(width: 8),
+            Icon(icon, size: 16.r, color: isSelected ? AppColors.alertRed : Colors.grey.shade600),
+            SizedBox(width: 8.w),
             Text(
               label,
               style: TextStyle(
                 color: isSelected ? AppColors.alertRed : Colors.grey.shade800,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                fontSize: 13,
+                fontSize: 13.sp,
               ),
             ),
           ],
@@ -426,33 +427,33 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
     return GestureDetector(
       onTap: () => setState(() => _sortNewest = isNewest),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
+        padding: EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.alertRed.withOpacity(0.08) : Colors.white,
+          color: isSelected ? AppColors.alertRed.withValues(alpha: 0.08) : Colors.white,
           border: Border.all(
             color: isSelected ? AppColors.alertRed : Colors.grey.shade400,
-            width: 1.5,
+            width: 1.5.w,
           ),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(8.r),
         ),
         child: Column(
           children: [
-            Icon(icon, size: 20, color: isSelected ? AppColors.alertRed : Colors.grey.shade600),
-            const SizedBox(height: 8),
+            Icon(icon, size: 20.r, color: isSelected ? AppColors.alertRed : Colors.grey.shade600),
+            SizedBox(height: 8.h),
             Text(
               title,
               style: TextStyle(
                 color: isSelected ? AppColors.alertRed : Colors.grey.shade800,
                 fontWeight: FontWeight.bold,
-                fontSize: 13,
+                fontSize: 13.sp,
               ),
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: 4.h),
             Text(
               subtitle,
               style: TextStyle(
-                color: isSelected ? AppColors.alertRed.withOpacity(0.7) : Colors.grey.shade500,
-                fontSize: 10,
+                color: isSelected ? AppColors.alertRed.withValues(alpha: 0.7) : Colors.grey.shade500,
+                fontSize: 10.sp,
               ),
             ),
           ],

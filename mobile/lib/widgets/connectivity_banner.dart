@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Fix #13: Global connectivity banner — hiện "Mất kết nối mạng"
 /// khi thiết bị offline. Dùng wrap toàn app hoặc từng screen.
@@ -77,22 +78,22 @@ class _ConnectivityBannerState extends State<ConnectivityBanner>
               ? Container(
                   width: double.infinity,
                   color: Colors.red.shade700,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 16.w,
+                    vertical: 8.h,
                   ),
                   child: SafeArea(
                     bottom: false,
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Icon(Icons.wifi_off, color: Colors.white, size: 16),
-                        SizedBox(width: 8),
+                      children: [
+                        Icon(Icons.wifi_off, color: Colors.white, size: 16.r),
+                        SizedBox(width: 8.w),
                         Text(
                           'Mất kết nối mạng — Đang thử lại...',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 12,
+                            fontSize: 12.sp,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
