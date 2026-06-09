@@ -15,6 +15,8 @@ SosStatus _parseStatus(String? raw) {
       return SosStatus.responding;
     case 'resolved':
       return SosStatus.completed;
+    case 'cancelled':
+      return SosStatus.cancelled;
     default:
       return SosStatus.pending;
   }

@@ -282,8 +282,8 @@ class _TrackingScreenState extends State<TrackingScreen> {
         _wsGpsService?.dispose();
         ToastService.show(
           context: context,
-          type: ToastType.success,
-          message: 'Đã huỷ tín hiệu SOS thành công.',
+          type: ToastType.info,
+          message: 'Đã huỷ tín hiệu SOS.',
         );
         Navigator.pop(context);
       } else if (mounted) {
