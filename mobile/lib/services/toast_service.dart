@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../theme/app_theme.dart';
 
 enum ToastType {
@@ -22,10 +24,8 @@ class ToastService {
     VoidCallback? onAction,
     Duration duration = const Duration(seconds: 4),
   }) {
-    // 1. Remove existing toast if any
     _removeCurrentToast();
 
-    // 2. Create new OverlayEntry
     final overlayState = Overlay.of(context);
     
     _currentEntry = OverlayEntry(
@@ -41,10 +41,8 @@ class ToastService {
       ),
     );
 
-    // 3. Insert and schedule removal
     overlayState.insert(_currentEntry!);
     
-    // Nếu không phải là action bắt buộc, tự động tắt sau [duration]
     if (type != ToastType.action) {
       _currentTimer = Timer(duration, () {
         _removeCurrentToast();
@@ -97,11 +95,11 @@ class _ToastWidgetState extends State<_ToastWidget>
     );
 
     _offsetAnimation = Tween<Offset>(
-      begin: const Offset(0.0, -1.0),
+      begin: const Offset(0.0, -1.2),
       end: const Offset(0.0, 0.0),
     ).animate(CurvedAnimation(
       parent: _controller,
-      curve: Curves.easeOutBack,
+      curve: Curves.easeOutCubic,
     ));
 
     _opacityAnimation = Tween<double>(
@@ -121,134 +119,174 @@ class _ToastWidgetState extends State<_ToastWidget>
     super.dispose();
   }
 
-  void _dismiss() {
-    _controller.reverse().then((_) {
-      if (mounted) {
-        widget.onDismiss();
-      }
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
-    Color bgColor = Colors.white;
-    Color borderColor = Colors.transparent;
-    Color iconColor = AppColors.textPrimary;
-    IconData icon = Icons.info_outline;
+    String title;
 
     switch (widget.type) {
       case ToastType.success:
-        bgColor = const Color(0xCC93EEAA); // Xanh nhạt
-        borderColor = const Color(0xFFC7F3D6); // Xanh lá viền
-        iconColor = const Color(0xFF1CB052);
-        icon = Icons.check_circle_outline;
+        title = 'Thành công';
         break;
       case ToastType.warning:
-        bgColor = const Color(0xFFFFF9EC); // Vàng nhạt
-        borderColor = const Color(0xFFFBE1A6);
-        iconColor = const Color(0xFFF2A30F);
-        icon = Icons.wifi_off; // Cảnh báo mất mạng
+        title = 'Cảnh báo';
         break;
       case ToastType.error:
-        bgColor = const Color(0xFFFFF0F0); // Đỏ nhạt
-        borderColor = const Color(0xFFFFD1D1);
-        iconColor = AppColors.alertRed;
-        icon = Icons.error_outline;
+        title = 'Lỗi';
         break;
       case ToastType.action:
-        bgColor = Colors.white;
-        borderColor = const Color(0xFFE0E0E0);
-        iconColor = const Color(0xFF4A4A4A);
-        icon = Icons.info_outline;
+        title = 'Thông báo';
         break;
       case ToastType.info:
-        bgColor = Colors.white;
-        borderColor = const Color(0xFFE0E0E0);
-        iconColor = AppColors.primary;
-        icon = Icons.info_outline;
+        title = 'Thông tin';
         break;
     }
 
     return Positioned(
-      top: MediaQuery.of(context).padding.top + 16,
-      left: 16,
-      right: 16,
+      top: 0,
+      left: 0,
+      right: 0,
       child: SafeArea(
+        bottom: false,
         child: Material(
           color: Colors.transparent,
           child: SlideTransition(
             position: _offsetAnimation,
             child: FadeTransition(
               opacity: _opacityAnimation,
-              child: GestureDetector(
-                onVerticalDragUpdate: (details) {
-                  if (details.delta.dy < -5) {
-                    _dismiss(); // Vuốt lên để tắt
-                  }
+              child: Dismissible(
+                key: UniqueKey(),
+                direction: DismissDirection.up,
+                onDismissed: (_) {
+                  widget.onDismiss();
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: bgColor,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: borderColor, width: 1.5),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.08),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
+                  margin: EdgeInsets.only(
+                    top: 8.h,
+                    left: 12.w,
+                    right: 12.w,
                   ),
-                  child: Row(
-                    children: [
-                      // Nền icon tròn (tuỳ chọn)
-                      Container(
-                        padding: const EdgeInsets.all(8),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16.r),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                      child: Container(
+                        padding: EdgeInsets.all(14.w),
                         decoration: BoxDecoration(
-                          color: iconColor.withOpacity(0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(icon, color: iconColor, size: 24),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          widget.message,
-                          style: AppTypography.labelMedium.copyWith(
-                            color: AppColors.textPrimary,
-                            height: 1.3,
+                          color: const Color(0xFFE8EDF2).withValues(alpha: 0.85), // Xám xanh nhạt mờ (giống iOS/MBBank)
+                          borderRadius: BorderRadius.circular(16.r),
+                          border: Border.all(
+                            color: Colors.grey.withValues(alpha: 0.2),
+                            width: 0.5.w,
                           ),
-                        ),
-                      ),
-                      if (widget.type == ToastType.action && widget.actionText != null) ...[
-                        const SizedBox(width: 12),
-                        GestureDetector(
-                          onTap: widget.onAction,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF1E293B), // Màu xanh đen đậm
-                              borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.12),
+                              blurRadius: 20.r,
+                              offset: Offset(0, 6.h),
                             ),
-                            child: Text(
-                              widget.actionText!,
-                              style: AppTypography.labelMedium.copyWith(
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.04),
+                              blurRadius: 4.r,
+                              offset: Offset(0, 1.h),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 40.w,
+                              height: 40.w,
+                              decoration: BoxDecoration(
                                 color: Colors.white,
-                                fontWeight: FontWeight.bold,
+                                borderRadius: BorderRadius.circular(10.r),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.1),
+                                    blurRadius: 4.r,
+                                    offset: Offset(0, 1.h),
+                                  ),
+                                ],
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(10.r),
+                                child: Image.asset(
+                                  'assets/images/logo.png',
+                                  fit: BoxFit.cover,
+                                ),
                               ),
                             ),
-                          ),
+                            SizedBox(width: 12.w),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          title,
+                                          style: TextStyle(
+                                            fontSize: 14.sp,
+                                            fontWeight: FontWeight.w700,
+                                            color: const Color(0xFF1A1A1A),
+                                            height: 1.2,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      Text(
+                                        'bây giờ',
+                                        style: TextStyle(
+                                          fontSize: 12.sp,
+                                          color: Colors.grey.shade500,
+                                          fontWeight: FontWeight.w400,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  SizedBox(height: 4.h),
+                                  Text(
+                                    widget.message,
+                                    style: TextStyle(
+                                      fontSize: 13.sp,
+                                      color: Colors.grey.shade700,
+                                      height: 1.3,
+                                    ),
+                                    maxLines: 3,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  if (widget.type == ToastType.action && widget.actionText != null) ...[
+                                    SizedBox(height: 10.h),
+                                    GestureDetector(
+                                      onTap: widget.onAction,
+                                      child: Container(
+                                        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF1E293B),
+                                          borderRadius: BorderRadius.circular(8.r),
+                                        ),
+                                        child: Text(
+                                          widget.actionText!,
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 13.sp,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                      if (widget.type == ToastType.action) ...[
-                        const SizedBox(width: 8),
-                        GestureDetector(
-                          onTap: _dismiss,
-                          child: const Icon(Icons.close, size: 16, color: Colors.grey),
-                        ),
-                      ],
-                    ],
+                      ),
+                    ),
                   ),
                 ),
               ),
