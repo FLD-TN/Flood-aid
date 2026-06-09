@@ -14,6 +14,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../widgets/slide_to_confirm.dart';
 
 class ActiveMissionScreen extends StatefulWidget {
@@ -418,64 +419,6 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
     }
   }
 
-  /// Fix #6: Hiện confirmation dialog trước khi đóng ca
-  void _handleResolveWithConfirm() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Xác nhận đóng ca'),
-        content: const Text(
-          'Bạn đã tiếp cận và hỗ trợ nạn nhân thành công?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Hủy'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              _handleResolve();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.success,
-            ),
-            child: const Text(
-              'Xác nhận đóng ca ✓',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Fix #5: Dialog tạm cho nút "Báo chướng ngại"
-  void _handleReportObstacle() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.warning_amber_rounded, color: AppColors.alertRed),
-            SizedBox(width: 8),
-            Text('Báo chướng ngại'),
-          ],
-        ),
-        content: const Text(
-          'Tính năng báo chướng ngại vật (đường ngập, cầu sập...) đang được phát triển.\n\n'
-          'Hiện tại bạn có thể gọi điện trực tiếp cho nạn nhân để thông báo tình hình.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Đã hiểu'),
-          ),
-        ],
-      ),
-    );
-  }
-
   double? get _distanceKm {
     if (_myLat == null || _myLon == null) return null;
     final d = const Distance();
@@ -485,10 +428,6 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
       LatLng(_victimLat, _victimLon),
     );
     return m / 1000;
-  }
-
-  void _centerOnVictim() {
-    _mapController.move(LatLng(_victimLat, _victimLon), 14.0);
   }
 
   void _centerOnMe() {
@@ -502,37 +441,37 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
       // Victim marker (red)
       Marker(
         point: LatLng(_victimLat, _victimLon),
-        width: 90,
-        height: 90,
+        width: 90.w,
+        height: 90.w,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 36, height: 36,
+              width: 36.w, height: 36.w,
               decoration: BoxDecoration(
                 color: AppColors.alertRed,
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 3),
+                border: Border.all(color: Colors.white, width: 3.w),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.alertRed.withOpacity(0.5),
-                    blurRadius: 14,
-                    spreadRadius: 3,
+                    color: AppColors.alertRed.withValues(alpha: 0.5),
+                    blurRadius: 14.r,
+                    spreadRadius: 3.r,
                   ),
                 ],
               ),
-              child: const Icon(Icons.location_on, color: Colors.white, size: 20),
+              child: Icon(Icons.location_on, color: Colors.white, size: 20.r),
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: 4.h),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
               decoration: BoxDecoration(
                 color: AppColors.alertRed,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(10.r),
               ),
-              child: const Text(
+              child: Text(
                 'NẠN NHÂN',
-                style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+                style: TextStyle(color: Colors.white, fontSize: 8.sp, fontWeight: FontWeight.bold),
               ),
             ),
           ],
@@ -545,37 +484,37 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
       markers.add(
         Marker(
           point: LatLng(_myLat!, _myLon!),
-          width: 90,
-          height: 90,
+          width: 90.w,
+          height: 90.w,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 36, height: 36,
+                width: 36.w, height: 36.w,
                 decoration: BoxDecoration(
                   color: AppColors.primary,
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 3),
+                  border: Border.all(color: Colors.white, width: 3.w),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.primary.withOpacity(0.5),
-                      blurRadius: 14,
-                      spreadRadius: 3,
+                      color: AppColors.primary.withValues(alpha: 0.5),
+                      blurRadius: 14.r,
+                      spreadRadius: 3.r,
                     ),
                   ],
                 ),
-                child: const Icon(Icons.person_pin_circle, color: Colors.white, size: 20),
+                child: Icon(Icons.person_pin_circle, color: Colors.white, size: 20.r),
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: 4.h),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                 decoration: BoxDecoration(
                   color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(10.r),
                 ),
-                child: const Text(
+                child: Text(
                   'BẠN',
-                  style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: Colors.white, fontSize: 8.sp, fontWeight: FontWeight.bold),
                 ),
               ),
             ],
@@ -603,7 +542,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                 children: [
                   // ── Map (full area with padding) ──
                   Padding(
-                    padding: EdgeInsets.only(bottom: _accepted ? 320 : 250),
+                    padding: EdgeInsets.only(bottom: _accepted ? 320.h : 250.h),
                     child: FloodAidMap(
                       mapController: _mapController,
                       initialCenter: LatLng(_victimLat, _victimLon),
@@ -614,8 +553,8 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                   ),
                   // ── SOS Legend ──
                   Positioned(
-                    left: 16,
-                    top: 16,
+                    left: 16.w,
+                    top: 16.h,
                     child: const SosLegendWidget(),
                   ),
                   // ── Fixed Bottom Mission Board ──
@@ -642,28 +581,28 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
 
     return Container(
       color: bgColor,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
       child: Row(
         children: [
           // Nút back — pop tự do, GPS vẫn chạy ngầm
           GestureDetector(
             onTap: () => Navigator.pop(context),
-            child: const Icon(Icons.arrow_back, color: Colors.white, size: 18),
+            child: Icon(Icons.arrow_back, color: Colors.white, size: 18.r),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12.w),
           if (isTracking)
             Container(
-              width: 8, height: 8,
+              width: 8.w, height: 8.w,
               decoration: const BoxDecoration(
                 shape: BoxShape.circle,
                 color: Colors.white,
               ),
             ),
-          if (isTracking) const SizedBox(width: 8),
+          if (isTracking) SizedBox(width: 8.w),
           Expanded(
             child: Text(
               statusText,
-              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+              style: TextStyle(color: Colors.white, fontSize: 12.sp, fontWeight: FontWeight.bold),
             ),
           ),
         ],
@@ -674,7 +613,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
   Widget _buildHeader() {
     return Container(
       color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -690,14 +629,6 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
     );
   }
 
-  /// Ẩn SĐT: 0901234567 → 090 •••• 567
-  String _maskPhone(String phone) {
-    if (phone.length >= 6) {
-      return '${phone.substring(0, 3)} •••• ${phone.substring(phone.length - 3)}';
-    }
-    return '••••••••';
-  }
-
   Widget _buildFixedMissionBoard() {
     final urgency = widget.urgencyLevel ?? 3;
     final urgencyColor = getUrgencyColor(urgency);
@@ -710,54 +641,54 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
       ),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32.r)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.12),
-            blurRadius: 24,
-            offset: const Offset(0, -8),
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 24.r,
+            offset: Offset(0, -8.h),
           ),
         ],
       ),
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+          padding: EdgeInsets.fromLTRB(24.w, 24.h, 24.w, 24.h),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // ── Header Row (Status) ──
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                 decoration: BoxDecoration(
-                  color: urgencyColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(100),
-                  border: Border.all(color: urgencyColor.withOpacity(0.2)),
+                  color: urgencyColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(100.r),
+                  border: Border.all(color: urgencyColor.withValues(alpha: 0.2)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
-                      width: 8, height: 8,
+                      width: 8.w, height: 8.w,
                       decoration: BoxDecoration(
                         color: urgencyColor,
                         shape: BoxShape.circle,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8.w),
                     Text(
                       'MỨC ĐỘ KHẨN CẤP: $urgency',
                       style: AppTypography.labelMedium.copyWith(
                         color: urgencyColor,
-                        fontSize: 10,
+                        fontSize: 10.sp,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16.h),
 
               // ── Hồ sơ Chi tiết (Cuộn được nếu quá dài) ──
               Flexible(
@@ -771,7 +702,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                         widget.summary ?? 'Yêu cầu cứu hộ khẩn cấp',
                         style: AppTypography.headingMedium.copyWith(
                           fontWeight: FontWeight.bold,
-                          fontSize: 20,
+                          fontSize: 20.sp,
                           color: AppColors.textPrimary,
                           height: 1.3,
                         ),
@@ -780,13 +711,13 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                       // Full Description (nếu có và khác summary)
                       if (widget.description != null && widget.description!.isNotEmpty && widget.description != widget.summary)
                         Padding(
-                          padding: const EdgeInsets.only(top: 12),
+                          padding: EdgeInsets.only(top: 12.h),
                           child: Container(
                             width: double.infinity,
-                            padding: const EdgeInsets.all(12),
+                            padding: EdgeInsets.all(12.w),
                             decoration: BoxDecoration(
                               color: AppColors.surfaceElevated,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(12.r),
                               border: Border.all(color: AppColors.surfaceBorder),
                             ),
                             child: Text(
@@ -800,7 +731,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                           ),
                         ),
 
-                      const SizedBox(height: 20),
+                      SizedBox(height: 20.h),
 
                       // Hero Metrics (Luôn hiển thị để TNV ước lượng)
                       if (distKm != null)
@@ -813,7 +744,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                                 Colors.blue.shade700,
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            SizedBox(width: 12.w),
                             Expanded(
                               child: _buildMetricBox(
                                 'Dự kiến tới',
@@ -824,7 +755,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                           ],
                         ),
 
-                      const SizedBox(height: 20),
+                      SizedBox(height: 20.h),
 
                       // ── Các nút liên lạc (CHỈ HIỂN THỊ KHI ĐÃ NHẬN CA) ──
                       if (_accepted) ...[
@@ -840,20 +771,20 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                                     await launchUrl(url);
                                   }
                                 },
-                                icon: const Icon(Icons.phone, color: Colors.white, size: 16),
+                                icon: Icon(Icons.phone, color: Colors.white, size: 16.r),
                                 label: Text(
                                   widget.victimPhone != null ? widget.victimPhone! : 'Gọi',
-                                  style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                                  style: TextStyle(color: Colors.white, fontSize: 13.sp, fontWeight: FontWeight.bold),
                                 ),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.green.shade600,
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  padding: EdgeInsets.symmetric(vertical: 14.h),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
                                   elevation: 0,
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            SizedBox(width: 12.w),
                             Expanded(
                               child: ElevatedButton.icon(
                                 onPressed: () async {
@@ -864,15 +795,15 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                                     await launchUrl(url, mode: LaunchMode.externalApplication);
                                   }
                                 },
-                                icon: const Icon(Icons.directions, color: Colors.white, size: 16),
-                                label: const Text(
+                                icon: Icon(Icons.directions, color: Colors.white, size: 16.r),
+                                label: Text(
                                   'Chỉ đường',
-                                  style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                                  style: TextStyle(color: Colors.white, fontSize: 13.sp, fontWeight: FontWeight.bold),
                                 ),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.blue.shade600,
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  padding: EdgeInsets.symmetric(vertical: 14.h),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
                                   elevation: 0,
                                 ),
                               ),
@@ -909,7 +840,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
 
               // ── Nút Hủy phụ khi đã nhận ca ──
               if (_accepted) ...[
-                const SizedBox(height: 16),
+                SizedBox(height: 16.h),
                 Center(
                   child: TextButton(
                     onPressed: _isRevoking ? null : _handleRevokeMission,
@@ -917,7 +848,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                       _isRevoking ? 'Đang hủy...' : 'Tôi không thể tiếp tục, hủy nhiệm vụ',
                       style: TextStyle(
                         color: AppColors.textMuted,
-                        fontSize: 12,
+                        fontSize: 12.sp,
                         decoration: TextDecoration.underline,
                       ),
                     ),
@@ -933,11 +864,11 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
 
   Widget _buildMetricBox(String label, String value, Color color) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(12.w),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.1)),
+        color: color.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: color.withValues(alpha: 0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -949,13 +880,13 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: 4.h),
           Text(
             value,
             style: AppTypography.displayMedium.copyWith(
               color: color,
               fontWeight: FontWeight.w900,
-              fontSize: 20,
+              fontSize: 20.sp,
             ),
           ),
         ],

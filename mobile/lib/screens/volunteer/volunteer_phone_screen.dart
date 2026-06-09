@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../theme/app_theme.dart';
 import '../../services/auth_service.dart';
 import '../../services/api_service.dart';
@@ -146,28 +147,28 @@ class _VolunteerPhoneScreenState extends State<VolunteerPhoneScreen> {
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: EdgeInsets.symmetric(horizontal: 24.w),
           child: Column(
             children: [
-              const SizedBox(height: 40),
+              SizedBox(height: 40.h),
 
               // ── Icon ──
               Container(
-                width: 80,
-                height: 80,
+                width: 80.w,
+                height: 80.w,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20.r),
                   border: Border.all(
-                    color: AppColors.primary.withOpacity(0.3),
-                    width: 1.5,
+                    color: AppColors.primary.withValues(alpha: 0.3),
+                    width: 1.5.w,
                   ),
                 ),
-                child: const Center(
-                  child: Text('🦺', style: TextStyle(fontSize: 40)),
+                child: Center(
+                  child: Text('🦺', style: TextStyle(fontSize: 40.sp)),
                 ),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24.h),
 
               // ── Title ──
               Text(
@@ -176,7 +177,7 @@ class _VolunteerPhoneScreenState extends State<VolunteerPhoneScreen> {
                   color: AppColors.textPrimary,
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8.h),
               Text(
                 'Xác thực SĐT để nhận ca cứu hộ.\nSĐT giúp nạn nhân liên lạc trực tiếp.',
                 style: AppTypography.bodyMedium.copyWith(
@@ -184,38 +185,38 @@ class _VolunteerPhoneScreenState extends State<VolunteerPhoneScreen> {
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 40),
+              SizedBox(height: 40.h),
 
               // ── Phone Input ──
               Container(
                 decoration: BoxDecoration(
                   color: AppColors.surfaceCard,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(16.r),
                   border: Border.all(
                     color: _isValid
                         ? AppColors.primary
                         : AppColors.surfaceBorder,
-                    width: _isValid ? 2 : 1,
+                    width: _isValid ? 2.w : 1.w,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.04),
-                      blurRadius: 16,
-                      offset: const Offset(0, 4),
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 16.r,
+                      offset: Offset(0, 4.h),
                     ),
                   ],
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
                 child: Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12.w,
+                        vertical: 8.h,
                       ),
                       decoration: BoxDecoration(
                         color: AppColors.surfaceElevated,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(8.r),
                       ),
                       child: Text(
                         '🇻🇳 +84',
@@ -225,7 +226,7 @@ class _VolunteerPhoneScreenState extends State<VolunteerPhoneScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12.w),
                     Expanded(
                       child: TextField(
                         controller: _phoneController,
@@ -257,15 +258,15 @@ class _VolunteerPhoneScreenState extends State<VolunteerPhoneScreen> {
                       ),
                     ),
                     if (_isValid)
-                      const Icon(
+                      Icon(
                         Icons.check_circle,
                         color: AppColors.success,
-                        size: 24,
+                        size: 24.r,
                       ),
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12.h),
 
               Text(
                 'Nhập đúng 10 số (bắt đầu bằng 0)',
@@ -273,12 +274,12 @@ class _VolunteerPhoneScreenState extends State<VolunteerPhoneScreen> {
                   color: AppColors.textMuted,
                 ),
               ),
-              const SizedBox(height: 32),
+              SizedBox(height: 32.h),
 
               // ── Continue Button ──
               SizedBox(
                 width: double.infinity,
-                height: 56,
+                height: 56.h,
                 child: ElevatedButton(
                   onPressed: (_isValid && !_isSendingOtp) ? _handleContinue : null,
                   style: ElevatedButton.styleFrom(
@@ -287,16 +288,16 @@ class _VolunteerPhoneScreenState extends State<VolunteerPhoneScreen> {
                         : AppColors.surfaceBorder,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(16.r),
                     ),
                     elevation: _isValid ? 4 : 0,
-                    shadowColor: AppColors.primary.withOpacity(0.4),
+                    shadowColor: AppColors.primary.withValues(alpha: 0.4),
                   ),
                   child: _isSendingOtp
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
+                      ? SizedBox(
+                          width: 24.w,
+                          height: 24.w,
+                          child: const CircularProgressIndicator(
                             color: Colors.white,
                             strokeWidth: 2.5,
                           ),
@@ -304,8 +305,8 @@ class _VolunteerPhoneScreenState extends State<VolunteerPhoneScreen> {
                       : Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.verified_user, size: 20),
-                            const SizedBox(width: 8),
+                            Icon(Icons.verified_user, size: 20.r),
+                            SizedBox(width: 8.w),
                             Text(
                               'XÁC THỰC SĐT',
                               style: AppTypography.labelLarge.copyWith(
@@ -322,22 +323,22 @@ class _VolunteerPhoneScreenState extends State<VolunteerPhoneScreen> {
 
               // ── Info note ──
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16.w),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(12),
+                  color: AppColors.primary.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(12.r),
                   border: Border.all(
-                    color: AppColors.primary.withOpacity(0.15),
+                    color: AppColors.primary.withValues(alpha: 0.15),
                   ),
                 ),
                 child: Row(
                   children: [
                     Icon(
                       Icons.info_outline,
-                      size: 18,
+                      size: 18.r,
                       color: AppColors.primary,
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12.w),
                     Expanded(
                       child: Text(
                         'SĐT được xác thực qua OTP mỗi lần đăng nhập để đảm bảo an toàn.',
@@ -349,7 +350,7 @@ class _VolunteerPhoneScreenState extends State<VolunteerPhoneScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16.h),
             ],
           ),
         ),

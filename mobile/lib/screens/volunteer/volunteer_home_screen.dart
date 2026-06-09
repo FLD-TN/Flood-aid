@@ -20,6 +20,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class VolunteerHomeScreen extends StatefulWidget {
   const VolunteerHomeScreen({super.key});
@@ -370,43 +371,43 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
       markers.add(
         Marker(
           point: LatLng((lat as num).toDouble(), (lon as num).toDouble()),
-          width: 100,
-          height: 80,
+          width: 100.w,
+          height: 80.h,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 32,
-                height: 32,
+                width: 32.w,
+                height: 32.w,
                 decoration: BoxDecoration(
                   color: color,
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2),
+                  border: Border.all(color: Colors.white, width: 2.w),
                   boxShadow: [
                     BoxShadow(
-                      color: color.withOpacity(0.5),
-                      blurRadius: 10,
-                      spreadRadius: 2,
+                      color: color.withValues(alpha: 0.5),
+                      blurRadius: 10.r,
+                      spreadRadius: 2.r,
                     ),
                   ],
                 ),
                 child: Center(
                   child: Text(
                     '!',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
-                      fontSize: 16,
+                      fontSize: 16.sp,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: 4.h),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                 decoration: BoxDecoration(
                   color: color,
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(10.r),
                 ),
                 child: Text(
                   c['ai_summary'] != null
@@ -414,9 +415,9 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                             ? '${(c['ai_summary'] as String).substring(0, 20)}...'
                             : c['ai_summary'] as String
                       : 'SOS',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
-                    fontSize: 9,
+                    fontSize: 9.sp,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -459,13 +460,13 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                       ),
                       // ── SOS Legend ──
                       Positioned(
-                        left: 16,
-                        top: 16,
+                        left: 16.w,
+                        top: 16.h,
                         child: const SosLegendWidget(),
                       ),
                       Positioned(
-                        right: 16,
-                        bottom: constraints.maxHeight * sheetSize + 16,
+                        right: 16.w,
+                        bottom: constraints.maxHeight * sheetSize + 16.h,
                         child: GestureDetector(
                           onTap: () {
                             if (isExpanded) {
@@ -483,16 +484,16 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                             }
                           },
                           child: Container(
-                            width: 44,
-                            height: 44,
+                            width: 44.w,
+                            height: 44.w,
                             decoration: BoxDecoration(
                               color: Colors.white,
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.15),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
+                                  color: Colors.black.withValues(alpha: 0.15),
+                                  blurRadius: 8.r,
+                                  offset: Offset(0, 2.h),
                                 ),
                               ],
                             ),
@@ -501,7 +502,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                                   ? Icons.keyboard_arrow_down
                                   : Icons.keyboard_arrow_up,
                               color: AppColors.alertRed,
-                              size: 28,
+                              size: 28.r,
                             ),
                           ),
                         ),
@@ -547,40 +548,40 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
       },
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [AppColors.alertRed, AppColors.alertRed.withOpacity(0.85)],
+            colors: [AppColors.alertRed, AppColors.alertRed.withValues(alpha: 0.85)],
           ),
         ),
         child: Row(
           children: [
             Container(
-              width: 10, height: 10,
+              width: 10.w, height: 10.w,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: Colors.white,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.white.withOpacity(0.6),
-                    blurRadius: 6,
-                    spreadRadius: 2,
+                    color: Colors.white.withValues(alpha: 0.6),
+                    blurRadius: 6.r,
+                    spreadRadius: 2.r,
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 12),
-            const Expanded(
+            SizedBox(width: 12.w),
+            Expanded(
               child: Text(
                 '🔴 Bạn đang có 1 nhiệm vụ chưa hoàn thành',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 13,
+                  fontSize: 13.sp,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ),
-            const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 14),
+            Icon(Icons.arrow_forward_ios, color: Colors.white, size: 14.r),
           ],
         ),
       ),
@@ -590,12 +591,12 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
   Widget _buildHeader() {
     return Container(
       color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
       child: Row(
         children: [
           GestureDetector(
             onTap: () => Navigator.pop(context),
-            child: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+            child: Icon(Icons.arrow_back, color: AppColors.textPrimary, size: 24.r),
           ),
           const Spacer(),
           Text(
@@ -609,20 +610,20 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
           GestureDetector(
             onTap: _showVolunteerProfile,
             child: Container(
-              width: 36,
-              height: 36,
+              width: 36.w,
+              height: 36.w,
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
+                color: AppColors.primary.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: AppColors.primary.withOpacity(0.3),
-                  width: 1.5,
+                  color: AppColors.primary.withValues(alpha: 0.3),
+                  width: 1.5.w,
                 ),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.person,
                 color: AppColors.primary,
-                size: 20,
+                size: 20.r,
               ),
             ),
           ),
@@ -652,76 +653,76 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
-        padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
+        padding: EdgeInsets.all(24.w),
+        decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             // Drag handle
             Container(
-              width: 40,
-              height: 4,
+              width: 40.w,
+              height: 4.h,
               decoration: BoxDecoration(
                 color: AppColors.surfaceBorder,
-                borderRadius: BorderRadius.circular(2),
+                borderRadius: BorderRadius.circular(2.r),
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24.h),
 
             // Avatar
             Container(
-              width: 72,
-              height: 72,
+              width: 72.w,
+              height: 72.w,
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
+                color: AppColors.primary.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: AppColors.primary.withOpacity(0.3),
-                  width: 2,
+                  color: AppColors.primary.withValues(alpha: 0.3),
+                  width: 2.w,
                 ),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.person,
                 color: AppColors.primary,
-                size: 36,
+                size: 36.r,
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16.h),
 
             Text(
               'Tình nguyện viên',
-              style: AppTypography.headingMedium,
+              style: AppTypography.headingMedium.copyWith(fontSize: 20.sp),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24.h),
 
             // Phone info
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16.w),
               decoration: BoxDecoration(
                 color: AppColors.surfaceElevated,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
                 border: Border.all(color: AppColors.surfaceBorder),
               ),
               child: Row(
                 children: [
                   Container(
-                    width: 40,
-                    height: 40,
+                    width: 40.w,
+                    height: 40.w,
                     decoration: BoxDecoration(
-                      color: AppColors.success.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
+                      color: AppColors.success.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10.r),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.verified,
                       color: AppColors.success,
-                      size: 20,
+                      size: 20.r,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12.w),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -730,7 +731,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                           'Số điện thoại đã xác thực',
                           style: AppTypography.caption,
                         ),
-                        const SizedBox(height: 2),
+                        SizedBox(height: 2.h),
                         Text(
                           phoneDisplay,
                           style: AppTypography.bodyLarge.copyWith(
@@ -745,7 +746,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24.h),
 
             // ── Cài đặt bán kính nhận thông báo ──
             if (volunteerId.isNotEmpty) NotificationSettingsWidget(volunteerId: volunteerId),
@@ -754,7 +755,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
             // Logout button
             SizedBox(
               width: double.infinity,
-              height: 52,
+              height: 52.h,
               child: OutlinedButton.icon(
                 onPressed: () async {
                   Navigator.pop(ctx); // Đóng bottom sheet
@@ -771,7 +772,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                     (route) => false,
                   );
                 },
-                icon: const Icon(Icons.logout, size: 18),
+                icon: Icon(Icons.logout, size: 18.r),
                 label: Text(
                   'Đăng xuất',
                   style: AppTypography.labelMedium.copyWith(
@@ -782,12 +783,12 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                   foregroundColor: AppColors.danger,
                   side: const BorderSide(color: AppColors.danger),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16.h),
           ],
         ),
       ),
@@ -810,12 +811,12 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
         return Container(
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.15),
-                blurRadius: 20,
-                offset: const Offset(0, -4),
+                color: Colors.black.withValues(alpha: 0.15),
+                blurRadius: 20.r,
+                offset: Offset(0, -4.h),
               ),
             ],
           ),
@@ -826,21 +827,21 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
               SliverToBoxAdapter(
                 child: Column(
                   children: [
-                    const SizedBox(height: 10),
+                    SizedBox(height: 10.h),
                     // Drag handle
                     Container(
-                      width: 40,
-                      height: 4,
+                      width: 40.w,
+                      height: 4.h,
                       decoration: BoxDecoration(
                         color: AppColors.surfaceBorder,
-                        borderRadius: BorderRadius.circular(2),
+                        borderRadius: BorderRadius.circular(2.r),
                       ),
                     ),
                     // Collapsed mini-header
                     Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 16.w,
+                        vertical: 12.h,
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -849,32 +850,32 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                             'Hiển thị ${pendingCases.length} kết quả gần đây',
                             style: TextStyle(
                               color: Colors.grey.shade600,
-                              fontSize: 13,
+                              fontSize: 13.sp,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
                           InkWell(
                             onTap: _showFilterBottomSheet,
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(20.r),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 12.w,
+                                vertical: 6.h,
                               ),
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 border: Border.all(color: Colors.grey.shade300),
-                                borderRadius: BorderRadius.circular(20),
+                                borderRadius: BorderRadius.circular(20.r),
                               ),
                               child: Row(
                                 children: [
-                                  Icon(Icons.tune, size: 16, color: Colors.grey.shade700),
-                                  const SizedBox(width: 4),
+                                  Icon(Icons.tune, size: 16.r, color: Colors.grey.shade700),
+                                  SizedBox(width: 4.w),
                                   Text(
                                     'Lọc',
                                     style: TextStyle(
                                       color: Colors.grey.shade700,
-                                      fontSize: 13,
+                                      fontSize: 13.sp,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -893,19 +894,19 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
               // ── Case List ──
               if (_isLoading)
                 SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate((context, index) {
                       return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
+                        padding: EdgeInsets.only(bottom: 12.h),
                         child: Shimmer.fromColors(
                           baseColor: Colors.grey.shade200,
                           highlightColor: Colors.white,
                           child: Container(
-                            height: 180,
+                            height: 180.h,
                             decoration: BoxDecoration(
                               color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(16.r),
                             ),
                           ),
                         ),
@@ -921,10 +922,10 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                       children: [
                         Icon(
                           Icons.check_circle_outline,
-                          size: 48,
-                          color: AppColors.success.withOpacity(0.5),
+                          size: 48.r,
+                          color: AppColors.success.withValues(alpha: 0.5),
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12.h),
                         Text(
                           'Chưa có ca SOS nào',
                           style: AppTypography.bodyMedium.copyWith(
@@ -937,15 +938,15 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                 )
               else
                 SliverPadding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 16.w,
+                    vertical: 8.h,
                   ),
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate((context, index) {
                       final c = _activeCases[index];
                       return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
+                        padding: EdgeInsets.only(bottom: 12.h),
                         child: _buildRequestCard(c),
                       );
                     }, childCount: _activeCases.length),
@@ -955,74 +956,6 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildQuickFilterChips() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          _buildFilterChip('Tất cả', _currentFilter == null, () {
-            setState(() { _currentFilter = null; _isLoading = true; _skipNextNotification = true; });
-            _fetchCasesOnly();
-          }),
-          const SizedBox(width: 8),
-          _buildFilterChip('Khẩn cấp', _currentFilter?.urgencyLevels.contains(4) == true || _currentFilter?.urgencyLevels.contains(5) == true, () {
-            setState(() { 
-              _currentFilter = const FilterParams(urgencyLevels: [4, 5], maxDistance: 50.0);
-              _isLoading = true; 
-              _skipNextNotification = true;
-            });
-            _fetchCasesOnly();
-          }),
-          const SizedBox(width: 8),
-          _buildFilterChip('< 5km', _currentFilter?.maxDistance == 5.0, () {
-            setState(() { 
-              _currentFilter = const FilterParams(urgencyLevels: [], maxDistance: 5.0);
-              _isLoading = true; 
-              _skipNextNotification = true;
-            });
-            _fetchCasesOnly();
-          }),
-          const SizedBox(width: 8),
-          ActionChip(
-            label: const Row(
-              children: [
-                Icon(Icons.tune, size: 14, color: Colors.white),
-                SizedBox(width: 4),
-                Text('Tùy chỉnh', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
-              ],
-            ),
-            backgroundColor: AppColors.textPrimary,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Colors.transparent)),
-            onPressed: _showFilterBottomSheet,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFilterChip(String label, bool isSelected, VoidCallback onTap) {
-    return FilterChip(
-      selected: isSelected,
-      label: Text(
-        label,
-        style: TextStyle(
-          color: isSelected ? Colors.white : AppColors.textPrimary,
-          fontWeight: FontWeight.bold,
-          fontSize: 13,
-        ),
-      ),
-      backgroundColor: Colors.white,
-      selectedColor: AppColors.primary,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: isSelected ? AppColors.primary : Colors.grey.shade300),
-      ),
-      showCheckmark: false,
-      onSelected: (_) => onTap(),
     );
   }
 
@@ -1097,13 +1030,13 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(color: Colors.grey.shade200),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10.r,
+            offset: Offset(0, 4.h),
           ),
         ],
       ),
@@ -1112,14 +1045,14 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
         children: [
           // Thanh màu trên cùng
           Container(
-            height: 4,
+            height: 4.h,
             decoration: BoxDecoration(
               color: color,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1129,15 +1062,15 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                   children: [
                     // Icon đại diện
                     Container(
-                      width: 44,
-                      height: 44,
+                      width: 44.w,
+                      height: 44.w,
                       decoration: BoxDecoration(
                         color: iconBgColor,
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(cardIcon, color: iconColor, size: 24),
+                      child: Icon(cardIcon, color: iconColor, size: 24.r),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12.w),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1148,9 +1081,9 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                               Expanded(
                                 child: Text(
                                   summary,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontWeight: FontWeight.w700,
-                                    fontSize: 16,
+                                    fontSize: 16.sp,
                                     color: Colors.black87,
                                     height: 1.35,
                                   ),
@@ -1158,36 +1091,36 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              const SizedBox(width: 8),
+                              SizedBox(width: 8.w),
                               // Badge mức khẩn cấp (ở góc phải)
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                                 decoration: BoxDecoration(
-                                  color: color.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: color.withOpacity(0.3)),
+                                  color: color.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(6.r),
+                                  border: Border.all(color: color.withValues(alpha: 0.3)),
                                 ),
                                 child: Text(
                                   label,
                                   style: TextStyle(
                                     color: color,
                                     fontWeight: FontWeight.w800,
-                                    fontSize: 10,
+                                    fontSize: 10.sp,
                                   ),
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 6),
+                          SizedBox(height: 6.h),
                           Row(
                             children: [
-                              Icon(Icons.access_time, size: 14, color: Colors.grey.shade500),
-                              const SizedBox(width: 4),
+                              Icon(Icons.access_time, size: 14.r, color: Colors.grey.shade500),
+                              SizedBox(width: 4.w),
                               Text(
                                 timeSent.isNotEmpty ? '$timeSent · $timeAgo' : timeAgo,
                                 style: TextStyle(
                                   color: Colors.grey.shade500,
-                                  fontSize: 12,
+                                  fontSize: 12.sp,
                                 ),
                               ),
                             ],
@@ -1198,7 +1131,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                   ],
                 ),
 
-                const SizedBox(height: 14),
+                SizedBox(height: 14.h),
 
                 // ── Row 3: Khoảng cách + ETA + Số TNV (Grid 3 cột) ──
                 Row(
@@ -1212,7 +1145,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                         label: 'khoảng cách',
                       ),
                     ),
-                    Container(width: 1, height: 32, color: Colors.grey.shade200),
+                    Container(width: 1.w, height: 32.h, color: Colors.grey.shade200),
                     // ETA
                     Expanded(
                       child: _buildStatItem(
@@ -1222,7 +1155,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                         label: 'di chuyển',
                       ),
                     ),
-                    Container(width: 1, height: 32, color: Colors.grey.shade200),
+                    Container(width: 1.w, height: 32.h, color: Colors.grey.shade200),
                     // Số TNV
                     Expanded(
                       child: _buildStatItem(
@@ -1235,24 +1168,24 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                   ],
                 ),
 
-                const SizedBox(height: 14),
+                SizedBox(height: 14.h),
 
                 // ── Row 4: SĐT nạn nhân (ẩn) ──
                 if (maskedPhone.isNotEmpty)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                     decoration: BoxDecoration(
                       color: Colors.grey.shade50,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(8.r),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.phone_locked, size: 16, color: Colors.grey.shade400),
-                        const SizedBox(width: 8),
+                        Icon(Icons.phone_locked, size: 16.r, color: Colors.grey.shade400),
+                        SizedBox(width: 8.w),
                         Text(
                           maskedPhone,
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 14.sp,
                             fontWeight: FontWeight.w600,
                             color: Colors.grey.shade500,
                             letterSpacing: 1.5,
@@ -1262,7 +1195,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                         Text(
                           'Nhận ca để gọi',
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 11.sp,
                             color: Colors.grey.shade400,
                             fontStyle: FontStyle.italic,
                           ),
@@ -1273,36 +1206,36 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
 
                 // ── Tags ──
                 if (tags.isNotEmpty) ...[
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12.h),
                   Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
+                    spacing: 6.w,
+                    runSpacing: 6.h,
                     children: tags.map((tag) {
                       Color bgColor = Colors.grey.shade100;
                       Color textColor = Colors.grey.shade700;
                       if (tag.toLowerCase().contains('trẻ em') || tag.toLowerCase().contains('người già')) {
-                        bgColor = AppColors.alertRed.withOpacity(0.1);
+                        bgColor = AppColors.alertRed.withValues(alpha: 0.1);
                         textColor = AppColors.alertRed;
                       } else if (tag.toLowerCase().contains('y tế')) {
-                        bgColor = Colors.blue.withOpacity(0.1);
+                        bgColor = Colors.blue.withValues(alpha: 0.1);
                         textColor = Colors.blue;
                       }
                       return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                         decoration: BoxDecoration(
                           color: bgColor,
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(10.r),
                         ),
                         child: Text(
                           tag,
-                          style: TextStyle(color: textColor, fontSize: 11, fontWeight: FontWeight.bold),
+                          style: TextStyle(color: textColor, fontSize: 11.sp, fontWeight: FontWeight.bold),
                         ),
                       );
                     }).toList(),
                   ),
                 ],
 
-                const SizedBox(height: 16),
+                SizedBox(height: 16.h),
 
                 // ── Nút Xem ca ──
                 SizedBox(
@@ -1314,15 +1247,15 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      padding: EdgeInsets.symmetric(vertical: 14.h),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
+                        borderRadius: BorderRadius.circular(24.r),
                       ),
                       elevation: 0,
                     ),
-                    child: const Text(
+                    child: Text(
                       'Xem Hồ Sơ Nhiệm Vụ  ▸',
-                      style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
@@ -1343,15 +1276,15 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
   }) {
     return Column(
       children: [
-        Icon(icon, size: 18, color: iconColor),
-        const SizedBox(height: 4),
+        Icon(icon, size: 18.r, color: iconColor),
+        SizedBox(height: 4.h),
         Text(
           value,
-          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Colors.black87),
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.sp, color: Colors.black87),
         ),
         Text(
           label,
-          style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
+          style: TextStyle(fontSize: 10.sp, color: Colors.grey.shade500),
         ),
       ],
     );
@@ -1401,33 +1334,33 @@ class _NotificationSettingsWidgetState extends State<NotificationSettingsWidget>
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) return const SizedBox(height: 80, child: Center(child: CircularProgressIndicator()));
+    if (_isLoading) return SizedBox(height: 80.h, child: const Center(child: CircularProgressIndicator()));
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: AppColors.surfaceElevated,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         border: Border.all(color: AppColors.surfaceBorder),
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: EdgeInsets.all(8.w),
             decoration: BoxDecoration(
               color: _enabled
-                  ? AppColors.primary.withOpacity(0.1)
-                  : Colors.grey.withOpacity(0.1),
+                  ? AppColors.primary.withValues(alpha: 0.1)
+                  : Colors.grey.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(
               _enabled ? Icons.notifications_active : Icons.notifications_off,
               color: _enabled ? AppColors.primary : AppColors.textMuted,
-              size: 20,
+              size: 20.r,
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12.w),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1439,7 +1372,7 @@ class _NotificationSettingsWidgetState extends State<NotificationSettingsWidget>
                     color: AppColors.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 2),
+                SizedBox(height: 2.h),
                 Text(
                   _enabled
                       ? 'Bạn sẽ được thông báo khi có ca cứu hộ mới'
