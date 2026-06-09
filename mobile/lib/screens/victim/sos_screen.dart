@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart' hide Path;
@@ -205,14 +206,14 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
                   _buildHeader(),
                   Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      padding: EdgeInsets.symmetric(horizontal: 20.w),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           _buildTitle(),
-                          const SizedBox(height: 64),
+                          SizedBox(height: 64.h),
                           _buildGiantSosButton(),
-                          const SizedBox(height: 100), // Khoảng trống cho BottomBar
+                          SizedBox(height: 100.h), // Khoảng trống cho BottomBar
                         ],
                       ),
                     ),
@@ -221,8 +222,8 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
               ),
               if (_hasActiveCase)
                 Positioned(
-                  left: 16,
-                  bottom: 80, // Đẩy lên để tránh bị che bởi BottomBar
+                  left: 16.w,
+                  bottom: 80.h, // Đẩy lên để tránh bị che bởi BottomBar
                   child: _buildActiveCaseBanner(),
                 ),
             ],
@@ -237,7 +238,7 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -285,7 +286,7 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
     // A slightly lighter red for the main button
     final lighterRed = const Color(0xFFEF5350); 
     // Outer halo ring color
-    final outerRingColor = lighterRed.withOpacity(0.25);
+    final outerRingColor = lighterRed.withValues(alpha: 0.25);
     
     final innerColor = _hasActiveCase ? Colors.grey : lighterRed;
     final ringColor = _hasActiveCase ? Colors.grey.shade300 : outerRingColor;
@@ -306,15 +307,15 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
               child: child,
             ),
             child: Container(
-              width: 280,
-              height: 280,
+              width: 280.w,
+              height: 280.w,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: ringColor, // Vòng halo ngoài cùng
                 boxShadow: [
                   if (!_hasActiveCase)
                     BoxShadow(
-                      color: lighterRed.withOpacity(0.4),
+                      color: lighterRed.withValues(alpha: 0.4),
                       blurRadius: 30,
                       spreadRadius: 5,
                     ),
@@ -325,8 +326,8 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
           
           // Vòng trong: Tĩnh, không thay đổi kích thước
           Container(
-            width: 220,
-            height: 220,
+            width: 220.w,
+            height: 220.w,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: innerColor, // Nút chính bên trong
@@ -341,11 +342,11 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
                     'SOS',
                     style: AppTypography.displayLarge.copyWith(
                       color: Colors.white,
-                      fontSize: 64, // Giảm một chút cho cân đối với nút
+                      fontSize: 64.sp, // Giảm một chút cho cân đối với nút
                       height: 1.0,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8.h),
                   Text(
                     _hasActiveCase ? 'ĐÃ GỬI' : 'NHẤN ĐỂ TẠO SOS',
                     style: AppTypography.labelMedium.copyWith(
@@ -415,15 +416,15 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
 
   Widget _buildSosFab() {
     return Container(
-      width: 68, // To hơn một xíu để nhìn rõ hiệu ứng lõm
-      height: 68,
+      width: 68.w, // To hơn một xíu để nhìn rõ hiệu ứng lõm
+      height: 68.w,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: Colors.white,
         border: Border.all(color: AppColors.alertRed, width: 3.5),
         boxShadow: [
           BoxShadow(
-            color: AppColors.alertRed.withOpacity(0.4),
+            color: AppColors.alertRed.withValues(alpha: 0.4),
             blurRadius: 12,
             spreadRadius: 3,
             offset: const Offset(0, 6),
@@ -462,73 +463,78 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
       child: SizedBox(
         height: 60,
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             // Trái
-            Row(
-              children: [
-                _buildBottomNavItem(
-                  icon: Icons.map_outlined,
-                  label: 'Bản đồ',
-                  isActive: true,
-                  onTap: () {
-                    if (_activeCaseId != null) {
+            Expanded(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildBottomNavItem(
+                    icon: Icons.map_outlined,
+                    label: 'Bản đồ',
+                    isActive: true,
+                    onTap: () {
+                      if (_activeCaseId != null) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => TrackingScreen(
+                              caseId: _activeCaseId!,
+                              victimLat: _activeLat,
+                              victimLon: _activeLon,
+                            ),
+                          ),
+                        ).then((_) => _checkActiveCase());
+                      } else {
+                        ToastService.show(
+                          context: context,
+                          type: ToastType.warning,
+                          message: 'Bạn chưa có ca SOS nào.',
+                        );
+                      }
+                    },
+                  ),
+                  _buildBottomNavItem(
+                    icon: LucideIcons.history,
+                    label: 'Lịch sử',
+                    isActive: false,
+                    onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder: (_) => TrackingScreen(
-                            caseId: _activeCaseId!,
-                            victimLat: _activeLat,
-                            victimLon: _activeLon,
-                          ),
-                        ),
-                      ).then((_) => _checkActiveCase());
-                    } else {
+                        MaterialPageRoute(builder: (_) => const SosHistoryScreen()),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+            // Khoảng trống cho nút SOS ở giữa
+            SizedBox(width: 64.w), 
+            // Phải
+            Expanded(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildBottomNavItem(
+                    icon: Icons.notifications_none,
+                    label: 'Thông báo',
+                    isActive: false,
+                    onTap: () {
                       ToastService.show(
                         context: context,
-                        type: ToastType.warning,
-                        message: 'Bạn chưa có ca SOS nào.',
+                        type: ToastType.info,
+                        message: 'Tính năng Thông báo đang phát triển',
                       );
-                    }
-                  },
-                ),
-                const SizedBox(width: 8),
-                _buildBottomNavItem(
-                  icon: LucideIcons.history,
-                  label: 'Lịch sử',
-                  isActive: false,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const SosHistoryScreen()),
-                    );
-                  },
-                ),
-              ],
-            ),
-            // Phải
-            Row(
-              children: [
-                _buildBottomNavItem(
-                  icon: Icons.notifications_none,
-                  label: 'Thông báo',
-                  isActive: false,
-                  onTap: () {
-                    ToastService.show(
-                      context: context,
-                      type: ToastType.info,
-                      message: 'Tính năng Thông báo đang phát triển',
-                    );
-                  },
-                ),
-                const SizedBox(width: 8),
-                _buildBottomNavItem(
-                  icon: Icons.person_outline,
-                  label: 'Cá nhân',
-                  isActive: false,
-                  onTap: _showVictimProfile,
-                ),
-              ],
+                    },
+                  ),
+                  _buildBottomNavItem(
+                    icon: Icons.person_outline,
+                    label: 'Cá nhân',
+                    isActive: false,
+                    onTap: _showVictimProfile,
+                  ),
+                ],
+              ),
             ),
           ],
         ),

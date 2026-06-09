@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
@@ -134,7 +135,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: EdgeInsets.all(16.w),
             child: Row(
               children: [
                 Expanded(
@@ -144,12 +145,12 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                       hintText: 'Tìm kiếm địa điểm...',
                       prefixIcon: const Icon(Icons.search),
                       suffixIcon: _isSearching
-                          ? const Padding(
-                              padding: EdgeInsets.all(12.0),
+                          ? Padding(
+                              padding: EdgeInsets.all(12.w),
                               child: SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                width: 16.w,
+                                height: 16.w,
+                                child: const CircularProgressIndicator(strokeWidth: 2),
                               ),
                             )
                           : IconButton(
@@ -162,7 +163,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                     onSubmitted: (_) => _searchLocation(),
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8.w),
                 IconButton(
                   onPressed: _getCurrentLocation,
                   icon: const Icon(Icons.my_location, color: AppColors.primary),
@@ -195,12 +196,12 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                         markers: [
                           Marker(
                             point: _selectedLocation!,
-                            width: 80,
-                            height: 80,
-                            child: const Icon(
+                            width: 80.w,
+                            height: 80.w,
+                            child: Icon(
                               Icons.location_on,
                               color: AppColors.alertRed,
-                              size: 48,
+                              size: 48.r,
                             ),
                           ),
                         ],
@@ -212,18 +213,18 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                 if (_isLoadingLocation)
                   const Center(child: CircularProgressIndicator()),
                 Positioned(
-                  bottom: 16,
-                  left: 16,
-                  right: 16,
+                  bottom: 16.h,
+                  left: 16.w,
+                  right: 16.w,
                   child: Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: EdgeInsets.all(12.w),
                     decoration: BoxDecoration(
                       color: AppColors.surfaceCard,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(8.r),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 10,
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 10.r,
                         )
                       ],
                     ),

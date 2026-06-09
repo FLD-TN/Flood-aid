@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../theme/app_theme.dart';
 import '../../services/toast_service.dart';
 import '../../services/api_service.dart';
@@ -440,47 +441,47 @@ class _TrackingScreenState extends State<TrackingScreen> {
       // Victim marker (red)
       Marker(
         point: LatLng(_victimLat, _victimLon),
-        width: 90,
-        height: 90,
+        width: 90.w,
+        height: 90.w,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 36,
-              height: 36,
+              width: 36.w,
+              height: 36.w,
               decoration: BoxDecoration(
                 color: AppColors.alertRed,
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.white, width: 3),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.alertRed.withOpacity(0.4),
-                    blurRadius: 12,
-                    spreadRadius: 2,
+                    color: AppColors.alertRed.withValues(alpha: 0.4),
+                    blurRadius: 12.r,
+                    spreadRadius: 2.r,
                   ),
                 ],
               ),
-              child: Icon(Icons.person, color: AppColors.alertRed, size: 20),
+              child: Icon(Icons.person, color: AppColors.alertRed, size: 20.r),
             ),
-            const SizedBox(height: 6),
+            SizedBox(height: 6.h),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(20.r),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 4.r,
+                    offset: Offset(0, 2.h),
                   ),
                 ],
               ),
-              child: const Text(
+              child: Text(
                 'Vị trí của bạn',
                 style: TextStyle(
                   color: AppColors.textPrimary,
-                  fontSize: 11,
+                  fontSize: 11.sp,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -495,51 +496,51 @@ class _TrackingScreenState extends State<TrackingScreen> {
       markers.add(
         Marker(
           point: LatLng(_tnvLat!, _tnvLon!),
-          width: 90,
-          height: 90,
+          width: 90.w,
+          height: 90.w,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 36,
-                height: 36,
+                width: 36.w,
+                height: 36.w,
                 decoration: BoxDecoration(
                   color: AppColors.primary,
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.white, width: 3),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.primary.withOpacity(0.4),
-                      blurRadius: 12,
-                      spreadRadius: 2,
+                      color: AppColors.primary.withValues(alpha: 0.4),
+                      blurRadius: 12.r,
+                      spreadRadius: 2.r,
                     ),
                   ],
                 ),
-              child: const Icon(
+              child: Icon(
                   Icons.local_shipping_rounded,
                   color: Colors.white,
-                  size: 20,
+                  size: 20.r,
                 ),
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: 6.h),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
                 decoration: BoxDecoration(
                   color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(20.r),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.primary.withOpacity(0.4),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
+                      color: AppColors.primary.withValues(alpha: 0.4),
+                      blurRadius: 6.r,
+                      offset: Offset(0, 2.h),
                     ),
                   ],
                 ),
-                child: const Text(
+                child: Text(
                   'Đội Cứu Hộ',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 11,
+                    fontSize: 11.sp,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -591,7 +592,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
                 children: [
                   // ── Map (full area with bottom padding) ──
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 280), // Nhường chỗ cho Status Board
+                    padding: EdgeInsets.only(bottom: 280.h), // Nhường chỗ cho Status Board
                     child: FloodAidMap(
                       mapController: _mapController,
                       initialCenter: LatLng(_victimLat, _victimLon),
@@ -602,8 +603,8 @@ class _TrackingScreenState extends State<TrackingScreen> {
                   ),
                   // ── SOS Legend ──
                   Positioned(
-                    left: 16,
-                    top: 16,
+                    left: 16.w,
+                    top: 16.h,
                     child: const SosLegendWidget(),
                   ),
                   // ── Fixed Bottom Status Board ──
@@ -624,7 +625,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
   Widget _buildHeader() {
     return Container(
       color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
       child: Row(
         children: [
           GestureDetector(
@@ -646,29 +647,29 @@ class _TrackingScreenState extends State<TrackingScreen> {
           const Spacer(),
           // Live indicator
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
             decoration: BoxDecoration(
-              color: AppColors.alertRed.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
+              color: AppColors.alertRed.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12.r),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  width: 6,
-                  height: 6,
+                  width: 6.w,
+                  height: 6.w,
                   decoration: const BoxDecoration(
                     shape: BoxShape.circle,
                     color: AppColors.alertRed,
                   ),
                 ),
-                const SizedBox(width: 4),
+                SizedBox(width: 4.w),
                 Text(
                   'LIVE',
                   style: AppTypography.caption.copyWith(
                     color: AppColors.alertRed,
                     fontWeight: FontWeight.bold,
-                    fontSize: 10,
+                    fontSize: 10.sp,
                   ),
                 ),
               ],
@@ -692,36 +693,36 @@ class _TrackingScreenState extends State<TrackingScreen> {
       width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32.r)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.12),
-            blurRadius: 24,
-            offset: const Offset(0, -8),
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 24.r,
+            offset: Offset(0, -8.h),
           ),
         ],
       ),
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+          padding: EdgeInsets.fromLTRB(24.w, 32.h, 24.w, 24.h),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // ── Status Badge ──
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                 decoration: BoxDecoration(
-                  color: config.color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(100),
-                  border: Border.all(color: config.color.withOpacity(0.2)),
+                  color: config.color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(100.r),
+                  border: Border.all(color: config.color.withValues(alpha: 0.2)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(statusIcon, color: config.color, size: 20),
-                    const SizedBox(width: 8),
+                    Icon(statusIcon, color: config.color, size: 20.r),
+                    SizedBox(width: 8.w),
                     Text(
                       _status == 'pending' ? 'Đang tìm kiếm cứu hộ' : 'Đội cứu hộ đang đến',
                       style: AppTypography.labelMedium.copyWith(
@@ -732,7 +733,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24.h),
 
               // ── Hero Metrics (Chỉ hiện khi có TNV) ──
               if (_hasVolunteer && _distanceM != null)
@@ -752,13 +753,13 @@ class _TrackingScreenState extends State<TrackingScreen> {
                               letterSpacing: 0.5,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: 4.h),
                           Text(
                             _calculateEta(_distanceM!).replaceAll('⏱ ', '').replaceAll(' Ước tính ~', ''),
                             style: AppTypography.displayMedium.copyWith(
                               color: AppColors.textPrimary,
                               fontWeight: FontWeight.w900,
-                              fontSize: 32,
+                              fontSize: 32.sp,
                             ),
                           ),
                         ],
@@ -775,7 +776,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
                             letterSpacing: 0.5,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        SizedBox(height: 4.h),
                         Text(
                           _distanceM! >= 1000
                               ? '${(_distanceM! / 1000).toStringAsFixed(1)} km'
@@ -792,7 +793,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
               
               if (!_hasVolunteer)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
+                  padding: EdgeInsets.only(bottom: 16.h),
                   child: Text(
                     'Hệ thống đang phát tín hiệu khẩn cấp đến các đội cứu hộ gần nhất trong khu vực của bạn. Vui lòng giữ vị trí và điện thoại bên mình.',
                     style: AppTypography.bodyMedium.copyWith(height: 1.6),
@@ -810,7 +811,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
                 },
               ),
 
-              const SizedBox(height: 16),
+              SizedBox(height: 16.h),
 
               // ── Cancel Button ──
               SizedBox(
@@ -818,23 +819,23 @@ class _TrackingScreenState extends State<TrackingScreen> {
                 child: TextButton(
                   onPressed: _isCancelling ? null : _handleCancelWithConfirm,
                   style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    padding: EdgeInsets.symmetric(vertical: 14.h),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(12.r),
                       side: BorderSide(color: Colors.grey.shade300),
                     ),
                   ),
                   child: _isCancelling
-                    ? const SizedBox(
-                        width: 20, height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                    ? SizedBox(
+                        width: 20.w, height: 20.w,
+                        child: const CircularProgressIndicator(strokeWidth: 2),
                       )
                     : Text(
                         'Huỷ tín hiệu SOS',
                         style: TextStyle(
                           color: AppColors.textMuted,
                           fontWeight: FontWeight.w600,
-                          fontSize: 14,
+                          fontSize: 14.sp,
                         ),
                       ),
                 ),

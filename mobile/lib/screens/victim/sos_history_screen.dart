@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
 
@@ -59,8 +60,8 @@ class SosHistoryItem {
 
     return SosHistoryItem(
       id: json['id'] ?? '',
-      createdAt: DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
-      resolvedAt: json['resolved_at'] != null ? DateTime.tryParse(json['resolved_at']) : null,
+      createdAt: (DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now()).toLocal(),
+      resolvedAt: json['resolved_at'] != null ? DateTime.tryParse(json['resolved_at'])?.toLocal() : null,
       description: json['description'] ?? json['text_raw'] ?? '',
       summary: json['summary'] ?? json['summary_1line'] ?? '',
       tags: parsedTags,
@@ -138,7 +139,7 @@ class _SosHistoryScreenState extends State<SosHistoryScreen> {
                     child: _filteredData.isEmpty
                         ? _buildEmptyState()
                         : ListView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                             itemCount: _filteredData.length,
                             itemBuilder: (context, index) {
                               return _buildHistoryCard(_filteredData[index]);
@@ -157,7 +158,7 @@ class _SosHistoryScreenState extends State<SosHistoryScreen> {
       elevation: 0,
       scrolledUnderElevation: 0,
       leading: IconButton(
-        icon: const Icon(LucideIcons.chevronLeft, color: AppColors.textPrimary, size: 28),
+        icon: Icon(LucideIcons.chevronLeft, color: AppColors.textPrimary, size: 28.r),
         onPressed: () => Navigator.pop(context),
       ),
       title: Text(
@@ -171,30 +172,30 @@ class _SosHistoryScreenState extends State<SosHistoryScreen> {
   Widget _buildFilters() {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
       child: Row(
         children: _filters.map((filter) {
           final isSelected = filter == _selectedFilter;
           return Padding(
-            padding: const EdgeInsets.only(right: 8),
+            padding: EdgeInsets.only(right: 8.w),
             child: InkWell(
               onTap: () => setState(() => _selectedFilter = filter),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(20.r),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
                 decoration: BoxDecoration(
                   color: isSelected ? AppColors.textPrimary : Colors.white,
                   border: Border.all(
                     color: isSelected ? AppColors.textPrimary : AppColors.surfaceBorder,
                   ),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(20.r),
                 ),
                 child: Text(
                   filter,
                   style: TextStyle(
                     color: isSelected ? Colors.white : AppColors.textSecondary,
                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                    fontSize: 14,
+                    fontSize: 14.sp,
                   ),
                 ),
               ),
@@ -207,16 +208,16 @@ class _SosHistoryScreenState extends State<SosHistoryScreen> {
 
   Widget _buildHistoryCard(SosHistoryItem item) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.surfaceBorder.withOpacity(0.5)),
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(color: AppColors.surfaceBorder.withValues(alpha: 0.5)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10.r,
+            offset: Offset(0, 4.h),
           ),
         ],
       ),
@@ -225,23 +226,23 @@ class _SosHistoryScreenState extends State<SosHistoryScreen> {
         children: [
           // Header: ID & Status
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Row(
                   children: [
-                    const Icon(LucideIcons.hash, size: 16, color: AppColors.textMuted),
-                    const SizedBox(width: 4),
+                    Icon(LucideIcons.hash, size: 16.r, color: AppColors.textMuted),
+                    SizedBox(width: 4.w),
                     Text(
                       item.id.length > 8 ? item.id.substring(0, 8).toUpperCase() : item.id,
                       style: AppTypography.mono.copyWith(
                         fontWeight: FontWeight.bold,
                         color: AppColors.textPrimary,
-                        fontSize: 15,
+                        fontSize: 15.sp,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8.w),
                     _buildUrgencyBadge(item.urgencyLevel),
                   ],
                 ),
@@ -253,7 +254,7 @@ class _SosHistoryScreenState extends State<SosHistoryScreen> {
           
           // Body: Summary, Time, Tags
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -262,8 +263,8 @@ class _SosHistoryScreenState extends State<SosHistoryScreen> {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(LucideIcons.fileText, size: 18, color: AppColors.textMuted),
-                      const SizedBox(width: 12),
+                      Icon(LucideIcons.fileText, size: 18.r, color: AppColors.textMuted),
+                      SizedBox(width: 12.w),
                       Expanded(
                         child: Text(
                           item.summary,
@@ -274,13 +275,13 @@ class _SosHistoryScreenState extends State<SosHistoryScreen> {
                       ),
                     ],
                   ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12.h),
                 // Timestamp
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(LucideIcons.clock, size: 18, color: AppColors.textMuted),
-                    const SizedBox(width: 12),
+                    Icon(LucideIcons.clock, size: 18.r, color: AppColors.textMuted),
+                    SizedBox(width: 12.w),
                     Text(
                       _formatDate(item.createdAt),
                       style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary),
@@ -289,26 +290,26 @@ class _SosHistoryScreenState extends State<SosHistoryScreen> {
                 ),
                 // Tags
                 if (item.tags.isNotEmpty) ...[
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16.h),
                   Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
+                    spacing: 8.w,
+                    runSpacing: 8.h,
                     children: item.tags.map((tag) {
                       final label = _tagLabels[tag] ?? tag;
                       Color bgColor = Colors.grey.shade100;
                       Color textColor = Colors.grey.shade700;
                       if (label.toLowerCase().contains('trẻ em') || label.toLowerCase().contains('người già')) {
-                        bgColor = AppColors.alertRed.withOpacity(0.1);
+                        bgColor = AppColors.alertRed.withValues(alpha: 0.1);
                         textColor = AppColors.alertRed;
                       } else if (label.toLowerCase().contains('y tế')) {
-                        bgColor = Colors.blue.withOpacity(0.1);
+                        bgColor = Colors.blue.withValues(alpha: 0.1);
                         textColor = Colors.blue;
                       }
                       return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
                         decoration: BoxDecoration(
                           color: bgColor,
-                          borderRadius: BorderRadius.circular(10), // Giống giao diện TNV
+                          borderRadius: BorderRadius.circular(10.r), // Giống giao diện TNV
                         ),
                         child: Text(
                           label,
@@ -328,22 +329,22 @@ class _SosHistoryScreenState extends State<SosHistoryScreen> {
           // Footer: Volunteer Info
           if (item.volunteerName != null && item.volunteerName!.isNotEmpty)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: const BoxDecoration(
-                color: Color(0xFFF9FAFB),
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF9FAFB),
                 borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(16),
-                  bottomRight: Radius.circular(16),
+                  bottomLeft: Radius.circular(16.r),
+                  bottomRight: Radius.circular(16.r),
                 ),
               ),
               child: Row(
                 children: [
                   CircleAvatar(
-                    radius: 14,
+                    radius: 14.r,
                     backgroundColor: AppColors.surfaceBorder,
-                    child: const Icon(LucideIcons.user, size: 14, color: AppColors.textMuted),
+                    child: Icon(LucideIcons.user, size: 14.r, color: AppColors.textMuted),
                   ),
-                  const SizedBox(width: 10),
+                  SizedBox(width: 10.w),
                   Text(
                     'Được hỗ trợ bởi: ',
                     style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted),
@@ -400,21 +401,21 @@ class _SosHistoryScreenState extends State<SosHistoryScreen> {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.r),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: textColor),
-          const SizedBox(width: 4),
+          Icon(icon, size: 14.r, color: textColor),
+          SizedBox(width: 4.w),
           Text(
             label,
             style: TextStyle(
               color: textColor,
-              fontSize: 12,
+              fontSize: 12.sp,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -450,17 +451,17 @@ class _SosHistoryScreenState extends State<SosHistoryScreen> {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        border: Border.all(color: color.withOpacity(0.5)),
-        borderRadius: BorderRadius.circular(6),
+        color: color.withValues(alpha: 0.1),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
+        borderRadius: BorderRadius.circular(6.r),
       ),
       child: Text(
         label,
         style: TextStyle(
           color: color,
-          fontSize: 10,
+          fontSize: 10.sp,
           fontWeight: FontWeight.bold,
         ),
       ),
@@ -476,20 +477,20 @@ class _SosHistoryScreenState extends State<SosHistoryScreen> {
           child: Column(
             children: [
               Container(
-                padding: const EdgeInsets.all(24),
+                padding: EdgeInsets.all(24.w),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 20,
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 20.r,
                     )
                   ],
                 ),
-                child: const Icon(LucideIcons.history, size: 48, color: AppColors.textMuted),
+                child: Icon(LucideIcons.history, size: 48.r, color: AppColors.textMuted),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24.h),
               Text(
                 'Không có lịch sử',
                 style: AppTypography.headingMedium.copyWith(color: AppColors.textPrimary),

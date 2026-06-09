@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../theme/app_theme.dart';
 import '../../services/auth_service.dart';
 import '../../services/toast_service.dart';
@@ -161,45 +162,45 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: EdgeInsets.symmetric(horizontal: 24.w),
           child: Column(
             children: [
-              const SizedBox(height: 20),
+              SizedBox(height: 20.h),
               
               // ── Icon ──
               Container(
-                width: 80,
-                height: 80,
+                width: 80.w,
+                height: 80.w,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20.r),
                   border: Border.all(
-                    color: AppColors.primary.withOpacity(0.3),
+                    color: AppColors.primary.withValues(alpha: 0.3),
                     width: 1.5,
                   ),
                 ),
-                child: const Center(
+                child: Center(
                   child: Icon(
                     Icons.message,
-                    size: 40,
+                    size: 40.r,
                     color: AppColors.primary,
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24.h),
               
               Text(
                 'Nhập mã OTP',
                 style: AppTypography.displayMedium,
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8.h),
               
               Text(
                 'Mã 6 số đã được gửi đến số\n${_formatHiddenPhone(widget.phoneNumber)}',
                 style: AppTypography.bodyMedium,
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 40),
+              SizedBox(height: 40.h),
               
               // Hidden TextField overlapping with custom UI
               Stack(
@@ -238,12 +239,12 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                         bool isFocused = _otpController.text.length == index && _focusNode.hasFocus;
                         
                         return Container(
-                          width: 48,
-                          height: 56,
+                          width: 48.w,
+                          height: 56.h,
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
                             color: AppColors.surfaceCard,
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(8.r),
                             border: Border.all(
                               color: isFocused ? AppColors.primary : AppColors.surfaceBorder,
                               width: isFocused ? 2 : 1,
@@ -261,7 +262,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
               ),
               
               if (_errorMessage.isNotEmpty) ...[
-                const SizedBox(height: 16),
+                SizedBox(height: 16.h),
                 Text(
                   _errorMessage,
                   style: AppTypography.bodySmall.copyWith(color: AppColors.danger),
@@ -269,7 +270,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                 ),
               ],
               
-              const SizedBox(height: 32),
+              SizedBox(height: 32.h),
               
               if (_isLoading)
                 const CircularProgressIndicator(color: AppColors.primary)

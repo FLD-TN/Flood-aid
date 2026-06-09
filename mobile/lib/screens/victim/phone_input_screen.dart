@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../theme/app_theme.dart';
 import '../../services/auth_service.dart';
@@ -140,32 +141,32 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: EdgeInsets.symmetric(horizontal: 24.w),
           child: Column(
             children: [
-              const SizedBox(height: 60),
+              SizedBox(height: 60.h),
 
               // ── Icon ──
               Container(
-                width: 80,
-                height: 80,
+                width: 80.w,
+                height: 80.w,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20.r),
                   border: Border.all(
-                    color: AppColors.primary.withOpacity(0.3),
+                    color: AppColors.primary.withValues(alpha: 0.3),
                     width: 1.5,
                   ),
                 ),
-                child: const Center(
+                child: Center(
                   child: Icon(
                     Icons.phone_android,
-                    size: 40,
+                    size: 40.r,
                     color: AppColors.primary,
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24.h),
 
               // ── Title ──
               Text(
@@ -174,7 +175,7 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
                   color: AppColors.textPrimary,
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8.h),
               Text(
                 'Nhập SĐT để định danh ca SOS của bạn.\nSĐT giúp đội cứu hộ liên lạc khi cần.',
                 style: AppTypography.bodyMedium.copyWith(
@@ -182,13 +183,13 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 40),
+              SizedBox(height: 40.h),
 
               // ── Phone Input ──
               Container(
                 decoration: BoxDecoration(
                   color: AppColors.surfaceCard,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(16.r),
                   border: Border.all(
                     color: _isValid
                         ? AppColors.primary
@@ -197,24 +198,24 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.04),
+                      color: Colors.black.withValues(alpha: 0.04),
                       blurRadius: 16,
                       offset: const Offset(0, 4),
                     ),
                   ],
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
                 child: Row(
                   children: [
                     // Country prefix
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12.w,
+                        vertical: 8.h,
                       ),
                       decoration: BoxDecoration(
                         color: AppColors.surfaceElevated,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(8.r),
                       ),
                       child: Text(
                         '🇻🇳 +84',
@@ -224,7 +225,7 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12.w),
                     // Phone input
                     Expanded(
                       child: TextField(
@@ -258,15 +259,15 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
                     ),
                     // Checkmark
                     if (_isValid)
-                      const Icon(
+                      Icon(
                         Icons.check_circle,
                         color: AppColors.success,
-                        size: 24,
+                        size: 24.r,
                       ),
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12.h),
 
               // ── Helper text ──
               Text(
@@ -275,12 +276,12 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
                   color: AppColors.textMuted,
                 ),
               ),
-              const SizedBox(height: 32),
+              SizedBox(height: 32.h),
 
               // ── Continue Button ──
               SizedBox(
                 width: double.infinity,
-                height: 56,
+                height: 56.h,
                 child: ElevatedButton(
                   onPressed: _isValid ? _handleContinue : null,
                   style: ElevatedButton.styleFrom(
@@ -289,16 +290,16 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
                         : AppColors.surfaceBorder,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(16.r),
                     ),
                     elevation: _isValid ? 4 : 0,
-                    shadowColor: AppColors.alertRed.withOpacity(0.4),
+                    shadowColor: AppColors.alertRed.withValues(alpha: 0.4),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.arrow_forward, size: 20),
-                      const SizedBox(width: 8),
+                      Icon(Icons.arrow_forward, size: 20.r),
+                      SizedBox(width: 8.w),
                       Text(
                         'TIẾP TỤC ĐẾN SOS',
                         style: AppTypography.labelLarge.copyWith(
@@ -315,22 +316,22 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
 
               // ── Info note ──
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16.w),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(12),
+                  color: AppColors.primary.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(12.r),
                   border: Border.all(
-                    color: AppColors.primary.withOpacity(0.15),
+                    color: AppColors.primary.withValues(alpha: 0.15),
                   ),
                 ),
                 child: Row(
                   children: [
                     Icon(
                       Icons.info_outline,
-                      size: 18,
+                      size: 18.r,
                       color: AppColors.primary,
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12.w),
                     Expanded(
                       child: Text(
                         'SĐT chỉ dùng để định danh ca SOS và liên lạc cứu hộ. Bạn chỉ cần nhập một lần.',
@@ -342,7 +343,7 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16.h),
             ],
           ),
         ),

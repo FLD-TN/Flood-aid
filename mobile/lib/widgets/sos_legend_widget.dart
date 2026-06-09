@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../theme/app_theme.dart';
 
 class SosLegendWidget extends StatefulWidget {
@@ -21,14 +22,14 @@ class _SosLegendWidgetState extends State<SosLegendWidget> {
       },
       child: Material(
         elevation: 4,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 250),
-          width: 200,
-          padding: const EdgeInsets.all(12),
+          width: 200.w,
+          padding: EdgeInsets.all(12.w),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(12.r),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -46,10 +47,10 @@ class _SosLegendWidgetState extends State<SosLegendWidget> {
                     ),
                   ),
                   Container(
-                    width: 70,
-                    height: 16,
+                    width: 70.w,
+                    height: 16.h,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(8.r),
                       gradient: const LinearGradient(
                         colors: [
                           AppColors.urgency1,
@@ -74,7 +75,7 @@ class _SosLegendWidgetState extends State<SosLegendWidget> {
                     _isExpanded
                         ? Icons.keyboard_arrow_down
                         : Icons.keyboard_arrow_up,
-                    size: 16,
+                    size: 16.r,
                     color: AppColors.textSecondary,
                   ),
                 ],
@@ -82,7 +83,7 @@ class _SosLegendWidgetState extends State<SosLegendWidget> {
               
               // Expanded content
               if (_isExpanded) ...[
-                const SizedBox(height: 12),
+                SizedBox(height: 12.h),
                 _buildLegendItem(AppColors.urgency5, 'Mức 5 - Rất cao'),
                 _buildLegendItem(AppColors.urgency4, 'Mức 4 - Cao'),
                 _buildLegendItem(AppColors.urgency3, 'Mức 3 - Trung bình'),
@@ -98,23 +99,23 @@ class _SosLegendWidgetState extends State<SosLegendWidget> {
 
   Widget _buildLegendItem(Color color, String label) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+      padding: EdgeInsets.only(bottom: 6.h),
       child: Row(
         children: [
           Container(
-            width: 16,
-            height: 16,
+            width: 16.w,
+            height: 16.w,
             decoration: BoxDecoration(
               color: color,
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(4.r),
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8.w),
           Text(
             label,
             style: AppTypography.bodyMedium.copyWith(
               color: AppColors.textPrimary,
-              fontSize: 13,
+              fontSize: 13.sp,
             ),
           ),
         ],

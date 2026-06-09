@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../theme/app_theme.dart';
 
 class SlideToConfirm extends StatefulWidget {
@@ -22,7 +23,7 @@ class _SlideToConfirmState extends State<SlideToConfirm>
     with SingleTickerProviderStateMixin {
   double _dragPosition = 0.0;
   bool _isConfirmed = false;
-  final double _thumbSize = 56.0;
+  double get _thumbSize => 56.0.w;
 
   @override
   void didUpdateWidget(covariant SlideToConfirm oldWidget) {
@@ -150,22 +151,22 @@ class _SlideToConfirmState extends State<SlideToConfirm>
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: (widget.isLoading ? Colors.grey : AppColors.primary).withOpacity(0.3),
-                          blurRadius: 10,
-                          offset: const Offset(0, 2),
+                          color: (widget.isLoading ? Colors.grey : AppColors.primary).withValues(alpha: 0.3),
+                          blurRadius: 10.r,
+                          offset: Offset(0, 2.h),
                         ),
                       ],
                     ),
                     child: Center(
                       child: widget.isLoading 
-                          ? const SizedBox(
-                              width: 20, height: 20,
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          ? SizedBox(
+                              width: 20.w, height: 20.w,
+                              child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                             )
-                          : const Icon(
+                          : Icon(
                               Icons.keyboard_double_arrow_right_rounded,
                               color: Colors.white,
-                              size: 28,
+                              size: 28.r,
                             ),
                     ),
                   ),

@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// In-App Notification Banner — giống hệt Push Notification của hệ thống.
 /// Trượt xuống từ trên cùng, có hiệu ứng kính mờ (frosted glass),
@@ -150,34 +151,34 @@ class _NotificationBannerState extends State<_NotificationBanner>
             },
             child: Container(
               margin: EdgeInsets.only(
-                top: topPadding + 8,
-                left: 12,
-                right: 12,
+                top: topPadding + 8.h,
+                left: 12.w,
+                right: 12.w,
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(16.r),
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
                   child: Container(
-                    padding: const EdgeInsets.all(14),
+                    padding: EdgeInsets.all(14.w),
                     decoration: BoxDecoration(
                       // Nền kính mờ giống notification iOS
-                      color: Colors.white.withOpacity(0.92),
-                      borderRadius: BorderRadius.circular(16),
+                      color: Colors.white.withValues(alpha: 0.92),
+                      borderRadius: BorderRadius.circular(16.r),
                       border: Border.all(
-                        color: Colors.grey.withOpacity(0.2),
-                        width: 0.5,
+                        color: Colors.grey.withValues(alpha: 0.2),
+                        width: 0.5.w,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.12),
-                          blurRadius: 20,
-                          offset: const Offset(0, 6),
+                          color: Colors.black.withValues(alpha: 0.12),
+                          blurRadius: 20.r,
+                          offset: Offset(0, 6.h),
                         ),
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.04),
-                          blurRadius: 4,
-                          offset: const Offset(0, 1),
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 4.r,
+                          offset: Offset(0, 1.h),
                         ),
                       ],
                     ),
@@ -186,26 +187,26 @@ class _NotificationBannerState extends State<_NotificationBanner>
                       children: [
                         // ── App Icon (giống MBBank trong ảnh) ──
                         Container(
-                          width: 40,
-                          height: 40,
+                          width: 40.w,
+                          height: 40.w,
                           decoration: BoxDecoration(
                             color: widget.iconBackgroundColor,
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(10.r),
                             boxShadow: [
                               BoxShadow(
-                                color: widget.iconBackgroundColor.withOpacity(0.3),
-                                blurRadius: 6,
-                                offset: const Offset(0, 2),
+                                color: widget.iconBackgroundColor.withValues(alpha: 0.3),
+                                blurRadius: 6.r,
+                                offset: Offset(0, 2.h),
                               ),
                             ],
                           ),
                           child: Icon(
                             widget.icon,
                             color: Colors.white,
-                            size: 22,
+                            size: 22.r,
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: 12.w),
 
                         // ── Text Content ──
                         Expanded(
@@ -219,10 +220,10 @@ class _NotificationBannerState extends State<_NotificationBanner>
                                   Expanded(
                                     child: Text(
                                       widget.title,
-                                      style: const TextStyle(
-                                        fontSize: 14,
+                                      style: TextStyle(
+                                        fontSize: 14.sp,
                                         fontWeight: FontWeight.w700,
-                                        color: Color(0xFF1A1A1A),
+                                        color: const Color(0xFF1A1A1A),
                                         height: 1.2,
                                       ),
                                       maxLines: 1,
@@ -232,18 +233,18 @@ class _NotificationBannerState extends State<_NotificationBanner>
                                   Text(
                                     'bây giờ',
                                     style: TextStyle(
-                                      fontSize: 12,
+                                      fontSize: 12.sp,
                                       color: Colors.grey.shade500,
                                       fontWeight: FontWeight.w400,
                                     ),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 4),
+                              SizedBox(height: 4.h),
                               Text(
                                 widget.body,
                                 style: TextStyle(
-                                  fontSize: 13,
+                                  fontSize: 13.sp,
                                   color: Colors.grey.shade700,
                                   height: 1.3,
                                 ),

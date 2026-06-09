@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:latlong2/latlong.dart';
 import '../theme/app_theme.dart';
 
@@ -180,8 +181,8 @@ class _FloodAidMapState extends State<FloodAidMap>
 
         // ── Zoom Controls (top-right) ──
         Positioned(
-          right: 12,
-          top: 12,
+          right: 12.w,
+          top: 12.h,
           child: Column(
             children: [
               _buildControlButton(
@@ -189,14 +190,14 @@ class _FloodAidMapState extends State<FloodAidMap>
                 onTap: _zoomIn,
                 tooltip: 'Phóng to',
               ),
-              const SizedBox(height: 2),
+              SizedBox(height: 2.h),
               _buildControlButton(
                 icon: Icons.remove,
                 onTap: _zoomOut,
                 tooltip: 'Thu nhỏ',
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(8),
-                  bottomRight: Radius.circular(8),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(8.r),
+                  bottomRight: Radius.circular(8.r),
                 ),
               ),
             ],
@@ -206,8 +207,8 @@ class _FloodAidMapState extends State<FloodAidMap>
         // ── My Location Button ──
         if (widget.onMyLocationTap != null)
           Positioned(
-            right: 12,
-            top: 108,
+            right: 12.w,
+            top: 108.h,
             child: _buildControlButton(
               icon: Icons.my_location,
               onTap: widget.onMyLocationTap!,
@@ -218,8 +219,8 @@ class _FloodAidMapState extends State<FloodAidMap>
 
         // ── Layer Switcher Button ──
         Positioned(
-          right: 12,
-          top: widget.onMyLocationTap != null ? 158 : 108,
+          right: 12.w,
+          top: widget.onMyLocationTap != null ? 158.h : 108.h,
           child: _buildControlButton(
             icon: Icons.layers,
             onTap: () => setState(() => _showLayerPicker = !_showLayerPicker),
@@ -231,24 +232,24 @@ class _FloodAidMapState extends State<FloodAidMap>
         // ── Layer Picker Overlay ──
         if (_showLayerPicker)
           Positioned(
-            right: 56,
-            top: widget.onMyLocationTap != null ? 158 : 108,
+            right: 56.w,
+            top: widget.onMyLocationTap != null ? 158.h : 108.h,
             child: Material(
               elevation: 8,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               shadowColor: Colors.black26,
               child: Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                 ),
-                padding: const EdgeInsets.all(8),
+                padding: EdgeInsets.all(8.w),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: MapTileStyle.values.map((style) {
                     final isActive = style == _currentStyle;
                     return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      padding: EdgeInsets.symmetric(horizontal: 4.w),
                       child: GestureDetector(
                         onTap: () {
                           setState(() {
@@ -258,13 +259,13 @@ class _FloodAidMapState extends State<FloodAidMap>
                         },
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
-                          width: 60,
-                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          width: 60.w,
+                          padding: EdgeInsets.symmetric(vertical: 8.h),
                           decoration: BoxDecoration(
                             color: isActive
-                                ? AppColors.primary.withOpacity(0.1)
+                                ? AppColors.primary.withValues(alpha: 0.1)
                                 : Colors.transparent,
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(8.r),
                             border: isActive
                                 ? Border.all(
                                     color: AppColors.primary, width: 1.5)
@@ -276,16 +277,16 @@ class _FloodAidMapState extends State<FloodAidMap>
                             children: [
                               Icon(
                                 _getStyleIcon(style),
-                                size: 22,
+                                size: 22.r,
                                 color: isActive
                                     ? AppColors.primary
                                     : AppColors.textSecondary,
                               ),
-                              const SizedBox(height: 4),
+                              SizedBox(height: 4.h),
                               Text(
                                 _getStyleLabel(style),
                                 style: TextStyle(
-                                  fontSize: 10,
+                                  fontSize: 10.sp,
                                   fontWeight: isActive
                                       ? FontWeight.bold
                                       : FontWeight.w500,
@@ -317,21 +318,21 @@ class _FloodAidMapState extends State<FloodAidMap>
   }) {
     return Material(
       elevation: 3,
-      borderRadius: borderRadius ?? BorderRadius.circular(8),
+      borderRadius: borderRadius ?? BorderRadius.circular(8.r),
       shadowColor: Colors.black26,
       child: InkWell(
         onTap: onTap,
-        borderRadius: borderRadius ?? BorderRadius.circular(8),
+        borderRadius: borderRadius ?? BorderRadius.circular(8.r),
         child: Container(
-          width: 40,
-          height: 40,
+          width: 40.w,
+          height: 40.w,
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: borderRadius ?? BorderRadius.circular(8),
+            borderRadius: borderRadius ?? BorderRadius.circular(8.r),
           ),
           child: Icon(
             icon,
-            size: 20,
+            size: 20.r,
             color: color ?? AppColors.textPrimary,
           ),
         ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../theme/app_theme.dart';
 
 // ══════════════════════════════════════════════════════
@@ -24,17 +25,17 @@ class StatusBanner extends StatelessWidget {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 400),
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 14.h),
       decoration: BoxDecoration(
-        color: config.color.withOpacity(0.12),
+        color: config.color.withValues(alpha: 0.12),
         border: Border(
-          left: BorderSide(color: config.color, width: 4),
+          left: BorderSide(color: config.color, width: 4.w),
         ),
       ),
       child: Row(
         children: [
-          Text(config.emoji, style: const TextStyle(fontSize: 22)),
-          const SizedBox(width: 12),
+          Text(config.emoji, style: TextStyle(fontSize: 22.sp)),
+          SizedBox(width: 12.w),
           Expanded(
             child: Text(
               config.message,
@@ -89,16 +90,16 @@ class _PulseDotState extends State<_PulseDot>
     return AnimatedBuilder(
       animation: _anim,
       builder: (_, _) => Container(
-        width: 8,
-        height: 8,
+        width: 8.w,
+        height: 8.w,
         decoration: BoxDecoration(
-          color: widget.color.withOpacity(_anim.value),
+          color: widget.color.withValues(alpha: _anim.value),
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: widget.color.withOpacity(0.4 * _anim.value),
-              blurRadius: 6,
-              spreadRadius: 2,
+              color: widget.color.withValues(alpha: 0.4 * _anim.value),
+              blurRadius: 6.r,
+              spreadRadius: 2.r,
             ),
           ],
         ),
@@ -126,19 +127,19 @@ class UrgencyBadge extends StatelessWidget {
     final color = getUrgencyColor(level);
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: large ? 12 : 8,
-        vertical: large ? 6 : 3,
+        horizontal: (large ? 12 : 8).w,
+        vertical: (large ? 6 : 3).h,
       ),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(AppRadius.sm),
-        border: Border.all(color: color.withOpacity(0.4)),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
       child: Text(
         'MỨC $level',
         style: AppTypography.labelMedium.copyWith(
           color: color,
-          fontSize: large ? 13 : 11,
+          fontSize: (large ? 13 : 11).sp,
           letterSpacing: 1.2,
         ),
       ),
@@ -164,11 +165,11 @@ class StatusChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = color ?? AppColors.primary;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
       decoration: BoxDecoration(
-        color: c.withOpacity(0.12),
+        color: c.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(AppRadius.full),
-        border: Border.all(color: c.withOpacity(0.3)),
+        border: Border.all(color: c.withValues(alpha: 0.3)),
       ),
       child: Text(
         label,
@@ -197,29 +198,29 @@ class OnlineStatusBadge extends StatelessWidget {
     final text = isOnline ? 'ONLINE' : 'OFFLINE';
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(AppRadius.full),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 6,
-            height: 6,
+            width: 6.w,
+            height: 6.w,
             decoration: BoxDecoration(
               color: color,
               shape: BoxShape.circle,
             ),
           ),
-          const SizedBox(width: 5),
+          SizedBox(width: 5.w),
           Text(
             text,
             style: AppTypography.caption.copyWith(
               color: color,
               fontWeight: FontWeight.w600,
-              fontSize: 10,
+              fontSize: 10.sp,
               letterSpacing: 0.8,
             ),
           ),
