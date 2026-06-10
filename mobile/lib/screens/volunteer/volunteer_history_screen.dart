@@ -247,10 +247,10 @@ class _VolunteerHistoryScreenState extends State<VolunteerHistoryScreen> with Si
           const Spacer(),
           if (_stats != null)
             Text(
-              '${_stats!.totalMissions} MISSION${_stats!.totalMissions > 1 ? 'S' : ''}',
-              style: AppTypography.mono.copyWith(
+              '${_stats!.totalMissions} CA',
+              style: AppTypography.labelMedium.copyWith(
                 fontSize: 11.sp,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w700,
                 color: const Color(0xFF666666),
                 letterSpacing: 1.2,
               ),
@@ -304,12 +304,12 @@ class _VolunteerHistoryScreenState extends State<VolunteerHistoryScreen> with Si
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'PERFORMANCE OVERVIEW',
-                      style: AppTypography.mono.copyWith(
+                      'TỔNG QUAN THÀNH TÍCH',
+                      style: AppTypography.labelMedium.copyWith(
                         color: const Color(0xFF888888),
                         fontSize: 10.sp,
                         letterSpacing: 2.0,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                     SizedBox(height: 24.h),
@@ -344,9 +344,9 @@ class _VolunteerHistoryScreenState extends State<VolunteerHistoryScreen> with Si
                     SizedBox(height: 20.h),
                     Row(
                       children: [
-                        _buildHeroMetric('DISTANCE', '${stats.totalDistanceKm} km'),
-                        _buildHeroMetric('AVG TIME', '${stats.avgResponseTimeMin} min'),
-                        _buildHeroMetric('REVOKED', '${stats.revoked}', isDanger: true),
+                        _buildHeroMetric('QUÃNG ĐƯỜNG', '${stats.totalDistanceKm} km'),
+                        _buildHeroMetric('PHẢN HỒI TB', '${stats.avgResponseTimeMin} phút'),
+                        _buildHeroMetric('ĐÃ HỦY', '${stats.revoked}', isDanger: true),
                       ],
                     ),
                   ],
@@ -366,20 +366,20 @@ class _VolunteerHistoryScreenState extends State<VolunteerHistoryScreen> with Si
         children: [
           Text(
             label,
-            style: AppTypography.mono.copyWith(
+            style: AppTypography.labelMedium.copyWith(
               color: const Color(0xFF666666),
-              fontSize: 9.sp,
+              fontSize: 10.sp,
               letterSpacing: 1.5,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w700,
             ),
           ),
           SizedBox(height: 6.h),
           Text(
             value,
-            style: AppTypography.mono.copyWith(
+            style: AppTypography.labelMedium.copyWith(
               color: isDanger ? const Color(0xFFEF4444) : const Color(0xFFEFEFEF),
               fontSize: 15.sp,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
               letterSpacing: -0.5,
             ),
           ),
@@ -462,9 +462,9 @@ class _VolunteerHistoryScreenState extends State<VolunteerHistoryScreen> with Si
                       children: [
                         Text(
                           '#${mission.caseId.length > 8 ? mission.caseId.substring(0, 8).toUpperCase() : mission.caseId}',
-                          style: AppTypography.mono.copyWith(
+                          style: AppTypography.labelMedium.copyWith(
                             color: const Color(0xFF888888),
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w700,
                             fontSize: 12.sp,
                           ),
                         ),
@@ -504,7 +504,7 @@ class _VolunteerHistoryScreenState extends State<VolunteerHistoryScreen> with Si
                   SizedBox(width: 16.w),
                 ],
                 if (mission.responseTimeMin != null) ...[
-                  _buildDataPoint(LucideIcons.zap, '${mission.responseTimeMin}m response'),
+                  _buildDataPoint(LucideIcons.zap, '${mission.responseTimeMin}m phản hồi'),
                   SizedBox(width: 16.w),
                 ],
               ],
@@ -528,10 +528,10 @@ class _VolunteerHistoryScreenState extends State<VolunteerHistoryScreen> with Si
                     ),
                     child: Text(
                       _tagLabels[tag] ?? tag.toUpperCase(),
-                      style: AppTypography.mono.copyWith(
+                      style: AppTypography.labelMedium.copyWith(
                         color: const Color(0xFF666666),
-                        fontSize: 9.sp,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 10.sp,
+                        fontWeight: FontWeight.w700,
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -564,7 +564,7 @@ class _VolunteerHistoryScreenState extends State<VolunteerHistoryScreen> with Si
       children: [
         // Start Node
         _buildTimelineNode(
-          label: 'ASSIGNED',
+          label: 'NHẬN CA',
           time: mission.assignedAt,
           isActive: true,
           color: const Color(0xFF111111),
@@ -581,7 +581,7 @@ class _VolunteerHistoryScreenState extends State<VolunteerHistoryScreen> with Si
         
         // End Node
         _buildTimelineNode(
-          label: isCompleted ? 'RESOLVED' : (isRevoked ? 'REVOKED' : 'IN PROGRESS'),
+          label: isCompleted ? 'HOÀN THÀNH' : (isRevoked ? 'ĐÃ HỦY' : 'ĐANG XỬ LÝ'),
           time: isCompleted ? (mission.completedAt ?? mission.caseResolvedAt) : mission.revokedAt,
           isActive: isCompleted || isRevoked,
           color: isCompleted ? const Color(0xFF10B981) : (isRevoked ? const Color(0xFFEF4444) : const Color(0xFF999999)),
@@ -613,7 +613,7 @@ class _VolunteerHistoryScreenState extends State<VolunteerHistoryScreen> with Si
             ],
             Text(
               label,
-              style: AppTypography.mono.copyWith(
+              style: AppTypography.labelMedium.copyWith(
                 fontSize: 10.sp,
                 fontWeight: FontWeight.w700,
                 color: color,
@@ -632,8 +632,9 @@ class _VolunteerHistoryScreenState extends State<VolunteerHistoryScreen> with Si
         SizedBox(height: 4.h),
         Text(
           time != null ? _formatDateTime(time) : '--:--',
-          style: AppTypography.mono.copyWith(
+          style: AppTypography.labelMedium.copyWith(
             fontSize: 11.sp,
+            fontWeight: FontWeight.w500,
             color: const Color(0xFF888888),
           ),
         ),
@@ -661,9 +662,9 @@ class _VolunteerHistoryScreenState extends State<VolunteerHistoryScreen> with Si
       ),
       child: Text(
         'L$level',
-        style: AppTypography.mono.copyWith(
+        style: AppTypography.labelMedium.copyWith(
           color: color,
-          fontSize: 10.sp,
+          fontSize: 11.sp,
           fontWeight: FontWeight.w700,
         ),
       ),
@@ -679,18 +680,17 @@ class _VolunteerHistoryScreenState extends State<VolunteerHistoryScreen> with Si
       case AssignmentStatus.completed:
         bgColor = const Color(0xFFECFDF5); // emerald-50
         textColor = const Color(0xFF10B981); // emerald-500
-        label = 'Completed';
+        label = 'Hoàn thành';
         break;
       case AssignmentStatus.revoked:
         bgColor = const Color(0xFFFEF2F2); // red-50
         textColor = const Color(0xFFEF4444); // red-500
-        label = 'Revoked';
+        label = 'Đã hủy';
         break;
       case AssignmentStatus.active:
-        bgColor = const Color(0xFFF0FDF4); // gray-100 -> Let's use blue for active
         bgColor = const Color(0xFFEFF6FF); // blue-50
         textColor = const Color(0xFF3B82F6); // blue-500
-        label = 'Active';
+        label = 'Đang xử lý';
         break;
     }
 
@@ -720,10 +720,10 @@ class _VolunteerHistoryScreenState extends State<VolunteerHistoryScreen> with Si
         SizedBox(width: 4.w),
         Text(
           text,
-          style: AppTypography.mono.copyWith(
+          style: AppTypography.labelMedium.copyWith(
             color: const Color(0xFF666666),
             fontSize: 11.sp,
-            fontWeight: FontWeight.w500,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ],
@@ -741,10 +741,10 @@ class _VolunteerHistoryScreenState extends State<VolunteerHistoryScreen> with Si
           Icon(LucideIcons.ghost, size: 48.r, color: const Color(0xFFDDDDDD)),
           SizedBox(height: 16.h),
           Text(
-            'NO MISSIONS FOUND',
-            style: AppTypography.mono.copyWith(
+            'CHƯA CÓ DỮ LIỆU',
+            style: AppTypography.labelMedium.copyWith(
               color: const Color(0xFF111111),
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w700,
               letterSpacing: 1.0,
             ),
           ),
