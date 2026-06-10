@@ -804,7 +804,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
 
               // ── Resolve Slider ──
               SlideToConfirm(
-                text: 'TRƯỢT ĐỂ XÁC NHẬN AN TOÀN',
+                text: 'VUỐT ĐỂ XÁC NHẬN AN TOÀN',
                 isLoading: _isResolving,
                 onConfirm: () async {
                   await _handleResolve();

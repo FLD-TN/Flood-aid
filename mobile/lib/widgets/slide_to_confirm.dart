@@ -11,7 +11,7 @@ class SlideToConfirm extends StatefulWidget {
   const SlideToConfirm({
     super.key,
     required this.onConfirm,
-    this.text = 'Trượt để xác nhận',
+    this.text = 'VUỐT để xác nhận',
     this.isLoading = false,
   });
 
@@ -52,8 +52,8 @@ class _SlideToConfirmState extends State<SlideToConfirm>
   void _onHorizontalDragEnd(DragEndDetails details, double maxWidth) async {
     if (_isConfirmed || widget.isLoading) return;
 
-    // Nếu trượt qua 75%, tính là thành công
-    if (_dragPosition > (maxWidth - _thumbSize) * 0.75) {
+    // Nếu trượt qua 90%, tính là thành công
+    if (_dragPosition > (maxWidth - _thumbSize) * 0.90) {
       setState(() {
         _dragPosition = maxWidth - _thumbSize;
         _isConfirmed = true;

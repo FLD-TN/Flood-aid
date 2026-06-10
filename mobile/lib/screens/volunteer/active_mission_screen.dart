@@ -557,11 +557,8 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                     top: 16.h,
                     child: const SosLegendWidget(),
                   ),
-                  // ── Fixed Bottom Mission Board ──
-                  Align(
-                    alignment: Alignment.bottomCenter,
-                    child: _buildFixedMissionBoard(),
-                  ),
+                  // ── Draggable Bottom Mission Board ──
+                  _buildDraggableMissionBoard(),
                 ],
               ),
             ),
@@ -629,193 +626,196 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
     );
   }
 
-  Widget _buildFixedMissionBoard() {
+  Widget _buildDraggableMissionBoard() {
     final urgency = widget.urgencyLevel ?? 3;
     final urgencyColor = getUrgencyColor(urgency);
     final distKm = _distanceKm;
 
-    return Container(
-      width: double.infinity,
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.65,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(32.r)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
-            blurRadius: 24.r,
-            offset: Offset(0, -8.h),
+    return DraggableScrollableSheet(
+      initialChildSize: _accepted ? 0.45 : 0.4,
+      minChildSize: 0.1,
+      maxChildSize: 0.8,
+      snap: true,
+      builder: (context, scrollController) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(32.r)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.12),
+                blurRadius: 24.r,
+                offset: Offset(0, -8.h),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(24.w, 24.h, 24.w, 24.h),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: ListView(
+            controller: scrollController,
+            padding: EdgeInsets.fromLTRB(24.w, 12.h, 24.w, 24.h),
             children: [
-              // ── Header Row (Status) ──
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-                decoration: BoxDecoration(
-                  color: urgencyColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(100.r),
-                  border: Border.all(color: urgencyColor.withValues(alpha: 0.2)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 8.w, height: 8.w,
-                      decoration: BoxDecoration(
-                        color: urgencyColor,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    SizedBox(width: 8.w),
-                    Text(
-                      'MỨC ĐỘ KHẨN CẤP: $urgency',
-                      style: AppTypography.labelMedium.copyWith(
-                        color: urgencyColor,
-                        fontSize: 10.sp,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
+              // Drag handle
+              Center(
+                child: Container(
+                  width: 40.w,
+                  height: 4.h,
+                  margin: EdgeInsets.only(bottom: 16.h),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceBorder,
+                    borderRadius: BorderRadius.circular(2.r),
+                  ),
                 ),
               ),
-              SizedBox(height: 16.h),
 
-              // ── Hồ sơ Chi tiết (Cuộn được nếu quá dài) ──
-              Flexible(
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              // ── Header Row (Status) ──
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                  decoration: BoxDecoration(
+                    color: urgencyColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(100.r),
+                    border: Border.all(color: urgencyColor.withValues(alpha: 0.2)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Title / Summary
-                      Text(
-                        widget.summary ?? 'Yêu cầu cứu hộ khẩn cấp',
-                        style: AppTypography.headingMedium.copyWith(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 20.sp,
-                          color: AppColors.textPrimary,
-                          height: 1.3,
+                      Container(
+                        width: 8.w, height: 8.w,
+                        decoration: BoxDecoration(
+                          color: urgencyColor,
+                          shape: BoxShape.circle,
                         ),
                       ),
-                      
-                      // Full Description (nếu có và khác summary)
-                      if (widget.description != null && widget.description!.isNotEmpty && widget.description != widget.summary)
-                        Padding(
-                          padding: EdgeInsets.only(top: 12.h),
-                          child: Container(
-                            width: double.infinity,
-                            padding: EdgeInsets.all(12.w),
-                            decoration: BoxDecoration(
-                              color: AppColors.surfaceElevated,
-                              borderRadius: BorderRadius.circular(12.r),
-                              border: Border.all(color: AppColors.surfaceBorder),
-                            ),
-                            child: Text(
-                              '"${widget.description}"',
-                              style: AppTypography.bodyMedium.copyWith(
-                                fontStyle: FontStyle.italic,
-                                color: AppColors.textSecondary,
-                                height: 1.5,
-                              ),
-                            ),
-                          ),
+                      SizedBox(width: 8.w),
+                      Text(
+                        'MỨC ĐỘ KHẨN CẤP: $urgency',
+                        style: AppTypography.labelMedium.copyWith(
+                          color: urgencyColor,
+                          fontSize: 10.sp,
+                          fontWeight: FontWeight.bold,
                         ),
-
-                      SizedBox(height: 20.h),
-
-                      // Hero Metrics (Luôn hiển thị để TNV ước lượng)
-                      if (distKm != null)
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildMetricBox(
-                                'Khoảng cách',
-                                distKm >= 1 ? '${distKm.toStringAsFixed(1)} km' : '${(distKm * 1000).toInt()} m',
-                                Colors.blue.shade700,
-                              ),
-                            ),
-                            SizedBox(width: 12.w),
-                            Expanded(
-                              child: _buildMetricBox(
-                                'Dự kiến tới',
-                                _formatEta(distKm),
-                                Colors.orange.shade700,
-                              ),
-                            ),
-                          ],
-                        ),
-
-                      SizedBox(height: 20.h),
-
-                      // ── Các nút liên lạc (CHỈ HIỂN THỊ KHI ĐÃ NHẬN CA) ──
-                      if (_accepted) ...[
-                        Row(
-                          children: [
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                onPressed: () async {
-                                  final phone = widget.victimPhone ?? '';
-                                  if (phone.isEmpty) return;
-                                  final Uri url = Uri(scheme: 'tel', path: phone);
-                                  if (await canLaunchUrl(url)) {
-                                    await launchUrl(url);
-                                  }
-                                },
-                                icon: Icon(Icons.phone, color: Colors.white, size: 16.r),
-                                label: Text(
-                                  widget.victimPhone != null ? widget.victimPhone! : 'Gọi',
-                                  style: TextStyle(color: Colors.white, fontSize: 13.sp, fontWeight: FontWeight.bold),
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green.shade600,
-                                  padding: EdgeInsets.symmetric(vertical: 14.h),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-                                  elevation: 0,
-                                ),
-                              ),
-                            ),
-                            SizedBox(width: 12.w),
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                onPressed: () async {
-                                  final Uri url = Uri.parse(
-                                    'https://www.google.com/maps/dir/?api=1&destination=$_victimLat,$_victimLon',
-                                  );
-                                  if (await canLaunchUrl(url)) {
-                                    await launchUrl(url, mode: LaunchMode.externalApplication);
-                                  }
-                                },
-                                icon: Icon(Icons.directions, color: Colors.white, size: 16.r),
-                                label: Text(
-                                  'Chỉ đường',
-                                  style: TextStyle(color: Colors.white, fontSize: 13.sp, fontWeight: FontWeight.bold),
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blue.shade600,
-                                  padding: EdgeInsets.symmetric(vertical: 14.h),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-                                  elevation: 0,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                      ],
+                      ),
                     ],
                   ),
                 ),
               ),
+              SizedBox(height: 16.h),
+
+              // Title / Summary
+              Text(
+                widget.summary ?? 'Yêu cầu cứu hộ khẩn cấp',
+                style: AppTypography.headingMedium.copyWith(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20.sp,
+                  color: AppColors.textPrimary,
+                  height: 1.3,
+                ),
+              ),
+              
+              // Full Description (nếu có và khác summary)
+              if (widget.description != null && widget.description!.isNotEmpty && widget.description != widget.summary)
+                Padding(
+                  padding: EdgeInsets.only(top: 12.h),
+                  child: Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(12.w),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceElevated,
+                      borderRadius: BorderRadius.circular(12.r),
+                      border: Border.all(color: AppColors.surfaceBorder),
+                    ),
+                    child: Text(
+                      '"${widget.description}"',
+                      style: AppTypography.bodyMedium.copyWith(
+                        fontStyle: FontStyle.italic,
+                        color: AppColors.textSecondary,
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                ),
+
+              SizedBox(height: 20.h),
+
+              // Hero Metrics (Luôn hiển thị để TNV ước lượng)
+              if (distKm != null)
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildMetricBox(
+                        'Khoảng cách',
+                        distKm >= 1 ? '${distKm.toStringAsFixed(1)} km' : '${(distKm * 1000).toInt()} m',
+                        Colors.blue.shade700,
+                      ),
+                    ),
+                    SizedBox(width: 12.w),
+                    Expanded(
+                      child: _buildMetricBox(
+                        'Dự kiến tới',
+                        _formatEta(distKm),
+                        Colors.orange.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+
+              SizedBox(height: 20.h),
+
+              // ── Các nút liên lạc (CHỈ HIỂN THỊ KHI ĐÃ NHẬN CA) ──
+              if (_accepted) ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          final phone = widget.victimPhone ?? '';
+                          if (phone.isEmpty) return;
+                          final Uri url = Uri(scheme: 'tel', path: phone);
+                          if (await canLaunchUrl(url)) {
+                            await launchUrl(url);
+                          }
+                        },
+                        icon: Icon(Icons.phone, color: Colors.white, size: 16.r),
+                        label: Text(
+                          widget.victimPhone != null ? widget.victimPhone! : 'Gọi',
+                          style: TextStyle(color: Colors.white, fontSize: 13.sp, fontWeight: FontWeight.bold),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green.shade600,
+                          padding: EdgeInsets.symmetric(vertical: 14.h),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                          elevation: 0,
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 12.w),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          final Uri url = Uri.parse(
+                            'https://www.google.com/maps/dir/?api=1&destination=$_victimLat,$_victimLon',
+                          );
+                          if (await canLaunchUrl(url)) {
+                            await launchUrl(url, mode: LaunchMode.externalApplication);
+                          }
+                        },
+                        icon: Icon(Icons.directions, color: Colors.white, size: 16.r),
+                        label: Text(
+                          'Chỉ đường',
+                          style: TextStyle(color: Colors.white, fontSize: 13.sp, fontWeight: FontWeight.bold),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue.shade600,
+                          padding: EdgeInsets.symmetric(vertical: 14.h),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                          elevation: 0,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+              ],
 
               const SizedBox(height: 16),
 
@@ -857,8 +857,8 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
               ],
             ],
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 

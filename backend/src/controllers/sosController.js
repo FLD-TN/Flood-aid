@@ -791,4 +791,95 @@ async function cancelCase(req, res) {
   }
 }
 
-module.exports = { createSos, getCaseById, getTnvLocation, acceptCase, resolveCase, revokeCase, getActiveByPhone, getNearbyCases, checkMyAssignment, getHistoryByPhone, cancelCase };
+/**
+ * GET /api/volunteers/:volunteerId/history — Lịch sử ca SOS mà TNV đã tham gia
+ * Trả về stats tổng hợp + danh sách missions, sắp xếp mới nhất trước.
+ * Khác getHistoryByPhone: đây là góc nhìn TNV (tôi đã giúp ai), không phải nạn nhân.
+ */
+async function getVolunteerHistory(req, res) {
+  try {
+    const { volunteerId } = req.params;
+    if (!volunteerId) {
+      return res.status(400).json({ error: 'Missing volunteerId' });
+    }
+
+    // 1) Lấy danh sách missions (assignments + case info)
+    const result = await db.query(
+      `SELECT 
+        c.id AS case_id,
+        c.status AS case_status,
+        c.urgency_level,
+        c.tags,
+        c.summary_1line,
+        c.text_raw,
+        ST_X(c.coords::geometry) AS lon,
+        ST_Y(c.coords::geometry) AS lat,
+        c.created_at AS case_created_at,
+        c.resolved_at AS case_resolved_at,
+        ca.assigned_at,
+        ca.completed_at,
+        ca.revoked_at,
+        ca.initial_distance_m,
+        EXTRACT(EPOCH FROM (ca.assigned_at - c.created_at)) / 60 AS response_time_min
+      FROM case_assignments ca
+      JOIN cases c ON c.id = ca.case_id
+      WHERE ca.volunteer_id = $1
+      ORDER BY ca.assigned_at DESC
+      LIMIT 100`,
+      [volunteerId]
+    );
+
+    // 2) Build missions list
+    const missions = result.rows.map(row => {
+      const rawTags = typeof row.tags === 'string' ? JSON.parse(row.tags) : (row.tags || []);
+      const assignmentStatus = row.revoked_at ? 'revoked' : (row.completed_at ? 'completed' : 'active');
+      return {
+        case_id: row.case_id,
+        case_status: row.case_status,
+        assignment_status: assignmentStatus,
+        urgency_level: row.urgency_level,
+        tags: rawTags,
+        summary: row.summary_1line,
+        description: row.text_raw,
+        initial_distance_m: row.initial_distance_m,
+        assigned_at: row.assigned_at,
+        completed_at: row.completed_at,
+        revoked_at: row.revoked_at,
+        case_created_at: row.case_created_at,
+        case_resolved_at: row.case_resolved_at,
+        lat: row.lat,
+        lon: row.lon,
+        response_time_min: row.response_time_min != null ? Math.round(parseFloat(row.response_time_min)) : null,
+      };
+    });
+
+    // 3) Tính stats tổng hợp
+    const completed = missions.filter(m => m.assignment_status === 'completed').length;
+    const revoked = missions.filter(m => m.assignment_status === 'revoked').length;
+    const totalDistanceM = missions
+      .filter(m => m.initial_distance_m != null)
+      .reduce((sum, m) => sum + m.initial_distance_m, 0);
+    const responseTimes = missions
+      .filter(m => m.response_time_min != null && m.response_time_min >= 0)
+      .map(m => m.response_time_min);
+    const avgResponseTime = responseTimes.length > 0
+      ? Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length)
+      : 0;
+
+    res.json({
+      stats: {
+        total_missions: missions.length,
+        completed,
+        revoked,
+        total_distance_km: parseFloat((totalDistanceM / 1000).toFixed(1)),
+        avg_response_time_min: avgResponseTime,
+      },
+      missions,
+    });
+  } catch (err) {
+    console.error('[sosController][getVolunteerHistory]', err.message);
+    res.status(500).json({ error: 'Internal error' });
+  }
+}
+
+module.exports = { createSos, getCaseById, getTnvLocation, acceptCase, resolveCase, revokeCase, getActiveByPhone, getNearbyCases, checkMyAssignment, getHistoryByPhone, cancelCase, getVolunteerHistory };

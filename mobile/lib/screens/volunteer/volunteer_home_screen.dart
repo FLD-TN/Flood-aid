@@ -13,7 +13,9 @@ import '../../widgets/map_widget.dart';
 import '../../widgets/sos_legend_widget.dart';
 import '../../widgets/filter_bottom_sheet.dart';
 import '../../services/active_mission_manager.dart';
+import '../../services/toast_service.dart';
 import 'active_mission_screen.dart';
+import 'volunteer_history_screen.dart';
 import 'volunteer_phone_screen.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -457,6 +459,22 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                         initialCenter: LatLng(16.0544, 108.2022),
                         initialZoom: 11.0,
                         markers: _buildMarkers(),
+                        onMyLocationTap: () {
+                          if (_currentLat != null && _currentLon != null) {
+                            _mapController.move(LatLng(_currentLat!, _currentLon!), 15.0);
+                          } else {
+                            ToastService.show(
+                              context: context,
+                              type: ToastType.warning,
+                              message: 'Đang lấy vị trí hiện tại...',
+                            );
+                            _updateGps().then((_) {
+                              if (_currentLat != null && _currentLon != null && mounted) {
+                                _mapController.move(LatLng(_currentLat!, _currentLon!), 15.0);
+                              }
+                            });
+                          }
+                        },
                       ),
                       // ── SOS Legend ──
                       Positioned(
@@ -750,7 +768,41 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
 
             // ── Cài đặt bán kính nhận thông báo ──
             if (volunteerId.isNotEmpty) NotificationSettingsWidget(volunteerId: volunteerId),
-            if (volunteerId.isNotEmpty) const SizedBox(height: 24),
+            if (volunteerId.isNotEmpty) SizedBox(height: 16.h),
+
+            // ── Nút Lịch sử cứu trợ ──
+            if (volunteerId.isNotEmpty)
+              SizedBox(
+                width: double.infinity,
+                height: 52.h,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(ctx); // Đóng bottom sheet
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => VolunteerHistoryScreen(volunteerId: volunteerId),
+                      ),
+                    );
+                  },
+                  icon: Icon(Icons.history, size: 18.r),
+                  label: Text(
+                    'Lịch sử cứu trợ',
+                    style: AppTypography.labelMedium.copyWith(
+                      color: Colors.white,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.r),
+                    ),
+                  ),
+                ),
+              ),
+            if (volunteerId.isNotEmpty) SizedBox(height: 12.h),
 
             // Logout button
             SizedBox(

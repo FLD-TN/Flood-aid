@@ -390,4 +390,23 @@ class ApiService {
       return false;
     }
   }
+
+  /// GET /api/volunteers/:volunteerId/history — Lịch sử ca SOS mà TNV đã tham gia
+  /// Trả về { stats: {...}, missions: [...] }
+  static Future<Map<String, dynamic>?> getVolunteerHistory(String volunteerId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http
+          .get(Uri.parse('$_baseUrl/api/volunteers/$volunteerId/history'), headers: headers)
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      }
+      return null;
+    } catch (e) {
+      print('[ApiService] getVolunteerHistory error: $e');
+      return null;
+    }
+  }
 }
