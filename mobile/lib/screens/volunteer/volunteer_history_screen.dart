@@ -345,7 +345,6 @@ class _VolunteerHistoryScreenState extends State<VolunteerHistoryScreen> with Si
                     Row(
                       children: [
                         _buildHeroMetric('QUÃNG ĐƯỜNG', '${stats.totalDistanceKm} km'),
-                        _buildHeroMetric('PHẢN HỒI TB', '${stats.avgResponseTimeMin} phút'),
                         _buildHeroMetric('ĐÃ HỦY', '${stats.revoked}', isDanger: true),
                       ],
                     ),
@@ -503,10 +502,6 @@ class _VolunteerHistoryScreenState extends State<VolunteerHistoryScreen> with Si
                   _buildDataPoint(LucideIcons.mapPin, _formatDistance(mission.initialDistanceM!)),
                   SizedBox(width: 16.w),
                 ],
-                if (mission.responseTimeMin != null) ...[
-                  _buildDataPoint(LucideIcons.zap, '${mission.responseTimeMin}m phản hồi'),
-                  SizedBox(width: 16.w),
-                ],
               ],
             ),
           ),
@@ -661,7 +656,7 @@ class _VolunteerHistoryScreenState extends State<VolunteerHistoryScreen> with Si
         borderRadius: BorderRadius.circular(4.r),
       ),
       child: Text(
-        'L$level',
+        'MỨC $level',
         style: AppTypography.labelMedium.copyWith(
           color: color,
           fontSize: 11.sp,
