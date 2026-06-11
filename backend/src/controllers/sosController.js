@@ -882,4 +882,62 @@ async function getVolunteerHistory(req, res) {
   }
 }
 
-module.exports = { createSos, getCaseById, getTnvLocation, acceptCase, resolveCase, revokeCase, getActiveByPhone, getNearbyCases, checkMyAssignment, getHistoryByPhone, cancelCase, getVolunteerHistory };
+/**
+ * GET /api/volunteers/:volunteerId/active-mission
+ * Kiểm tra TNV có đang được assign vào ca nào đang active không.
+ * Dùng để khôi phục trạng thái mission khi TNV tắt app rồi mở lại.
+ * Trả về thông tin ca + assignment nếu có, hoặc { hasActiveMission: false }.
+ */
+async function getActiveAssignment(req, res) {
+  try {
+    const { volunteerId } = req.params;
+    if (!volunteerId) {
+      return res.status(400).json({ error: 'Missing volunteerId' });
+    }
+
+    const result = await db.query(
+      `SELECT 
+        c.id AS case_id,
+        c.status AS case_status,
+        c.urgency_level,
+        c.tags,
+        c.summary_1line,
+        c.text_raw,
+        ST_X(c.coords::geometry) AS lon,
+        ST_Y(c.coords::geometry) AS lat,
+        ca.assigned_at
+      FROM case_assignments ca
+      JOIN cases c ON c.id = ca.case_id
+      WHERE ca.volunteer_id = $1
+        AND ca.revoked_at IS NULL
+        AND ca.completed_at IS NULL
+        AND c.status IN ('pending', 'responding')
+      ORDER BY ca.assigned_at DESC
+      LIMIT 1`,
+      [volunteerId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.json({ hasActiveMission: false });
+    }
+
+    const row = result.rows[0];
+    res.json({
+      hasActiveMission: true,
+      caseId: row.case_id,
+      caseStatus: row.case_status,
+      urgencyLevel: row.urgency_level,
+      tags: row.tags,
+      summary: row.summary_1line,
+      description: row.text_raw,
+      lat: row.lat,
+      lon: row.lon,
+      assignedAt: row.assigned_at,
+    });
+  } catch (err) {
+    console.error('[sosController][getActiveAssignment]', err.message);
+    res.status(500).json({ error: 'Internal error' });
+  }
+}
+
+module.exports = { createSos, getCaseById, getTnvLocation, acceptCase, resolveCase, revokeCase, getActiveByPhone, getNearbyCases, checkMyAssignment, getHistoryByPhone, cancelCase, getVolunteerHistory, getActiveAssignment };

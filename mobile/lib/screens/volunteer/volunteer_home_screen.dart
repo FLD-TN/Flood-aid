@@ -69,6 +69,9 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
       if (mounted) setState(() {});
     });
 
+    // Khôi phục mission đang active (nếu TNV tắt app rồi mở lại)
+    _restoreActiveMission();
+
     // Lắng nghe FCM push ca SOS mới → refresh list ngay (không chờ poll)
     _newSosSub = EventBus.on('new_sos').listen((data) {
       final caseId = data['caseId'] as String?;
@@ -80,6 +83,42 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
 
     // Connect SSE volunteer-feed — lắng nghe case:resolved real-time
     _connectVolunteerFeed();
+  }
+
+  /// Khôi phục trạng thái mission từ Backend khi TNV tắt app rồi mở lại.
+  /// Gọi API kiểm tra xem TNV này có đang được assign vào ca nào active không.
+  /// Nếu có → khôi phục ActiveMissionManager singleton để banner hiện lại.
+  Future<void> _restoreActiveMission() async {
+    final manager = ActiveMissionManager();
+    // Nếu Manager đã có mission (TNV chưa tắt app, chỉ back ra HomeScreen) → skip
+    if (manager.hasActiveMission) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final volunteerId = prefs.getString('volunteer_id');
+    if (volunteerId == null || volunteerId.isEmpty) return;
+
+    final data = await ApiService.getActiveMission(volunteerId);
+    if (data == null || data['hasActiveMission'] != true) return;
+
+    // Có ca đang active → khôi phục Manager
+    final caseId = data['caseId'] as String?;
+    final lat = (data['lat'] as num?)?.toDouble();
+    final lon = (data['lon'] as num?)?.toDouble();
+    if (caseId == null) return;
+
+    debugPrint('[VolunteerHome] Restoring active mission: $caseId');
+    manager.startMission(
+      caseId: caseId,
+      volunteerId: volunteerId,
+      victimLat: lat ?? 16.0544,
+      victimLon: lon ?? 108.2022,
+      summary: data['summary'] as String?,
+      description: data['description'] as String?,
+      urgencyLevel: (data['urgencyLevel'] as num?)?.toInt(),
+    );
+
+    // Cập nhật UI để banner hiện ra
+    if (mounted) setState(() {});
   }
 
   /// Connect SSE để nhận event case:resolved ngay lập tức

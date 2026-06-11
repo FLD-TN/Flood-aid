@@ -94,7 +94,7 @@ function buildVolPopup(vol) {
         border-bottom:1px solid #1F2937;">
         <span style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:600;
           letter-spacing:0.05em;text-transform:uppercase;color:#E2E8F0;">
-          TNV #${(vol.id || '').slice(0,8).toUpperCase()}
+          TNV #${(vol.id || '').slice(0, 8).toUpperCase()}
         </span>
         <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;
           padding:2px 8px;border-radius:12px;

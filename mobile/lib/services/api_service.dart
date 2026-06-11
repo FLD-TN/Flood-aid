@@ -4,8 +4,8 @@ import 'package:http/http.dart' as http;
 import 'auth_service.dart';
 
 class ApiService {
-  // Trỏ toàn bộ (kể cả Web Chrome) lên Render để test thực tế
-  static String get _baseUrl => 'https://floodaid.onrender.com';
+
+    static String get _baseUrl => 'https://floodaid.onrender.com';
 
   static Future<Map<String, String>> _getHeaders() async {
     final headers = {'Content-Type': 'application/json'};
@@ -458,6 +458,24 @@ class ApiService {
       return null;
     } catch (e) {
       print('[ApiService] getVolunteerHistory error: $e');
+      return null;
+    }
+  }
+  /// GET /api/volunteers/:volunteerId/active-mission
+  /// Kiểm tra TNV có đang được assign vào ca nào đang active không.
+  /// Dùng để khôi phục trạng thái mission khi TNV tắt app rồi mở lại.
+  static Future<Map<String, dynamic>?> getActiveMission(String volunteerId) async {
+    try {
+      final response = await http
+          .get(Uri.parse('$_baseUrl/api/volunteers/$volunteerId/active-mission'))
+          .timeout(const Duration(seconds: 5));
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      }
+      return null;
+    } catch (e) {
+      print('[ApiService] getActiveMission error: $e');
       return null;
     }
   }

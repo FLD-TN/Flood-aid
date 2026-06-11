@@ -764,9 +764,12 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
               // ── Các nút liên lạc (CHỈ HIỂN THỊ KHI ĐÃ NHẬN CA) ──
               if (_accepted) ...[
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
+                    SizedBox(
+                      width: 50.w,
+                      height: 50.w,
+                      child: ElevatedButton(
                         onPressed: () async {
                           final phone = widget.victimPhone ?? '';
                           if (phone.isEmpty) return;
@@ -775,22 +778,20 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                             await launchUrl(url);
                           }
                         },
-                        icon: Icon(Icons.phone, color: Colors.white, size: 16.r),
-                        label: Text(
-                          widget.victimPhone != null ? widget.victimPhone! : 'Gọi',
-                          style: TextStyle(color: Colors.white, fontSize: 13.sp, fontWeight: FontWeight.bold),
-                        ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green.shade600,
-                          padding: EdgeInsets.symmetric(vertical: 14.h),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-                          elevation: 0,
+                          shape: const CircleBorder(),
+                          padding: EdgeInsets.zero,
+                          elevation: 2,
                         ),
+                        child: Icon(Icons.phone_in_talk, color: Colors.white, size: 24.r),
                       ),
                     ),
-                    SizedBox(width: 12.w),
-                    Expanded(
-                      child: ElevatedButton.icon(
+                    SizedBox(width: 24.w),
+                    SizedBox(
+                      width: 50.w,
+                      height: 50.w,
+                      child: ElevatedButton(
                         onPressed: () async {
                           final Uri url = Uri.parse(
                             'https://www.google.com/maps/dir/?api=1&destination=$_victimLat,$_victimLon',
@@ -799,17 +800,13 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                             await launchUrl(url, mode: LaunchMode.externalApplication);
                           }
                         },
-                        icon: Icon(Icons.directions, color: Colors.white, size: 16.r),
-                        label: Text(
-                          'Chỉ đường',
-                          style: TextStyle(color: Colors.white, fontSize: 13.sp, fontWeight: FontWeight.bold),
-                        ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue.shade600,
-                          padding: EdgeInsets.symmetric(vertical: 14.h),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-                          elevation: 0,
+                          backgroundColor: Colors.amber.shade300,
+                          shape: const CircleBorder(),
+                          padding: EdgeInsets.zero,
+                          elevation: 2,
                         ),
+                        child: Icon(Icons.directions, color: Colors.black87, size: 26.r),
                       ),
                     ),
                   ],
