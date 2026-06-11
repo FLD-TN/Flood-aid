@@ -202,6 +202,11 @@ ALTER TYPE case_status ADD VALUE IF NOT EXISTS 'cancelled';
 ALTER TYPE case_status ADD VALUE IF NOT EXISTS 'orphaned';
 `;
 
+const migration008 = `
+-- eKYC: Lưu số CCCD đã mã hóa AES để Admin xác minh danh tính TNV
+ALTER TABLE volunteers ADD COLUMN IF NOT EXISTS cccd_number_encrypted TEXT;
+`;
+
 async function runMigrations() {
   const client = await pool.connect();
   try {
@@ -232,6 +237,10 @@ async function runMigrations() {
     console.log('[Migration] Running migration 007: Add cancelled/orphaned to case_status enum...');
     await client.query(migration007);
     console.log('[Migration] ✓ Migration 007 complete');
+
+    console.log('[Migration] Running migration 008: eKYC cccd_number_encrypted...');
+    await client.query(migration008);
+    console.log('[Migration] ✓ Migration 008 complete');
 
     console.log('[Migration] All migrations completed successfully!');
   } catch (err) {

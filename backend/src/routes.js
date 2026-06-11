@@ -11,7 +11,13 @@ const locationController = require('./controllers/locationController');
 const volunteerController = require('./controllers/volunteerController');
 const adminController = require('./controllers/adminController');
 const sseController = require('./controllers/sseController');
+const authController = require('./controllers/authController');
+const kycController = require('./controllers/kycController');
 const { authMiddleware } = require('./middleware/authMiddleware');
+
+// ====== Module 0: Auth & eKYC ======
+router.post('/auth/verify-phone', authMiddleware, authController.verifyPhone);
+router.post('/kyc/recognize-id', authMiddleware, kycController.recognizeId);
 
 // ====== Module 1: SOS ======
 router.get('/sos/active', authMiddleware, sosController.getActiveByPhone);

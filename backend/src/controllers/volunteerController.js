@@ -49,45 +49,69 @@ function decryptPhone(encryptedStr) {
 }
 
 /**
- * POST /api/volunteers/register — Đăng ký TNV
+ * POST /api/volunteers/register — Đăng ký TNV mới
+ * Chỉ dùng cho đăng ký mới (sau khi eKYC xong).
+ * admin_approved mặc định = false → Chờ Admin duyệt.
  */
 async function registerVolunteer(req, res) {
   try {
-    const { fullName, skills } = req.body;
+    const { fullName, skills, cccdNumber } = req.body;
     const phone = req.user?.phone_number || req.body.phone;
     const firebaseUid = req.user?.uid;
 
     if (!phone) {
-      return res.status(400).json({ error: 'Missing phone number' });
+      return res.status(400).json({ error: 'Thiếu số điện thoại' });
+    }
+
+    if (!fullName || !fullName.trim()) {
+      return res.status(400).json({ error: 'Thiếu họ và tên' });
     }
 
     const phoneHash = hashPhone(phone);
 
-    // Kiểm tra đã tồn tại
+    // Kiểm tra đã tồn tại → Không cho đăng ký lại
     const existing = await db.query(
-      'SELECT id FROM volunteers WHERE phone_hash = $1',
+      'SELECT id, admin_approved FROM volunteers WHERE phone_hash = $1',
       [phoneHash]
     );
     if (existing.rows.length > 0) {
-      // Đảm bảo TNV cũ luôn được phê duyệt và sẵn sàng khi đăng nhập lại
-      await db.query(
-        'UPDATE volunteers SET admin_approved = true, is_available = true WHERE id = $1',
-        [existing.rows[0].id]
-      );
+      const vol = existing.rows[0];
+      if (vol.admin_approved) {
+        return res.status(409).json({
+          status: 'ALREADY_APPROVED',
+          volunteerId: vol.id,
+          message: 'Tài khoản đã được phê duyệt. Vui lòng đăng nhập.',
+        });
+      }
       return res.status(409).json({
-        error: 'VOLUNTEER_EXISTS',
-        volunteerId: existing.rows[0].id,
+        status: 'PENDING_APPROVAL',
+        volunteerId: vol.id,
+        message: 'Hồ sơ đã được gửi trước đó. Vui lòng chờ Admin phê duyệt.',
       });
     }
 
     const result = await db.query(
-      `INSERT INTO volunteers (phone_hash, firebase_uid, full_name, skills, is_available, admin_approved, phone_encrypted)
-       VALUES ($1, $2, $3, $4::jsonb, true, true, $5)
-       RETURNING id, full_name, skills, is_available, admin_approved, created_at`,
-      [phoneHash, firebaseUid || null, fullName || null, JSON.stringify(skills || []), encryptPhone(phone)]
+      `INSERT INTO volunteers (phone_hash, firebase_uid, full_name, skills, is_available, admin_approved, cccd_verified, phone_encrypted, cccd_number_encrypted)
+       VALUES ($1, $2, $3, $4::jsonb, false, false, $5, $6, $7)
+       RETURNING id, full_name, skills, is_available, admin_approved, cccd_verified, created_at`,
+      [
+        phoneHash,
+        firebaseUid || null,
+        fullName.trim(),
+        JSON.stringify(skills || []),
+        !!cccdNumber,
+        encryptPhone(phone),
+        cccdNumber ? encryptPhone(cccdNumber) : null,
+      ]
     );
 
-    res.status(201).json(result.rows[0]);
+    console.log(`[volunteerController][register] New volunteer registered: ${result.rows[0].id} (pending approval)`);
+    res.status(201).json({
+      status: 'REGISTERED',
+      volunteerId: result.rows[0].id,
+      message: 'Đăng ký thành công. Hồ sơ đang chờ Admin phê duyệt.',
+      ...result.rows[0],
+    });
   } catch (err) {
     console.error('[volunteerController][register]', err.message);
     res.status(500).json({ error: 'Internal error' });
