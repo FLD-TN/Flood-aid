@@ -9,6 +9,8 @@ import '../../services/fcm_service.dart';
 import '../../services/toast_service.dart';
 import '../victim/otp_verification_screen.dart';
 import 'volunteer_home_screen.dart';
+import 'pending_approval_screen.dart';
+import 'ekyc_screen.dart';
 
 /// Màn hình nhập SĐT cho Tình nguyện viên — xác thực OTP Firebase
 /// Nếu đã authenticated → vào thẳng VolunteerHomeScreen
@@ -97,27 +99,52 @@ class _VolunteerPhoneScreenState extends State<VolunteerPhoneScreen> {
     }
   }
 
-  /// Sau khi OTP thành công → đăng ký TNV lên backend → lưu UUID → đăng ký FCM
+  /// Sau khi OTP thành công → Kiểm tra trạng thái TNV trên Backend
   Future<void> _onOtpSuccess(String phone) async {
-    // Gọi API đăng ký TNV (nếu đã tồn tại → trả về UUID cũ)
-    final result = await ApiService.registerVolunteer(phone: phone);
-    if (result != null) {
-      final volunteerId = result['id'] ?? result['volunteerId'];
-      if (volunteerId != null) {
+    final result = await ApiService.verifyPhoneAuth(phone: phone);
+    final status = result['status'] as String? ?? '';
+    final httpStatus = result['httpStatus'] as int? ?? 0;
+
+    if (httpStatus == 200 && status == 'APPROVED') {
+      // TH 1: TNV đã được Admin duyệt → Đăng nhập thành công
+      final volunteerId = result['volunteerId']?.toString() ?? '';
+      if (volunteerId.isNotEmpty) {
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('volunteer_id', volunteerId.toString());
+        await prefs.setString('volunteer_id', volunteerId);
         await prefs.setString('volunteer_phone', phone);
 
-        // Đăng ký FCM Token → Backend lưu vào DB để gửi push notification
-        await FcmService.registerToken(volunteerId.toString());
+        // Đăng ký FCM Token
+        await FcmService.registerToken(volunteerId);
       }
-    }
 
-    if (!mounted) return;
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const VolunteerHomeScreen()),
-    );
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const VolunteerHomeScreen()),
+      );
+    } else if (httpStatus == 403 && status == 'PENDING_APPROVAL') {
+      // TH 2: TNV đã đăng ký nhưng chưa được duyệt → Màn hình chờ
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const PendingApprovalScreen()),
+      );
+    } else if (httpStatus == 404 && status == 'NOT_REGISTERED') {
+      // TH 3: Chưa từng đăng ký → Chuyển sang luồng eKYC
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => EkycScreen(phone: phone)),
+      );
+    } else {
+      // Lỗi mạng hoặc lỗi không xác định
+      if (!mounted) return;
+      ToastService.show(
+        context: context,
+        type: ToastType.error,
+        message: result['message'] ?? 'Đã xảy ra lỗi khi xác thực',
+      );
+    }
   }
 
   @override

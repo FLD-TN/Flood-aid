@@ -237,12 +237,62 @@ class ApiService {
     }
   }
 
-  /// POST /api/volunteers/register — Đăng ký TNV
-  /// Trả về volunteerId (UUID) cả khi tạo mới (201) lẫn đã tồn tại (409)
+  /// POST /api/auth/verify-phone — Xác thực đăng nhập TNV
+  /// Trả về trạng thái:
+  ///   - 200 (APPROVED): TNV đã được duyệt → Đăng nhập thành công
+  ///   - 403 (PENDING_APPROVAL): TNV chờ Admin duyệt
+  ///   - 404 (NOT_REGISTERED): Chưa đăng ký → Cần chuyển sang form eKYC
+  static Future<Map<String, dynamic>> verifyPhoneAuth({
+    required String phone,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/auth/verify-phone'),
+        headers: headers,
+        body: json.encode({'phone': phone}),
+      );
+
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      data['httpStatus'] = response.statusCode;
+      return data;
+    } catch (e) {
+      print('[ApiService] verifyPhoneAuth error: $e');
+      return {'httpStatus': 0, 'status': 'ERROR', 'message': 'Lỗi kết nối: $e'};
+    }
+  }
+
+  /// POST /api/kyc/recognize-id — Gửi ảnh CCCD lên Backend → FPT.AI nhận diện
+  /// Trả về dữ liệu bóc tách: cccdNumber, fullName, dateOfBirth, ...
+  static Future<Map<String, dynamic>?> recognizeId({
+    required String base64Image,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/kyc/recognize-id'),
+        headers: headers,
+        body: json.encode({'image': base64Image}),
+      ).timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+      print('[ApiService] recognizeId failed: ${response.statusCode} ${response.body}');
+      return null;
+    } catch (e) {
+      print('[ApiService] recognizeId error: $e');
+      return null;
+    }
+  }
+
+  /// POST /api/volunteers/register — Đăng ký TNV mới (sau eKYC)
+  /// Trả về 201 nếu đăng ký thành công (chờ Admin duyệt)
   static Future<Map<String, dynamic>?> registerVolunteer({
     required String phone,
-    String? fullName,
+    required String fullName,
     List<String>? skills,
+    String? cccdNumber,
   }) async {
     try {
       final headers = await _getHeaders();
@@ -253,11 +303,15 @@ class ApiService {
           'phone': phone,
           'fullName': fullName,
           'skills': skills ?? [],
+          'cccdNumber': cccdNumber,
         }),
       );
 
-      if (response.statusCode == 201 || response.statusCode == 409) {
-        // 201 = tạo mới, 409 = đã tồn tại → cả hai đều trả về volunteerId
+      if (response.statusCode == 201) {
+        return json.decode(response.body);
+      }
+      // 409 = Đã đăng ký trước đó (trả về thông tin để xử lý)
+      if (response.statusCode == 409) {
         return json.decode(response.body);
       }
       return null;

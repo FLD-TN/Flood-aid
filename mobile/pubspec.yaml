@@ -41,6 +41,9 @@ dependencies:
   lucide_icons: ^0.257.0
   flutter_screenutil: ^5.9.3
 
+  # eKYC — Chụp ảnh CCCD
+  image_picker: ^1.1.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
