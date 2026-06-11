@@ -4,6 +4,7 @@ import CaseList from './components/CaseList';
 import TopBar from './components/TopBar';
 import Sidebar from './components/Sidebar';
 import VolunteerPanel from './components/VolunteerPanel';
+import VolunteerManagement from './components/VolunteerManagement';
 import { usePolling } from './hooks/usePolling';
 import './App.css';
 
@@ -31,6 +32,10 @@ function App() {
         <TopBar />
         
         <main className="flex-1 relative bg-background h-full w-full">
+          {activeSection === 'teams' ? (
+            <VolunteerManagement />
+          ) : (
+            <>
           {/* FULL BACKGROUND MAP */}
           <div className="absolute inset-0 z-0 overflow-hidden">
             <LiveCommandMap onCaseSelect={setSelectedCase} selectedCaseId={selectedCase?.id} />
@@ -104,6 +109,8 @@ function App() {
             </button>
           </div>
           
+            </>
+          )}
         </main>
       </div>
     </div>
