@@ -343,7 +343,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
   List<Map<String, dynamic>> get _activeCases {
     return _cases.where((c) {
       final status = c['status'] ?? '';
-      return status == 'pending' || status == 'responding';
+      return status == 'pending' || status == 'responding' || status == 'on_scene';
     }).toList();
   }
 

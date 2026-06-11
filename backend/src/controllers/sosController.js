@@ -400,7 +400,7 @@ async function getNearbyCases(req, res) {
 
     // Build dynamic WHERE clauses
     const conditions = [
-      `c.status IN ('pending', 'responding')`
+      `c.status IN ('pending', 'responding', 'on_scene')`
     ];
     const params = [volLon, volLat]; // $1=lon, $2=lat
 
@@ -895,25 +895,6 @@ async function getActiveAssignment(req, res) {
       return res.status(400).json({ error: 'Missing volunteerId' });
     }
 
-    // ── DEBUG: xem TẤT CẢ assignment của TNV này (không filter) ──
-    const debugAll = await db.query(
-      `SELECT ca.case_id, ca.revoked_at, ca.completed_at, c.status AS case_status
-       FROM case_assignments ca
-       JOIN cases c ON c.id = ca.case_id
-       WHERE ca.volunteer_id = $1
-       ORDER BY ca.assigned_at DESC
-       LIMIT 5`,
-      [volunteerId]
-    );
-    console.log(`[getActiveAssignment] volunteerId=${volunteerId}, ALL assignments:`, 
-      debugAll.rows.map(r => ({ 
-        case_id: r.case_id, 
-        case_status: r.case_status, 
-        revoked_at: r.revoked_at, 
-        completed_at: r.completed_at 
-      }))
-    );
-
     const result = await db.query(
       `SELECT 
         c.id AS case_id,
@@ -930,13 +911,11 @@ async function getActiveAssignment(req, res) {
       WHERE ca.volunteer_id = $1
         AND ca.revoked_at IS NULL
         AND ca.completed_at IS NULL
-        AND c.status IN ('pending', 'responding')
+        AND c.status IN ('pending', 'responding', 'on_scene')
       ORDER BY ca.assigned_at DESC
       LIMIT 1`,
       [volunteerId]
     );
-
-    console.log(`[getActiveAssignment] Filtered result: ${result.rows.length} rows`);
 
     if (result.rows.length === 0) {
       return res.json({ hasActiveMission: false });
