@@ -7,7 +7,7 @@
 const https = require('https');
 const http = require('http');
 
-const FPT_API_KEY = process.env.FPT_AI_API_KEY;
+const FPT_API_KEY = process.env.FPT_EKYC_API_KEY || process.env.FPT_AI_API_KEY;
 const FPT_ENDPOINT = 'https://api.fpt.ai/vision/idr/vnm';
 
 /**
