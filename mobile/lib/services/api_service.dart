@@ -4,10 +4,8 @@ import 'package:http/http.dart' as http;
 import 'auth_service.dart';
 
 class ApiService {
-  // Web: dùng 127.0.0.1 cho local dev
-  // Android: dùng Render (backend online, hoạt động ở mọi nơi)
-  static String get _baseUrl =>
-      kIsWeb ? 'http://127.0.0.1:3000' : 'https://floodaid.onrender.com';
+  // Trỏ toàn bộ (kể cả Web Chrome) lên Render để test thực tế
+  static String get _baseUrl => 'https://floodaid.onrender.com';
 
   static Future<Map<String, String>> _getHeaders() async {
     final headers = {'Content-Type': 'application/json'};
