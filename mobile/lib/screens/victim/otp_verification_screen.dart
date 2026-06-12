@@ -11,12 +11,15 @@ class OtpVerificationScreen extends StatefulWidget {
   final String initialVerificationId;
   /// Callback khi xác thực OTP thành công
   final VoidCallback onSuccess;
+  /// Role: 'victim' hoặc 'volunteer' — để lưu SĐT vào key riêng
+  final String role;
 
   const OtpVerificationScreen({
     super.key,
     required this.phoneNumber,
     required this.initialVerificationId,
     required this.onSuccess,
+    this.role = 'victim',
   });
 
   @override
@@ -80,6 +83,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       await AuthService.verifyOtp(
         verificationId: _verificationId,
         smsCode: smsCode,
+        role: widget.role,
       );
       
       if (!mounted) return;

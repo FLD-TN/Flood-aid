@@ -75,7 +75,7 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
 
   Future<void> _loadPhone() async {
     final prefs = await SharedPreferences.getInstance();
-    final saved = prefs.getString('user_phone');
+    final saved = prefs.getString('victim_phone');
     if (saved != null && saved.isNotEmpty) {
       setState(() => _phone = saved);
     }
@@ -581,17 +581,9 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
   }
 
   void _showVictimProfile() async {
-    final user = AuthService.currentUser;
-    String phoneDisplay = 'Chưa xác thực';
-    if (user?.phoneNumber != null) {
-      String phone = user!.phoneNumber!;
-      if (phone.startsWith('+84')) {
-        phone = '0${phone.substring(3)}';
-      }
-      phoneDisplay = phone;
-    } else if (_phone.isNotEmpty) {
-      phoneDisplay = _phone;
-    }
+    // Luôn dùng _phone (đã load từ victim_phone) thay vì AuthService.currentUser
+    // vì Firebase Auth chỉ có 1 session và có thể bị ghi đè bởi TNV login
+    String phoneDisplay = _phone.isNotEmpty ? _phone : 'Chưa xác thực';
 
     if (!mounted) return;
 
@@ -704,7 +696,7 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
                   Navigator.pop(ctx); // Đóng bottom sheet
                   await AuthService.signOut();
                   final prefs = await SharedPreferences.getInstance();
-                  await prefs.remove('user_phone');
+                  await prefs.remove('victim_phone');
                   if (!mounted) return;
                   // Quay về màn hình nhập SĐT để xác thực OTP lại
                   Navigator.pushAndRemoveUntil(

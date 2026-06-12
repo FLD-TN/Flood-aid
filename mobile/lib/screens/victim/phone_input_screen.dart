@@ -31,9 +31,9 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
   /// Kiểm tra xem đã có SĐT lưu sẵn chưa → bỏ qua nếu có
   Future<void> _checkExistingPhone() async {
     final prefs = await SharedPreferences.getInstance();
-    final savedPhone = prefs.getString('user_phone');
+    final savedPhone = prefs.getString('victim_phone');
 
-    if (AuthService.isAuthenticated || (savedPhone != null && savedPhone.isNotEmpty)) {
+    if (savedPhone != null && savedPhone.isNotEmpty) {
       if (mounted) {
         // Đã có SĐT → vào thẳng SOS screen
         Navigator.pushReplacement(
