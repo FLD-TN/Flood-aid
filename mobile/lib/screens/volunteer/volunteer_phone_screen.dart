@@ -63,6 +63,7 @@ class _VolunteerPhoneScreenState extends State<VolunteerPhoneScreen> {
               builder: (_) => OtpVerificationScreen(
                 phoneNumber: phone,
                 initialVerificationId: verificationId,
+                role: 'volunteer',
                 onSuccess: () => _onOtpSuccess(phone),
               ),
             ),
@@ -80,7 +81,7 @@ class _VolunteerPhoneScreenState extends State<VolunteerPhoneScreen> {
         onCodeAutoRetrievalTimeout: (String verificationId) {},
         onVerificationCompleted: (credential) async {
           try {
-            await AuthService.signInWithCredential(credential);
+            await AuthService.signInWithCredential(credential, role: 'volunteer');
             if (!mounted) return;
             await _onOtpSuccess(phone);
           } catch (e) {

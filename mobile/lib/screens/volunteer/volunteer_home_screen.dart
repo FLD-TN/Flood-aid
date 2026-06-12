@@ -690,18 +690,12 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
   }
 
   void _showVolunteerProfile() async {
-    final user = AuthService.currentUser;
-    String phoneDisplay = 'Chưa xác thực';
-    if (user?.phoneNumber != null) {
-      String phone = user!.phoneNumber!;
-      if (phone.startsWith('+84')) {
-        phone = '0${phone.substring(3)}';
-      }
-      phoneDisplay = phone;
-    }
-
+    // Dùng volunteer_phone từ SharedPreferences thay vì AuthService.currentUser
+    // vì Firebase Auth chỉ có 1 session và có thể bị ghi đè bởi victim login
     final prefs = await SharedPreferences.getInstance();
     final volunteerId = prefs.getString('volunteer_id') ?? '';
+    final volunteerPhone = prefs.getString('volunteer_phone') ?? '';
+    String phoneDisplay = volunteerPhone.isNotEmpty ? volunteerPhone : 'Chưa xác thực';
 
     if (!mounted) return;
 
@@ -851,7 +845,8 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                 onPressed: () async {
                   Navigator.pop(ctx); // Đóng bottom sheet
                   await AuthService.signOut();
-                  await prefs.remove('user_phone');
+                  await prefs.remove('volunteer_phone');
+                  await prefs.remove('volunteer_id');
                   await prefs.remove('notification_radius_km'); // clear cache
                   if (!mounted) return;
                   // Quay về màn hình chọn role
