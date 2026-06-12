@@ -14,6 +14,7 @@ import 'tracking_screen.dart';
 import 'location_picker_screen.dart';
 import 'phone_input_screen.dart';
 import '../../services/auth_service.dart';
+import '../../services/dialect_normalizer.dart';
 import 'sos_history_screen.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
@@ -755,6 +756,7 @@ class _SosFormSheetState extends State<_SosFormSheet> {
     super.initState();
     _fetchCurrentLocation();
     _initSpeech();
+    DialectNormalizer.load(); // Load từ điển phương ngữ miền Trung (chỉ chạy 1 lần)
   }
 
   @override
@@ -797,7 +799,8 @@ class _SosFormSheetState extends State<_SosFormSheet> {
           onResult: (result) {
             if (mounted) {
               setState(() {
-                _textController.text = result.recognizedWords;
+                // Chuẩn hóa phương ngữ miền Trung → tiếng Việt phổ thông (real-time)
+                _textController.text = DialectNormalizer.normalize(result.recognizedWords);
                 _textController.selection = TextSelection.fromPosition(
                   TextPosition(offset: _textController.text.length),
                 );
