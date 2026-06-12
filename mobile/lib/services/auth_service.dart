@@ -38,9 +38,11 @@ class AuthService {
   }
 
   /// Xác thực mã OTP người dùng nhập vào
+  /// [role] = 'victim' hoặc 'volunteer' để lưu SĐT vào key riêng biệt
   static Future<UserCredential?> verifyOtp({
     required String verificationId,
     required String smsCode,
+    String role = 'victim',
   }) async {
     try {
       PhoneAuthCredential credential = PhoneAuthProvider.credential(
@@ -49,15 +51,16 @@ class AuthService {
       );
       final userCredential = await _auth.signInWithCredential(credential);
       
-      // Lưu lại SĐT gốc vào SharedPreferences cho các module cũ
+      // Lưu lại SĐT gốc vào SharedPreferences theo role
       if (userCredential.user?.phoneNumber != null) {
         final prefs = await SharedPreferences.getInstance();
-        // Convert +84xxxx back to 0xxxx if needed, or just save as is
         String phone = userCredential.user!.phoneNumber!;
         if (phone.startsWith('+84')) {
           phone = '0${phone.substring(3)}';
         }
-        await prefs.setString('user_phone', phone);
+        // Lưu vào key riêng theo role (victim_phone / volunteer_phone)
+        final key = '${role}_phone';
+        await prefs.setString(key, phone);
       }
       
       return userCredential;
@@ -68,7 +71,11 @@ class AuthService {
   }
 
   /// SignIn directly with credential (for auto retrieval)
-  static Future<UserCredential> signInWithCredential(PhoneAuthCredential credential) async {
+  /// [role] = 'victim' hoặc 'volunteer' để lưu SĐT vào key riêng biệt
+  static Future<UserCredential> signInWithCredential(
+    PhoneAuthCredential credential, {
+    String role = 'victim',
+  }) async {
      final userCredential = await _auth.signInWithCredential(credential);
       if (userCredential.user?.phoneNumber != null) {
         final prefs = await SharedPreferences.getInstance();
@@ -76,7 +83,8 @@ class AuthService {
         if (phone.startsWith('+84')) {
           phone = '0${phone.substring(3)}';
         }
-        await prefs.setString('user_phone', phone);
+        final key = '${role}_phone';
+        await prefs.setString(key, phone);
       }
       return userCredential;
   }
@@ -92,10 +100,11 @@ class AuthService {
     }
   }
 
-  /// Đăng xuất
+  /// Đăng xuất — xóa tất cả phone keys
   static Future<void> signOut() async {
     await _auth.signOut();
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('user_phone');
+    await prefs.remove('victim_phone');
+    await prefs.remove('volunteer_phone');
   }
 }
