@@ -2,16 +2,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import '../../theme/app_theme.dart';
+import 'package:google_fonts/google_fonts.dart';
+
 import '../../services/auth_service.dart';
 import '../../services/toast_service.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
   final String phoneNumber;
   final String initialVerificationId;
-  /// Callback khi xác thực OTP thành công
   final VoidCallback onSuccess;
-  /// Role: 'victim' hoặc 'volunteer' — để lưu SĐT vào key riêng
   final String role;
 
   const OtpVerificationScreen({
@@ -34,7 +33,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   String _errorMessage = '';
   late String _verificationId;
 
-  // Fix #3: Countdown timer chống spam gửi lại OTP
   int _resendCountdown = 60;
   Timer? _resendTimer;
 
@@ -43,7 +41,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     super.initState();
     _verificationId = widget.initialVerificationId;
     _startResendTimer();
-    // Auto focus when screen appears
     Future.delayed(const Duration(milliseconds: 300), () {
       if (mounted) _focusNode.requestFocus();
     });
@@ -87,7 +84,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       );
       
       if (!mounted) return;
-      // Gọi callback thành công
       widget.onSuccess();
     } catch (e) {
       if (!mounted) return;
@@ -147,20 +143,15 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     }
   }
 
-  String _formatHiddenPhone(String phone) {
-    if (phone.length >= 10) {
-      return '${phone.substring(0, 4)}***${phone.substring(phone.length - 3)}';
-    }
-    return phone;
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.white,
       appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -168,41 +159,52 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
         child: Padding(
           padding: EdgeInsets.symmetric(horizontal: 24.w),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(height: 20.h),
-              
-              // ── Icon ──
-              Container(
-                width: 80.w,
-                height: 80.w,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20.r),
-                  border: Border.all(
-                    color: AppColors.primary.withValues(alpha: 0.3),
-                    width: 1.5,
-                  ),
-                ),
-                child: Center(
-                  child: Icon(
-                    Icons.message,
-                    size: 40.r,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ),
-              SizedBox(height: 24.h),
-              
-              Text(
-                'Nhập mã OTP',
-                style: AppTypography.displayMedium,
-              ),
               SizedBox(height: 8.h),
+              // Progress Indicator
+              Center(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.black, size: 24.sp),
+                    Container(width: 40.w, height: 2.h, color: Colors.black),
+                    Icon(Icons.check_circle, color: Colors.black, size: 24.sp),
+                  ],
+                ),
+              ),
+              SizedBox(height: 48.h),
               
               Text(
-                'Mã 6 số đã được gửi đến số\n${_formatHiddenPhone(widget.phoneNumber)}',
-                style: AppTypography.bodyMedium,
-                textAlign: TextAlign.center,
+                'Nhập mã xác thực OTP.',
+                style: GoogleFonts.inter(
+                  fontSize: 28.sp,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                  height: 1.2,
+                ),
+              ),
+              SizedBox(height: 16.h),
+              
+              RichText(
+                text: TextSpan(
+                  text: 'Mã xác thực đã được gửi đến số\n',
+                  style: GoogleFonts.inter(
+                    fontSize: 15.sp,
+                    color: Colors.grey[600],
+                    height: 1.5,
+                  ),
+                  children: [
+                    TextSpan(
+                      text: '(+84) ${widget.phoneNumber}',
+                      style: GoogleFonts.inter(
+                        fontSize: 15.sp,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ],
+                ),
               ),
               SizedBox(height: 40.h),
               
@@ -247,16 +249,20 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           height: 56.h,
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
-                            color: AppColors.surfaceCard,
-                            borderRadius: BorderRadius.circular(8.r),
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12.r),
                             border: Border.all(
-                              color: isFocused ? AppColors.primary : AppColors.surfaceBorder,
+                              color: isFocused ? Colors.black : Colors.grey[300]!,
                               width: isFocused ? 2 : 1,
                             ),
                           ),
                           child: Text(
                             char,
-                            style: AppTypography.displayMedium,
+                            style: GoogleFonts.inter(
+                              fontSize: 24.sp,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black,
+                            ),
                           ),
                         );
                       }),
@@ -269,31 +275,73 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                 SizedBox(height: 16.h),
                 Text(
                   _errorMessage,
-                  style: AppTypography.bodySmall.copyWith(color: AppColors.danger),
-                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(color: Colors.red, fontSize: 13.sp),
                 ),
               ],
               
               SizedBox(height: 32.h),
               
-              if (_isLoading)
-                const CircularProgressIndicator(color: AppColors.primary)
-              else
-                TextButton(
-                  onPressed: _resendCountdown > 0 ? null : _resendOtp,
-                  child: Text(
-                    _resendCountdown > 0
-                        ? 'Gửi lại mã OTP (${_resendCountdown}s)'
-                        : 'Gửi lại mã OTP',
-                    style: AppTypography.labelMedium.copyWith(
-                      color: _resendCountdown > 0
-                          ? AppColors.textMuted
-                          : AppColors.primary,
+              Center(
+                child: GestureDetector(
+                  onTap: _resendCountdown > 0 ? null : _resendOtp,
+                  child: RichText(
+                    text: TextSpan(
+                      text: "Chưa nhận được mã? ",
+                      style: GoogleFonts.inter(
+                        color: Colors.grey[600],
+                        fontSize: 14.sp,
+                      ),
+                      children: [
+                        TextSpan(
+                          text: _resendCountdown > 0 
+                            ? 'Gửi lại ( ${_resendCountdown}s )'
+                            : 'Gửi lại',
+                          style: GoogleFonts.inter(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14.sp,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
+              ),
                 
               const Spacer(),
+
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _otpController.text.length == 6 && !_isLoading 
+                      ? () => _verifyOtp(_otpController.text) 
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.black,
+                    disabledBackgroundColor: Colors.grey[300],
+                    padding: EdgeInsets.symmetric(vertical: 16.h),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.r),
+                    ),
+                  ),
+                  child: _isLoading
+                      ? SizedBox(
+                          width: 20.w,
+                          height: 20.w,
+                          child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        )
+                      : Text(
+                          'Tiếp tục',
+                          style: GoogleFonts.inter(
+                            color: _otpController.text.length == 6 ? Colors.white : Colors.grey[500],
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                ),
+              ),
+              SizedBox(height: 24.h),
             ],
           ),
         ),
