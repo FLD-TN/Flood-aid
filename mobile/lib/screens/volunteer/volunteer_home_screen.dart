@@ -16,7 +16,7 @@ import '../../services/active_mission_manager.dart';
 import '../../services/toast_service.dart';
 import 'active_mission_screen.dart';
 import 'volunteer_history_screen.dart';
-import 'volunteer_phone_screen.dart';
+import '../role_selection_screen.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
@@ -853,7 +853,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                   Navigator.pushAndRemoveUntil(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => const VolunteerPhoneScreen(),
+                      builder: (_) => const RoleSelectionScreen(),
                     ),
                     (route) => false,
                   );

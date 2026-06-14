@@ -12,7 +12,7 @@ import '../../services/toast_service.dart';
 import '../../services/local_notification_service.dart';
 import 'tracking_screen.dart';
 import 'location_picker_screen.dart';
-import 'phone_input_screen.dart';
+import '../role_selection_screen.dart';
 import '../../services/auth_service.dart';
 import '../../services/dialect_normalizer.dart';
 import 'sos_history_screen.dart';
@@ -703,7 +703,7 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
                   Navigator.pushAndRemoveUntil(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => const PhoneInputScreen(),
+                      builder: (_) => const RoleSelectionScreen(),
                     ),
                     (route) => false,
                   );
