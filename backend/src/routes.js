@@ -18,6 +18,7 @@ const { authMiddleware } = require('./middleware/authMiddleware');
 // ====== Module 0: Auth & eKYC ======
 router.post('/auth/verify-phone', authMiddleware, authController.verifyPhone);
 router.post('/kyc/recognize-id', authMiddleware, kycController.recognizeId);
+router.post('/kyc/check-face', authMiddleware, kycController.checkFace);
 
 // ====== Module 1: SOS ======
 router.get('/sos/active', authMiddleware, sosController.getActiveByPhone);
