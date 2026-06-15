@@ -284,6 +284,39 @@ class ApiService {
     }
   }
 
+  /// POST /api/kyc/check-face — Xác thực khuôn mặt (FPT.AI FaceMatch)
+  /// So sánh ảnh CCCD với ảnh selfie, trả về isMatch, similarity, isBothImgIDCard
+  static Future<Map<String, dynamic>?> checkFace({
+    required String base64Image1, // Ảnh CCCD
+    required String base64Image2, // Ảnh selfie
+  }) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/kyc/check-face'),
+        headers: headers,
+        body: json.encode({
+          'image1': base64Image1,
+          'image2': base64Image2,
+        }),
+      ).timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+      // 422 = Lỗi từ FPT.AI (không nhận diện được mặt, sai định dạng, ...)
+      if (response.statusCode == 422) {
+        final data = json.decode(response.body);
+        return {'error': data['error'] ?? 'Lỗi xác thực khuôn mặt', 'fptCode': data['fptCode']};
+      }
+      print('[ApiService] checkFace failed: ${response.statusCode} ${response.body}');
+      return null;
+    } catch (e) {
+      print('[ApiService] checkFace error: $e');
+      return null;
+    }
+  }
+
   /// POST /api/volunteers/register — Đăng ký TNV mới (sau eKYC)
   /// Trả về 201 nếu đăng ký thành công (chờ Admin duyệt)
   static Future<Map<String, dynamic>?> registerVolunteer({
