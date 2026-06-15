@@ -1,19 +1,20 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:image_picker/image_picker.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
 import '../../services/toast_service.dart';
+import '../../widgets/camera_overlay_painter.dart';
 import 'volunteer_registration_screen.dart';
 
-/// Màn hình Xác thực khuôn mặt — So sánh ảnh CCCD với ảnh selfie qua FPT.AI FaceMatch
-/// Tự động mở camera trước khi vào màn hình để chụp selfie
+/// Màn hình Xác thực khuôn mặt — Custom Camera UI
+/// Mở camera trước, khung bầu dục đứng nét đứt, chụp selfie → gọi FPT.AI FaceMatch
 class FaceVerificationScreen extends StatefulWidget {
   final String phone;
   final Map<String, dynamic> ekycData;
-  final String cccdImageBase64; // Ảnh CCCD gốc để so sánh
+  final String cccdImageBase64;
 
   const FaceVerificationScreen({
     super.key,
@@ -27,84 +28,121 @@ class FaceVerificationScreen extends StatefulWidget {
 }
 
 class _FaceVerificationScreenState extends State<FaceVerificationScreen>
-    with SingleTickerProviderStateMixin {
-  final ImagePicker _picker = ImagePicker();
-  File? _selfieImage;
+    with WidgetsBindingObserver {
+  CameraController? _cameraController;
+  bool _isCameraReady = false;
+  bool _isTakingPicture = false;
   bool _isVerifying = false;
-  bool _cameraOpened = false;
+  File? _selfieImage;
 
-  // Kết quả xác thực
+  // Kết quả
   bool? _isMatch;
   double? _similarity;
   String? _errorMessage;
 
-  late AnimationController _pulseController;
-  late Animation<double> _pulseAnimation;
-
   @override
   void initState() {
     super.initState();
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat(reverse: true);
-    _pulseAnimation = Tween<double>(begin: 0.95, end: 1.05).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
-
-    // Tự động mở camera trước khi vào màn hình
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _openFrontCamera();
-    });
+    WidgetsBinding.instance.addObserver(this);
+    _initCamera();
   }
 
   @override
   void dispose() {
-    _pulseController.dispose();
+    WidgetsBinding.instance.removeObserver(this);
+    _cameraController?.dispose();
     super.dispose();
   }
 
-  /// Tự động mở camera trước để chụp selfie
-  Future<void> _openFrontCamera() async {
-    if (_cameraOpened) return;
-    _cameraOpened = true;
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (_cameraController == null || !_cameraController!.value.isInitialized) return;
 
+    if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
+      _cameraController?.dispose();
+      setState(() => _isCameraReady = false);
+    } else if (state == AppLifecycleState.resumed) {
+      _initCamera();
+    }
+  }
+
+  /// Khởi tạo camera trước (Front camera)
+  Future<void> _initCamera() async {
     try {
-      final XFile? image = await _picker.pickImage(
-        source: ImageSource.camera,
-        preferredCameraDevice: CameraDevice.front,
-        imageQuality: 85,
-        maxWidth: 1920,
-      );
-
-      if (image == null) {
-        // User cancelled camera — cho phép thử lại
+      final cameras = await availableCameras();
+      if (cameras.isEmpty) {
         if (mounted) {
-          setState(() => _cameraOpened = false);
+          ToastService.show(
+            context: context,
+            type: ToastType.error,
+            message: 'Không tìm thấy camera trên thiết bị.',
+          );
         }
         return;
       }
 
-      if (!mounted) return;
+      // Ưu tiên camera trước cho selfie
+      final frontCamera = cameras.firstWhere(
+        (c) => c.lensDirection == CameraLensDirection.front,
+        orElse: () => cameras.first,
+      );
 
-      setState(() {
-        _selfieImage = File(image.path);
-      });
+      _cameraController = CameraController(
+        frontCamera,
+        ResolutionPreset.high,
+        enableAudio: false,
+      );
+
+      await _cameraController!.initialize();
+
+      if (mounted) {
+        setState(() => _isCameraReady = true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ToastService.show(
+          context: context,
+          type: ToastType.error,
+          message: 'Không thể khởi tạo camera: $e',
+        );
+      }
+    }
+  }
+
+  /// Chụp selfie
+  Future<void> _takeSelfie() async {
+    if (_cameraController == null ||
+        !_cameraController!.value.isInitialized ||
+        _isTakingPicture) return;
+
+    setState(() => _isTakingPicture = true);
+
+    try {
+      final xFile = await _cameraController!.takePicture();
+      final file = File(xFile.path);
+
+      if (mounted) {
+        setState(() {
+          _selfieImage = file;
+          _isTakingPicture = false;
+        });
+      }
 
       // Tự động gọi FaceMatch ngay sau khi chụp
       await _verifyFace();
     } catch (e) {
-      if (!mounted) return;
-      setState(() => _cameraOpened = false);
-      ToastService.show(
-        context: context,
-        type: ToastType.error,
-        message: 'Không thể mở camera: $e',
-      );
+      if (mounted) {
+        setState(() => _isTakingPicture = false);
+        ToastService.show(
+          context: context,
+          type: ToastType.error,
+          message: 'Lỗi chụp ảnh: $e',
+        );
+      }
     }
   }
 
-  /// Gọi FPT.AI FaceMatch API
+  /// Gọi FPT.AI FaceMatch
   Future<void> _verifyFace() async {
     if (_selfieImage == null) return;
 
@@ -134,7 +172,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
         return;
       }
 
-      // Kiểm tra lỗi từ FPT.AI
+      // Lỗi từ FPT.AI
       if (result.containsKey('error') && result.containsKey('fptCode')) {
         setState(() {
           _isVerifying = false;
@@ -153,7 +191,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
       });
 
       if (isMatch) {
-        // Khớp → Chờ 1.5s cho user thấy kết quả rồi chuyển sang Registration
+        // Khớp → Chờ 1.5s rồi chuyển sang Registration
         await Future.delayed(const Duration(milliseconds: 1500));
         if (!mounted) return;
 
@@ -180,19 +218,17 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
     }
   }
 
-  /// Chụp lại selfie
-  Future<void> _retakeSelfie() async {
+  /// Chụp lại
+  void _retake() {
     setState(() {
       _selfieImage = null;
       _isMatch = null;
       _similarity = null;
       _errorMessage = null;
-      _cameraOpened = false;
     });
-    await _openFrontCamera();
   }
 
-  /// Bỏ qua face verification — cho phép đăng ký với cảnh báo
+  /// Bỏ qua face verification
   void _skipFaceVerification() {
     final enrichedData = Map<String, dynamic>.from(widget.ekycData);
     enrichedData['faceVerified'] = false;
@@ -211,425 +247,414 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          'Xác thực khuôn mặt',
-          style: AppTypography.headingMedium,
-        ),
-      ),
+      backgroundColor: Colors.black,
       body: SafeArea(
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 24.w),
-          child: Column(
-            children: [
-              SizedBox(height: 24.h),
-
-              // ── Icon ──
-              _buildHeaderIcon(),
-              SizedBox(height: 20.h),
-
-              // ── Title ──
-              Text(
-                _getTitle(),
-                style: AppTypography.displayMedium.copyWith(
-                  color: AppColors.textPrimary,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 8.h),
-              Text(
-                _getSubtitle(),
-                style: AppTypography.bodyMedium.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 32.h),
-
-              // ── Preview / Result Area ──
-              Expanded(
-                child: _buildContentArea(),
-              ),
-              SizedBox(height: 24.h),
-
-              // ── Action Buttons ──
-              _buildActions(),
-              SizedBox(height: 16.h),
-            ],
-          ),
-        ),
+        child: _selfieImage != null ? _buildResultMode() : _buildCameraMode(),
       ),
     );
   }
 
-  Widget _buildHeaderIcon() {
-    if (_isVerifying) {
-      return ScaleTransition(
-        scale: _pulseAnimation,
-        child: Container(
-          width: 80.w,
-          height: 80.w,
-          decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(20.r),
-            border: Border.all(
-              color: AppColors.primary.withValues(alpha: 0.3),
-              width: 1.5.w,
+  // ═══════════════════════════════════════
+  // CHẾ ĐỘ CAMERA — Camera trước + Oval
+  // ═══════════════════════════════════════
+
+  Widget _buildCameraMode() {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // ── Camera Preview ──
+        if (_isCameraReady && _cameraController != null)
+          Center(
+            child: CameraPreview(_cameraController!),
+          )
+        else
+          const Center(
+            child: CircularProgressIndicator(color: Colors.white),
+          ),
+
+        // ── Overlay mặt nạ + khung bầu dục nét đứt ──
+        CustomPaint(
+          size: Size.infinite,
+          painter: CameraOverlayPainter(
+            shape: CutoutShape.oval,
+            cutoutWidthRatio: 0.62,
+            cutoutAspectRatio: 0.72, // Bầu dục đứng (cao hơn rộng)
+            overlayColor: const Color(0xAA000000),
+            borderColor: Colors.white,
+            borderWidth: 2.5,
+            dashLength: 12,
+            dashGap: 8,
+          ),
+        ),
+
+        // ── Top bar ──
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
+            child: Row(
+              children: [
+                IconButton(
+                  icon: Icon(Icons.arrow_back, color: Colors.white, size: 24.r),
+                  onPressed: () => Navigator.pop(context),
+                ),
+                const Spacer(),
+                Text(
+                  'Xác thực khuôn mặt',
+                  style: AppTypography.headingMedium.copyWith(
+                    color: Colors.white,
+                  ),
+                ),
+                const Spacer(),
+                SizedBox(width: 48.w),
+              ],
             ),
           ),
-          child: Center(
-            child: Text('🔍', style: TextStyle(fontSize: 40.sp)),
+        ),
+
+        // ── Hướng dẫn phía trên khung ──
+        Positioned(
+          top: MediaQuery.of(context).size.height * 0.14,
+          left: 24.w,
+          right: 24.w,
+          child: Text(
+            '🤳  Đưa khuôn mặt vào trong khung hình',
+            style: AppTypography.labelMedium.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.3,
+            ),
+            textAlign: TextAlign.center,
           ),
         ),
-      );
-    }
 
-    if (_isMatch == true) {
-      return Container(
-        width: 80.w,
-        height: 80.w,
-        decoration: BoxDecoration(
-          color: AppColors.success.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(20.r),
-          border: Border.all(
-            color: AppColors.success.withValues(alpha: 0.3),
-            width: 1.5.w,
+        // ── Tips phía dưới ──
+        Positioned(
+          bottom: 160.h,
+          left: 24.w,
+          right: 24.w,
+          child: Column(
+            children: [
+              _buildTip(Icons.visibility, 'Giữ khuôn mặt ngang tầm camera'),
+              SizedBox(height: 6.h),
+              _buildTip(Icons.wb_sunny_outlined, 'Đảm bảo đủ ánh sáng, không lóa'),
+              SizedBox(height: 6.h),
+              _buildTip(Icons.face, 'Không đeo khẩu trang hoặc kính râm'),
+            ],
           ),
         ),
-        child: Center(
-          child: Text('✅', style: TextStyle(fontSize: 40.sp)),
-        ),
-      );
-    }
 
-    if (_isMatch == false || _errorMessage != null) {
-      return Container(
-        width: 80.w,
-        height: 80.w,
-        decoration: BoxDecoration(
-          color: AppColors.alertRed.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(20.r),
-          border: Border.all(
-            color: AppColors.alertRed.withValues(alpha: 0.3),
-            width: 1.5.w,
+        // ── Bottom bar — Nút chụp + Bỏ qua ──
+        Positioned(
+          bottom: 0,
+          left: 0,
+          right: 0,
+          child: Container(
+            padding: EdgeInsets.only(bottom: 24.h, top: 16.h),
+            child: Column(
+              children: [
+                // Nút chụp selfie
+                GestureDetector(
+                  onTap: _isCameraReady ? _takeSelfie : null,
+                  child: Container(
+                    width: 72.w,
+                    height: 72.w,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white,
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.5),
+                        width: 4.w,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.4),
+                          blurRadius: 16,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Container(
+                        width: 58.w,
+                        height: 58.w,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: _isTakingPicture
+                              ? Colors.grey.shade300
+                              : Colors.white,
+                          border: Border.all(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            width: 2.w,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 12.h),
+                TextButton(
+                  onPressed: _skipFaceVerification,
+                  child: Text(
+                    'Bỏ qua xác thực khuôn mặt →',
+                    style: AppTypography.caption.copyWith(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-        child: Center(
-          child: Text('❌', style: TextStyle(fontSize: 40.sp)),
-        ),
-      );
-    }
+      ],
+    );
+  }
 
-    return Container(
-      width: 80.w,
-      height: 80.w,
-      decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(20.r),
-        border: Border.all(
-          color: AppColors.primary.withValues(alpha: 0.3),
-          width: 1.5.w,
+  Widget _buildTip(IconData icon, String text) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(icon, color: Colors.white.withValues(alpha: 0.7), size: 16.r),
+        SizedBox(width: 8.w),
+        Text(
+          text,
+          style: AppTypography.caption.copyWith(
+            color: Colors.white.withValues(alpha: 0.7),
+            fontSize: 11.sp,
+          ),
         ),
-      ),
-      child: Center(
-        child: Text('🤳', style: TextStyle(fontSize: 40.sp)),
-      ),
+      ],
+    );
+  }
+
+  // ═══════════════════════════════════════
+  // CHẾ ĐỘ RESULT — Hiển thị kết quả
+  // ═══════════════════════════════════════
+
+  Widget _buildResultMode() {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // Ảnh selfie
+        Image.file(
+          _selfieImage!,
+          fit: BoxFit.cover,
+        ),
+
+        // Overlay kết quả
+        if (_isVerifying || _isMatch != null || _errorMessage != null)
+          Positioned.fill(
+            child: Container(
+              color: _isVerifying
+                  ? Colors.black.withValues(alpha: 0.5)
+                  : _isMatch == true
+                      ? AppColors.success.withValues(alpha: 0.25)
+                      : AppColors.alertRed.withValues(alpha: 0.25),
+              child: Center(
+                child: _isVerifying
+                    ? _buildVerifyingIndicator()
+                    : _isMatch == true
+                        ? _buildMatchResult()
+                        : _buildMismatchResult(),
+              ),
+            ),
+          ),
+
+        // Top bar
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: Container(
+            height: 100.h,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withValues(alpha: 0.7),
+                  Colors.transparent,
+                ],
+              ),
+            ),
+            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
+            child: Row(
+              children: [
+                IconButton(
+                  icon: Icon(Icons.arrow_back, color: Colors.white, size: 24.r),
+                  onPressed: () => Navigator.pop(context),
+                ),
+                const Spacer(),
+                Text(
+                  _getTitle(),
+                  style: AppTypography.headingMedium.copyWith(
+                    color: Colors.white,
+                  ),
+                ),
+                const Spacer(),
+                SizedBox(width: 48.w),
+              ],
+            ),
+          ),
+        ),
+
+        // Bottom actions (nếu không khớp hoặc lỗi)
+        if (!_isVerifying && _isMatch != true)
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              padding: EdgeInsets.fromLTRB(24.w, 20.h, 24.w, 32.h),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.85),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+              child: Column(
+                children: [
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56.h,
+                    child: ElevatedButton.icon(
+                      onPressed: _retake,
+                      icon: Icon(Icons.refresh, size: 22.r),
+                      label: Text(
+                        'CHỤP LẠI',
+                        style: AppTypography.labelLarge.copyWith(
+                          color: Colors.white,
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16.r),
+                        ),
+                        elevation: 4,
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 8.h),
+                  TextButton(
+                    onPressed: _skipFaceVerification,
+                    child: Text(
+                      'Bỏ qua xác thực khuôn mặt →',
+                      style: AppTypography.caption.copyWith(
+                        color: Colors.white.withValues(alpha: 0.6),
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 
   String _getTitle() {
     if (_isVerifying) return 'Đang xác thực...';
     if (_isMatch == true) return 'Xác thực thành công!';
-    if (_isMatch == false) return 'Khuôn mặt không khớp';
-    if (_errorMessage != null) return 'Không thể xác thực';
+    if (_isMatch == false) return 'Không khớp';
+    if (_errorMessage != null) return 'Lỗi xác thực';
     return 'Xác thực khuôn mặt';
   }
 
-  String _getSubtitle() {
-    if (_isVerifying) {
-      return 'Đang so sánh khuôn mặt với ảnh trên CCCD. Vui lòng đợi...';
-    }
-    if (_isMatch == true) {
-      return 'Khuôn mặt khớp với CCCD (${_similarity?.toStringAsFixed(1)}%). Đang chuyển sang đăng ký...';
-    }
-    if (_isMatch == false) {
-      return 'Khuôn mặt không trùng khớp với ảnh trên CCCD (${_similarity?.toStringAsFixed(1)}%). Vui lòng chụp lại hoặc bỏ qua.';
-    }
-    if (_errorMessage != null) {
-      return _errorMessage!;
-    }
-    return 'Chụp ảnh selfie để so sánh với ảnh trên CCCD của bạn.';
-  }
-
-  Widget _buildContentArea() {
-    if (_selfieImage != null) {
-      return _buildSelfiePreview();
-    }
-    return _buildPlaceholder();
-  }
-
-  Widget _buildPlaceholder() {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surfaceCard,
-        borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(
-          color: AppColors.surfaceBorder,
-          width: 2.w,
-          strokeAlign: BorderSide.strokeAlignInside,
+  Widget _buildVerifyingIndicator() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        SizedBox(
+          width: 56.w,
+          height: 56.w,
+          child: const CircularProgressIndicator(
+            color: Colors.white,
+            strokeWidth: 3,
+          ),
         ),
-      ),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.face_retouching_natural,
-              size: 64.r,
-              color: AppColors.textMuted.withValues(alpha: 0.4),
-            ),
-            SizedBox(height: 16.h),
-            Text(
-              'Ảnh selfie của bạn',
-              style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.textMuted,
-              ),
-            ),
-            SizedBox(height: 4.h),
-            Text(
-              'Camera trước sẽ tự động mở',
-              style: AppTypography.caption.copyWith(
-                color: AppColors.textMuted.withValues(alpha: 0.7),
-              ),
-            ),
-          ],
+        SizedBox(height: 20.h),
+        Text(
+          'Đang so sánh khuôn mặt...',
+          style: AppTypography.labelMedium.copyWith(color: Colors.white),
         ),
-      ),
+      ],
     );
   }
 
-  Widget _buildSelfiePreview() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16.r),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Image.file(
-            _selfieImage!,
-            fit: BoxFit.cover,
+  Widget _buildMatchResult() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(
+          padding: EdgeInsets.all(20.w),
+          decoration: BoxDecoration(
+            color: AppColors.success.withValues(alpha: 0.9),
+            shape: BoxShape.circle,
           ),
-          // Overlay kết quả
-          if (_isMatch != null || _isVerifying)
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: _isVerifying
-                      ? Colors.black.withValues(alpha: 0.4)
-                      : _isMatch == true
-                          ? AppColors.success.withValues(alpha: 0.2)
-                          : AppColors.alertRed.withValues(alpha: 0.2),
-                ),
-                child: Center(
-                  child: _isVerifying
-                      ? Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            SizedBox(
-                              width: 48.w,
-                              height: 48.w,
-                              child: const CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 3,
-                              ),
-                            ),
-                            SizedBox(height: 16.h),
-                            Text(
-                              'Đang so sánh khuôn mặt...',
-                              style: AppTypography.labelMedium.copyWith(
-                                color: Colors.white,
-                              ),
-                            ),
-                          ],
-                        )
-                      : _isMatch == true
-                          ? Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Container(
-                                  padding: EdgeInsets.all(16.w),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.success.withValues(alpha: 0.9),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(Icons.check, color: Colors.white, size: 48.r),
-                                ),
-                                SizedBox(height: 16.h),
-                                Container(
-                                  padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
-                                  decoration: BoxDecoration(
-                                    color: Colors.black.withValues(alpha: 0.6),
-                                    borderRadius: BorderRadius.circular(24.r),
-                                  ),
-                                  child: Text(
-                                    'Khớp ${_similarity?.toStringAsFixed(1)}%',
-                                    style: AppTypography.labelLarge.copyWith(
-                                      color: Colors.white,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            )
-                          : Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Container(
-                                  padding: EdgeInsets.all(16.w),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.alertRed.withValues(alpha: 0.9),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(Icons.close, color: Colors.white, size: 48.r),
-                                ),
-                                SizedBox(height: 16.h),
-                                Container(
-                                  padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
-                                  decoration: BoxDecoration(
-                                    color: Colors.black.withValues(alpha: 0.6),
-                                    borderRadius: BorderRadius.circular(24.r),
-                                  ),
-                                  child: Text(
-                                    'Không khớp (${_similarity?.toStringAsFixed(1)}%)',
-                                    style: AppTypography.labelLarge.copyWith(
-                                      color: Colors.white,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                ),
-              ),
-            ),
-          // Bottom gradient
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              height: 60.h,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                  colors: [
-                    Colors.black.withValues(alpha: 0.6),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                _isVerifying ? 'Đang xử lý...' : 'Ảnh selfie',
-                style: AppTypography.labelMedium.copyWith(
-                  color: Colors.white,
-                ),
-              ),
-            ),
+          child: Icon(Icons.check, color: Colors.white, size: 56.r),
+        ),
+        SizedBox(height: 20.h),
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.6),
+            borderRadius: BorderRadius.circular(24.r),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActions() {
-    // Đang xác thực → không hiển thị nút
-    if (_isVerifying) {
-      return SizedBox(height: 56.h);
-    }
-
-    // Xác thực thành công → đang chuyển trang
-    if (_isMatch == true) {
-      return SizedBox(
-        width: double.infinity,
-        height: 56.h,
-        child: ElevatedButton.icon(
-          onPressed: null,
-          icon: SizedBox(
-            width: 22.w,
-            height: 22.w,
-            child: const CircularProgressIndicator(
-              color: Colors.white,
-              strokeWidth: 2.5,
-            ),
-          ),
-          label: Text(
-            'ĐANG CHUYỂN TRANG...',
+          child: Text(
+            'Khớp ${_similarity?.toStringAsFixed(1)}%',
             style: AppTypography.labelLarge.copyWith(
               color: Colors.white,
-              letterSpacing: 1.5,
-            ),
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.success,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16.r),
-            ),
-            elevation: 4,
-            shadowColor: AppColors.success.withValues(alpha: 0.4),
-          ),
-        ),
-      );
-    }
-
-    // Chưa chụp selfie hoặc kết quả không khớp / lỗi → cho chụp lại
-    return Column(
-      children: [
-        // Nút chụp lại / chụp selfie
-        SizedBox(
-          width: double.infinity,
-          height: 56.h,
-          child: ElevatedButton.icon(
-            onPressed: _retakeSelfie,
-            icon: Icon(
-              _selfieImage == null ? Icons.camera_alt : Icons.refresh,
-              size: 22.r,
-            ),
-            label: Text(
-              _selfieImage == null ? 'CHỤP ẢNH SELFIE' : 'CHỤP LẠI',
-              style: AppTypography.labelLarge.copyWith(
-                color: Colors.white,
-                letterSpacing: 1.5,
-              ),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16.r),
-              ),
-              elevation: 4,
-              shadowColor: AppColors.primary.withValues(alpha: 0.4),
+              letterSpacing: 0.5,
             ),
           ),
         ),
         SizedBox(height: 8.h),
+        Text(
+          'Đang chuyển sang đăng ký...',
+          style: AppTypography.caption.copyWith(
+            color: Colors.white.withValues(alpha: 0.8),
+          ),
+        ),
+      ],
+    );
+  }
 
-        // Bỏ qua
-        TextButton(
-          onPressed: _skipFaceVerification,
+  Widget _buildMismatchResult() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(
+          padding: EdgeInsets.all(20.w),
+          decoration: BoxDecoration(
+            color: AppColors.alertRed.withValues(alpha: 0.9),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(Icons.close, color: Colors.white, size: 56.r),
+        ),
+        SizedBox(height: 20.h),
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.6),
+            borderRadius: BorderRadius.circular(24.r),
+          ),
           child: Text(
-            'Bỏ qua xác thực khuôn mặt →',
-            style: AppTypography.caption.copyWith(
-              color: AppColors.textMuted,
-              decoration: TextDecoration.underline,
+            _errorMessage ?? 'Không khớp (${_similarity?.toStringAsFixed(1)}%)',
+            style: AppTypography.labelMedium.copyWith(
+              color: Colors.white,
             ),
+            textAlign: TextAlign.center,
           ),
         ),
       ],
