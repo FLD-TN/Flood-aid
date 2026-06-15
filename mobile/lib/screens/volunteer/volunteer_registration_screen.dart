@@ -165,6 +165,67 @@ class _VolunteerRegistrationScreenState
                       ],
                     ),
                   ),
+                if (hasEkyc) SizedBox(height: 8.h),
+
+                // ── Face Verified Badge ──
+                if (hasEkyc && widget.ekycData?['faceVerified'] == true)
+                  Container(
+                    width: double.infinity,
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                    decoration: BoxDecoration(
+                      color: AppColors.success.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12.r),
+                      border: Border.all(
+                        color: AppColors.success.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.face,
+                            color: AppColors.success, size: 20.r),
+                        SizedBox(width: 10.w),
+                        Expanded(
+                          child: Text(
+                            'Khuôn mặt đã xác thực ✅ (${(widget.ekycData?['faceSimilarity'] as num?)?.toStringAsFixed(1) ?? ''}%)',
+                            style: AppTypography.caption.copyWith(
+                              color: AppColors.success,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (hasEkyc && widget.ekycData?['faceVerified'] == false)
+                  Container(
+                    width: double.infinity,
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                    decoration: BoxDecoration(
+                      color: AppColors.statusResponding.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12.r),
+                      border: Border.all(
+                        color: AppColors.statusResponding.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.face,
+                            color: AppColors.statusResponding, size: 20.r),
+                        SizedBox(width: 10.w),
+                        Expanded(
+                          child: Text(
+                            'Khuôn mặt chưa xác thực ⚠️',
+                            style: AppTypography.caption.copyWith(
+                              color: AppColors.statusResponding,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 if (hasEkyc) SizedBox(height: 24.h),
 
                 // ── Họ và tên ──
