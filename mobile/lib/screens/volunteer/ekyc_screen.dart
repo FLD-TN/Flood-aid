@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
 import '../../services/toast_service.dart';
+import 'face_verification_screen.dart';
 import 'volunteer_registration_screen.dart';
 
 /// Màn hình eKYC — Hướng dẫn TNV chụp ảnh CCCD (Mặt trước)
@@ -71,13 +72,14 @@ class _EkycScreenState extends State<EkycScreen> {
         return;
       }
 
-      // Chuyển sang màn hình Đăng ký với dữ liệu đã bóc tách
+      // CCCD hợp lệ → Tự động chuyển sang xác thực khuôn mặt
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => VolunteerRegistrationScreen(
+          builder: (_) => FaceVerificationScreen(
             phone: widget.phone,
             ekycData: result,
+            cccdImageBase64: base64Image,
           ),
         ),
       );
