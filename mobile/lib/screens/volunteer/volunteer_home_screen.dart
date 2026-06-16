@@ -515,6 +515,26 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                           }
                         },
                       ),
+                      // ── Dim Overlay (Google Maps Standard) ──
+                      IgnorePointer(
+                        ignoring: sheetSize <= 0.42,
+                        child: GestureDetector(
+                          onTap: () {
+                            if (_sheetController.size > 0.42) {
+                              _sheetController.animateTo(
+                                0.42,
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeOut,
+                              );
+                            }
+                          },
+                          child: Container(
+                            color: Colors.black.withValues(
+                              alpha: ((sheetSize - 0.42) / (0.75 - 0.42) * 0.6).clamp(0.0, 0.6),
+                            ),
+                          ),
+                        ),
+                      ),
                       // ── SOS Legend ──
                       Positioned(
                         left: 16.w,
@@ -524,42 +544,49 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                       Positioned(
                         right: 16.w,
                         bottom: constraints.maxHeight * sheetSize + 16.h,
-                        child: GestureDetector(
-                          onTap: () {
-                            if (isExpanded) {
-                              _sheetController.animateTo(
-                                0.08,
-                                duration: const Duration(milliseconds: 300),
-                                curve: Curves.easeInOut,
-                              );
-                            } else {
-                              _sheetController.animateTo(
-                                0.75,
-                                duration: const Duration(milliseconds: 300),
-                                curve: Curves.easeInOut,
-                              );
-                            }
-                          },
-                          child: Container(
-                            width: 44.w,
-                            height: 44.w,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.15),
-                                  blurRadius: 8.r,
-                                  offset: Offset(0, 2.h),
+                        child: AnimatedOpacity(
+                          opacity: sheetSize < 0.6 ? 1.0 : 0.0,
+                          duration: const Duration(milliseconds: 150),
+                          child: IgnorePointer(
+                            ignoring: sheetSize >= 0.6,
+                            child: GestureDetector(
+                              onTap: () {
+                                if (isExpanded) {
+                                  _sheetController.animateTo(
+                                    0.08,
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.easeInOut,
+                                  );
+                                } else {
+                                  _sheetController.animateTo(
+                                    0.75,
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.easeInOut,
+                                  );
+                                }
+                              },
+                              child: Container(
+                                width: 44.w,
+                                height: 44.w,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.15),
+                                      blurRadius: 8.r,
+                                      offset: Offset(0, 2.h),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                            child: Icon(
-                              isExpanded
-                                  ? Icons.keyboard_arrow_down
-                                  : Icons.keyboard_arrow_up,
-                              color: AppColors.alertRed,
-                              size: 28.r,
+                                child: Icon(
+                                  isExpanded
+                                      ? Icons.keyboard_arrow_down
+                                      : Icons.keyboard_arrow_up,
+                                  color: AppColors.alertRed,
+                                  size: 28.r,
+                                ),
+                              ),
                             ),
                           ),
                         ),

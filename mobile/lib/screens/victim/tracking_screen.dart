@@ -42,6 +42,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
   bool _hasVolunteer = false;
   bool _isResolving = false;
   bool _isCancelling = false;
+  bool _isExpanded = true;
 
   // Victim position
   late double _victimLat;
@@ -498,29 +499,23 @@ class _TrackingScreenState extends State<TrackingScreen> {
         Marker(
           point: LatLng(_tnvLat!, _tnvLon!),
           width: 90.w,
-          height: 90.w,
+          height: 110.w,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 36.w,
-                height: 36.w,
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 3),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.4),
-                      blurRadius: 12.r,
-                      spreadRadius: 2.r,
-                    ),
-                  ],
-                ),
-              child: Icon(
-                  Icons.local_shipping_rounded,
-                  color: Colors.white,
-                  size: 20.r,
+              SizedBox(
+                width: 52.w,
+                height: 52.w,
+                child: Image.asset(
+                  'assets/images/tnv_boat.png',
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Icon(
+                      Icons.local_shipping_rounded,
+                      color: AppColors.primary,
+                      size: 24.r,
+                    );
+                  },
                 ),
               ),
               SizedBox(height: 6.h),
@@ -591,16 +586,13 @@ class _TrackingScreenState extends State<TrackingScreen> {
             Expanded(
               child: Stack(
                 children: [
-                  // ── Map (full area with bottom padding) ──
-                  Padding(
-                    padding: EdgeInsets.only(bottom: _hasVolunteer ? 280.h : 360.h), // Nhường chỗ cho Status Board
-                    child: FloodAidMap(
-                      mapController: _mapController,
-                      initialCenter: LatLng(_victimLat, _victimLon),
-                      initialZoom: 15.0,
-                      markers: _buildMarkers(),
-                      onMyLocationTap: _centerOnVictim,
-                    ),
+                  // ── Map (full screen) ──
+                  FloodAidMap(
+                    mapController: _mapController,
+                    initialCenter: LatLng(_victimLat, _victimLon),
+                    initialZoom: 15.0,
+                    markers: _buildMarkers(),
+                    onMyLocationTap: _centerOnVictim,
                   ),
                   // ── SOS Legend ──
                   Positioned(
@@ -611,7 +603,39 @@ class _TrackingScreenState extends State<TrackingScreen> {
                   // ── Fixed Bottom Status Board ──
                   Align(
                     alignment: Alignment.bottomCenter,
-                    child: _buildFixedStatusBoard(),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Padding(
+                          padding: EdgeInsets.only(right: 16.w, bottom: 16.h),
+                          child: GestureDetector(
+                            onTap: () => setState(() => _isExpanded = !_isExpanded),
+                            child: Container(
+                              width: 44.w,
+                              height: 44.w,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.15),
+                                    blurRadius: 8.r,
+                                    offset: Offset(0, 2.h),
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                _isExpanded ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_up,
+                                color: AppColors.alertRed,
+                                size: 28.r,
+                              ),
+                            ),
+                          ),
+                        ),
+                        _buildFixedStatusBoard(),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -690,195 +714,240 @@ class _TrackingScreenState extends State<TrackingScreen> {
     if (_status == 'responding' || _status == 'near' || _status == 'on_scene') statusIcon = Icons.local_shipping_rounded;
     if (_status == 'resolved') statusIcon = Icons.check_circle_rounded;
 
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(32.r)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
-            blurRadius: 24.r,
-            offset: Offset(0, -8.h),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(24.w, 32.h, 24.w, 24.h),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (!_hasVolunteer) ...[
-                // Lottie animation centered
-                Center(
-                  child: Lottie.asset(
-                    'assets/lottie/waiting_sos.json',
-                    width: 150.w,
-                    height: 150.w,
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        width: 120.w,
-                        height: 120.w,
-                        decoration: BoxDecoration(
-                          color: AppColors.alertRed.withOpacity(0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(Icons.sos, size: 50.w, color: AppColors.alertRed),
-                      );
-                    },
-                  ),
-                ),
-                SizedBox(height: 16.h),
-                Text(
-                  'Đang tìm kiếm Đội Cứu Hộ...',
-                  style: AppTypography.headingLarge.copyWith(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                SizedBox(height: 8.h),
-                Text(
-                  'Hệ thống đang quét các đội cứu hộ gần nhất trong khu vực.',
-                  style: AppTypography.bodyMedium.copyWith(height: 1.5, color: AppColors.textMuted),
-                  textAlign: TextAlign.center,
-                ),
-                SizedBox(height: 24.h),
-                SlideToConfirm(
-                  text: 'VUỐT ĐỂ HUỶ SOS',
-                  isLoading: _isCancelling,
-                  onConfirm: () async {
-                    _handleCancelWithConfirm();
-                  },
-                ),
-              ] else ...[
-                // ── Status Badge ──
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-                  decoration: BoxDecoration(
-                    color: config.color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(100.r),
-                    border: Border.all(color: config.color.withValues(alpha: 0.2)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(statusIcon, color: config.color, size: 20.r),
-                      SizedBox(width: 8.w),
-                      Text(
-                        _status == 'pending' ? 'Đang tìm kiếm cứu hộ' : 'Đội cứu hộ đang đến',
-                        style: AppTypography.labelMedium.copyWith(
-                          color: config.color,
-                          fontWeight: FontWeight.bold,
+    return GestureDetector(
+      onVerticalDragEnd: (details) {
+        if (details.primaryVelocity != null) {
+          if (details.primaryVelocity! > 0) {
+            // Dragged down -> collapse
+            if (_isExpanded) setState(() => _isExpanded = false);
+          } else if (details.primaryVelocity! < 0) {
+            // Dragged up -> expand
+            if (!_isExpanded) setState(() => _isExpanded = true);
+          }
+        }
+      },
+      child: Container(
+        width: double.infinity,
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.5,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32.r)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.12),
+              blurRadius: 24.r,
+              offset: Offset(0, -8.h),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32.r)),
+          child: SingleChildScrollView(
+            physics: const ClampingScrollPhysics(),
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(24.w, 16.h, 24.w, 24.h),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ── Drag Handle ──
+                    Center(
+                      child: Padding(
+                        padding: EdgeInsets.only(bottom: 16.h),
+                        child: Container(
+                          width: 40.w,
+                          height: 5.h,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade300,
+                            borderRadius: BorderRadius.circular(10.r),
+                          ),
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                SizedBox(height: 24.h),
+                    ),
 
-                // ── Hero Metrics (Chỉ hiện khi có TNV) ──
-                if (_hasVolunteer && _distanceM != null)
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                    if (!_hasVolunteer) ...[
+                      // Lottie animation centered
+                      if (_isExpanded) ...[
+                        Center(
+                          child: Lottie.asset(
+                            'assets/lottie/waiting_sos.json',
+                            width: 110.w,
+                            height: 110.w,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                width: 120.w,
+                                height: 120.w,
+                                decoration: BoxDecoration(
+                                  color: AppColors.alertRed.withOpacity(0.1),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(Icons.sos, size: 50.w, color: AppColors.alertRed),
+                              );
+                            },
+                          ),
+                        ),
+                        SizedBox(height: 16.h),
+                      ],
+                      
+                      Text(
+                        'Đang tìm kiếm Đội Cứu Hộ...',
+                        style: AppTypography.headingLarge.copyWith(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      
+                      if (_isExpanded) ...[
+                        SizedBox(height: 8.h),
+                        Text(
+                          'Hệ thống đang quét các đội cứu hộ gần nhất trong khu vực.',
+                          style: AppTypography.bodyMedium.copyWith(height: 1.5, color: AppColors.textMuted),
+                          textAlign: TextAlign.center,
+                        ),
+                        SizedBox(height: 24.h),
+                        SlideToConfirm(
+                          text: 'VUỐT ĐỂ HUỶ SOS',
+                          isLoading: _isCancelling,
+                          onConfirm: () async {
+                            _handleCancelWithConfirm();
+                          },
+                        ),
+                      ],
+                    ] else ...[
+                      // ── Status Badge ──
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                        decoration: BoxDecoration(
+                          color: config.color.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(100.r),
+                          border: Border.all(color: config.color.withValues(alpha: 0.2)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
+                            Icon(statusIcon, color: config.color, size: 20.r),
+                            SizedBox(width: 8.w),
                             Text(
-                              'Thời gian dự kiến',
-                              style: AppTypography.bodySmall.copyWith(
-                                color: AppColors.textMuted,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                            SizedBox(height: 4.h),
-                            Text(
-                              _calculateEta(_distanceM!).replaceAll('⏱ ', '').replaceAll(' Ước tính ~', ''),
-                              style: AppTypography.displayMedium.copyWith(
-                                color: AppColors.textPrimary,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 32.sp,
+                              _status == 'pending' ? 'Đang tìm kiếm cứu hộ' : 'Đội cứu hộ đang đến',
+                              style: AppTypography.labelMedium.copyWith(
+                                color: config.color,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            'Khoảng cách',
-                            style: AppTypography.bodySmall.copyWith(
-                              color: AppColors.textMuted,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.5,
+                      SizedBox(height: 24.h),
+
+                      // ── Hero Metrics (Chỉ hiện khi có TNV) ──
+                      if (_hasVolunteer && _distanceM != null)
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Thời gian dự kiến',
+                                    style: AppTypography.bodySmall.copyWith(
+                                      color: AppColors.textMuted,
+                                      fontWeight: FontWeight.w600,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4.h),
+                                  Text(
+                                    _calculateEta(_distanceM!).replaceAll('⏱ ', '').replaceAll(' Ước tính ~', ''),
+                                    style: AppTypography.displayMedium.copyWith(
+                                      color: AppColors.textPrimary,
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 32.sp,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                          SizedBox(height: 4.h),
-                          Text(
-                            _distanceM! >= 1000
-                                ? '${(_distanceM! / 1000).toStringAsFixed(1)} km'
-                                : '$_distanceM m',
-                            style: AppTypography.headingLarge.copyWith(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w800,
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  'Khoảng cách',
+                                  style: AppTypography.bodySmall.copyWith(
+                                    color: AppColors.textMuted,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                                SizedBox(height: 4.h),
+                                Text(
+                                  _distanceM! >= 1000
+                                      ? '${(_distanceM! / 1000).toStringAsFixed(1)} km'
+                                      : '$_distanceM m',
+                                  style: AppTypography.headingLarge.copyWith(
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                          ],
+                        ),
 
-                const SizedBox(height: 32),
+                      if (_isExpanded) ...[
+                        const SizedBox(height: 32),
 
-                // ── Resolve Slider ──
-                SlideToConfirm(
-                  text: 'VUỐT ĐỂ XÁC NHẬN AN TOÀN',
-                  isLoading: _isResolving,
-                  onConfirm: () async {
-                    await _handleResolve();
-                  },
-                ),
+                        // ── Resolve Slider ──
+                        SlideToConfirm(
+                          text: 'VUỐT ĐỂ XÁC NHẬN AN TOÀN',
+                          isLoading: _isResolving,
+                          onConfirm: () async {
+                            await _handleResolve();
+                          },
+                        ),
 
-                SizedBox(height: 16.h),
+                        SizedBox(height: 16.h),
 
-                // ── Cancel Button ──
-                SizedBox(
-                  width: double.infinity,
-                  child: TextButton(
-                    onPressed: _isCancelling ? null : _handleCancelWithConfirm,
-                    style: TextButton.styleFrom(
-                      padding: EdgeInsets.symmetric(vertical: 14.h),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12.r),
-                        side: BorderSide(color: Colors.grey.shade300),
-                      ),
-                    ),
-                    child: _isCancelling
-                      ? SizedBox(
-                          width: 20.w, height: 20.w,
-                          child: const CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(
-                          'Huỷ tín hiệu SOS',
-                          style: TextStyle(
-                            color: AppColors.textMuted,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14.sp,
+                        // ── Cancel Button ──
+                        SizedBox(
+                          width: double.infinity,
+                          child: TextButton(
+                            onPressed: _isCancelling ? null : _handleCancelWithConfirm,
+                            style: TextButton.styleFrom(
+                              padding: EdgeInsets.symmetric(vertical: 14.h),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12.r),
+                                side: BorderSide(color: Colors.grey.shade300),
+                              ),
+                            ),
+                            child: _isCancelling
+                              ? SizedBox(
+                                  width: 20.w, height: 20.w,
+                                  child: const CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : Text(
+                                  'Huỷ tín hiệu SOS',
+                                  style: TextStyle(
+                                    color: AppColors.textMuted,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14.sp,
+                                  ),
+                                ),
                           ),
                         ),
-                  ),
+                      ],
+                    ],
+                  ],
                 ),
-              ],
-            ],
+              ),
+            ),
           ),
         ),
       ),
