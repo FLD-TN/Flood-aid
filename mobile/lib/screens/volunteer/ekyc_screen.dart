@@ -296,11 +296,11 @@ class _EkycScreenState extends State<EkycScreen> with WidgetsBindingObserver {
           right: 24.w,
           child: Column(
             children: [
-              _buildTip(Icons.wb_sunny_outlined, 'Tránh chụp bị lóa sáng hoặc bóng đổ'),
+              _buildTip('Tránh chụp bị lóa sáng hoặc bóng đổ'),
               SizedBox(height: 6.h),
-              _buildTip(Icons.center_focus_strong, 'Đảm bảo thẻ nằm gọn trong khung'),
+              _buildTip('Đảm bảo thẻ nằm gọn trong khung'),
               SizedBox(height: 6.h),
-              _buildTip(Icons.do_not_touch, 'Không để ngón tay che viền thẻ'),
+              _buildTip('Không để ngón tay che viền thẻ'),
             ],
           ),
         ),
@@ -373,11 +373,18 @@ class _EkycScreenState extends State<EkycScreen> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildTip(IconData icon, String text) {
+  Widget _buildTip(String text) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(icon, color: Colors.white.withValues(alpha: 0.7), size: 16.r),
+        Container(
+          width: 4.w,
+          height: 4.w,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.5),
+            shape: BoxShape.circle,
+          ),
+        ),
         SizedBox(width: 8.w),
         Text(
           text,
@@ -468,25 +475,8 @@ class _EkycScreenState extends State<EkycScreen> with WidgetsBindingObserver {
                 SizedBox(
                   width: double.infinity,
                   height: 56.h,
-                  child: ElevatedButton.icon(
+                  child: ElevatedButton(
                     onPressed: _isProcessing ? null : _processImage,
-                    icon: _isProcessing
-                        ? SizedBox(
-                            width: 22.w,
-                            height: 22.w,
-                            child: const CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2.5,
-                            ),
-                          )
-                        : Icon(Icons.auto_awesome, size: 22.r),
-                    label: Text(
-                      _isProcessing ? 'ĐANG NHẬN DIỆN...' : 'XÁC THỰC CCCD',
-                      style: AppTypography.labelLarge.copyWith(
-                        color: Colors.white,
-                        letterSpacing: 1.5,
-                      ),
-                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
@@ -496,6 +486,22 @@ class _EkycScreenState extends State<EkycScreen> with WidgetsBindingObserver {
                       elevation: 4,
                       shadowColor: AppColors.primary.withValues(alpha: 0.4),
                     ),
+                    child: _isProcessing
+                        ? SizedBox(
+                            width: 22.w,
+                            height: 22.w,
+                            child: const CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2.5,
+                            ),
+                          )
+                        : Text(
+                            'XÁC THỰC CCCD',
+                            style: AppTypography.labelLarge.copyWith(
+                              color: Colors.white,
+                              letterSpacing: 1.5,
+                            ),
+                          ),
                   ),
                 ),
                 SizedBox(height: 12.h),

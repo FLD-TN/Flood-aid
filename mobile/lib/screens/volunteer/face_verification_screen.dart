@@ -337,11 +337,11 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
           right: 24.w,
           child: Column(
             children: [
-              _buildTip(Icons.visibility, 'Giữ khuôn mặt ngang tầm camera'),
+              _buildTip('Giữ khuôn mặt ngang tầm camera'),
               SizedBox(height: 6.h),
-              _buildTip(Icons.wb_sunny_outlined, 'Đảm bảo đủ ánh sáng, không lóa'),
+              _buildTip('Đảm bảo đủ ánh sáng, không lóa'),
               SizedBox(height: 6.h),
-              _buildTip(Icons.face, 'Không đeo khẩu trang hoặc kính râm'),
+              _buildTip('Không đeo khẩu trang hoặc kính râm'),
             ],
           ),
         ),
@@ -413,11 +413,18 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
     );
   }
 
-  Widget _buildTip(IconData icon, String text) {
+  Widget _buildTip(String text) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(icon, color: Colors.white.withValues(alpha: 0.7), size: 16.r),
+        Container(
+          width: 4.w,
+          height: 4.w,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.5),
+            shape: BoxShape.circle,
+          ),
+        ),
         SizedBox(width: 8.w),
         Text(
           text,
@@ -524,16 +531,8 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
                   SizedBox(
                     width: double.infinity,
                     height: 56.h,
-                    child: ElevatedButton.icon(
+                    child: ElevatedButton(
                       onPressed: _retake,
-                      icon: Icon(Icons.refresh, size: 22.r),
-                      label: Text(
-                        'CHỤP LẠI',
-                        style: AppTypography.labelLarge.copyWith(
-                          color: Colors.white,
-                          letterSpacing: 1.5,
-                        ),
-                      ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
@@ -541,6 +540,13 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
                           borderRadius: BorderRadius.circular(16.r),
                         ),
                         elevation: 4,
+                      ),
+                      child: Text(
+                        'CHỤP LẠI',
+                        style: AppTypography.labelLarge.copyWith(
+                          color: Colors.white,
+                          letterSpacing: 1.5,
+                        ),
                       ),
                     ),
                   ),
