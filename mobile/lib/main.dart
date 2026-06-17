@@ -107,7 +107,7 @@ class FloodAidApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ScreenUtilInit(
-      designSize: const Size(375, 812), // Kích thước thiết kế gốc trên Figma
+      designSize: const Size(375, 812),
       minTextAdapt: true,
       splitScreenMode: true,
       builder: (context, child) {
@@ -117,7 +117,6 @@ class FloodAidApp extends StatelessWidget {
           debugShowCheckedModeBanner: false,
           theme: buildAppTheme(),
           home: const RoleSelectionScreen(),
-          // Fix #13: Global connectivity banner — hiện khi mất mạng
           builder: (context, widget) {
             return ConnectivityBanner(child: widget ?? const SizedBox.shrink());
           },

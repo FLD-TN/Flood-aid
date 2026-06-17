@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:lucide_icons/lucide_icons.dart';
-import '../theme/app_theme.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'auth/phone_auth_screen.dart';
 
-/// Màn hình chọn vai trò: Nạn nhân hoặc Tình nguyện viên
-/// Design concept: Trust & Empathy - Bright, clean, premium UI
 class RoleSelectionScreen extends StatefulWidget {
   const RoleSelectionScreen({super.key});
 
@@ -13,454 +9,193 @@ class RoleSelectionScreen extends StatefulWidget {
   State<RoleSelectionScreen> createState() => _RoleSelectionScreenState();
 }
 
-class _RoleSelectionScreenState extends State<RoleSelectionScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _titleOpacity;
-  late Animation<Offset> _titleSlide;
-
-  late Animation<double> _victimOpacity;
-  late Animation<Offset> _victimSlide;
-
-  late Animation<double> _volunteerOpacity;
-  late Animation<Offset> _volunteerSlide;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1400),
-    );
-
-    _titleOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-          parent: _controller,
-          curve: const Interval(0.0, 0.5, curve: Curves.easeOut)),
-    );
-    _titleSlide =
-        Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero).animate(
-      CurvedAnimation(
-          parent: _controller,
-          curve: const Interval(0.0, 0.5, curve: Curves.easeOutCubic)),
-    );
-
-    _victimOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-          parent: _controller,
-          curve: const Interval(0.2, 0.7, curve: Curves.easeOut)),
-    );
-    _victimSlide =
-        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
-      CurvedAnimation(
-          parent: _controller,
-          curve: const Interval(0.2, 0.7, curve: Curves.easeOutCubic)),
-    );
-
-    _volunteerOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-          parent: _controller,
-          curve: const Interval(0.4, 0.9, curve: Curves.easeOut)),
-    );
-    _volunteerSlide =
-        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
-      CurvedAnimation(
-          parent: _controller,
-          curve: const Interval(0.4, 0.9, curve: Curves.easeOutCubic)),
-    );
-
-    _controller.forward();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
+  String? selectedRole;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: Stack(
+      backgroundColor: Colors.white,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // ── Background Gradient ──
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    AppColors.primary.withValues(alpha: 0.05),
-                    AppColors.background,
-                    AppColors.background,
-                  ],
-                  stops: const [0.0, 0.4, 1.0],
-                ),
+          // Top illustration - hiện full màn hình phía trên (bỏ qua SafeArea)
+          SizedBox(
+            width: double.infinity,
+            height: MediaQuery.of(context).size.height * 0.35, // Chiếm 35% màn hình
+            child: Image.asset(
+              'assets/images/hero_illustration.png',
+              fit: BoxFit.cover, // Cắt cúp để lấp đầy khung hình
+              errorBuilder: (context, error, stackTrace) => SizedBox(
+                height: MediaQuery.of(context).size.height * 0.35,
               ),
             ),
           ),
-
-          // ── Hero Illustration ──
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            height: MediaQuery.of(context).size.height * 0.45,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Hero(
-                  tag: 'splash_image',
-                  child: Image.asset(
-                    'assets/images/hero_illustration.png',
-                    fit: BoxFit.cover,
-                    alignment: Alignment.topCenter,
-                  ),
-                ),
-                // Gradient overlay to blend image smoothly into background
-                Positioned.fill(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          AppColors.background.withValues(alpha: 0.0),
-                          AppColors.background.withValues(alpha: 0.3),
-                          AppColors.background,
-                        ],
-                        stops: const [0.4, 0.75, 1.0],
+          const SizedBox(height: 32),
+          
+          // Phần chữ và nút bọc trong Padding và SafeArea để không dính viền dưới
+          Expanded(
+            child: SafeArea(
+              top: false, // Top đã bị ảnh lấp nên không cần SafeArea
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: Column(
+                  children: [
+                    // Title
+                    Text(
+                      'Chọn vai trò',
+                      style: GoogleFonts.inter(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                        height: 1.2,
                       ),
                     ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // ── Content ──
-          SafeArea(
-            bottom: false,
-            child: CustomScrollView(
-              physics: const BouncingScrollPhysics(),
-              slivers: [
-                SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 24.w),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    const SizedBox(height: 12),
+                    
+                    // Subtitle
+                    Text(
+                      'Chọn Cứu hộ nếu bạn cần được giúp đỡ\nhoặc Tình nguyện viên nếu bạn muốn giúp',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        color: Colors.grey[600],
+                        height: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 40),
+                    
+                    // Cards Row
+                    Row(
                       children: [
-                        SizedBox(height: MediaQuery.of(context).size.height * 0.32),
-
-                        // ── Brand Title (Animated) ──
-                        FadeTransition(
-                          opacity: _titleOpacity,
-                          child: SlideTransition(
-                            position: _titleSlide,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: EdgeInsets.all(8.w),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primary
-                                            .withValues(alpha: 0.1),
-                                        borderRadius:
-                                            BorderRadius.circular(12.r),
-                                      ),
-                                      child: Icon(
-                                        LucideIcons.droplets,
-                                        color: AppColors.primary,
-                                        size: 28.sp,
-                                      ),
-                                    ),
-                                    SizedBox(width: 12.w),
-                                    Text(
-                                      'FloodAid',
-                                      style: AppTypography.displayLarge
-                                          .copyWith(
-                                        color: AppColors.primary,
-                                        letterSpacing: -1,
-                                        fontSize: 36.sp,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                SizedBox(height: 12.h),
-                                Text(
-                                  'Nền tảng Điều phối Cứu trợ Lũ lụt',
-                                  style: AppTypography.headingMedium.copyWith(
-                                    color: AppColors.textPrimary,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                SizedBox(height: 8.h),
-                                Text(
-                                  'Hỗ trợ khẩn cấp tại miền Trung Việt Nam. Chọn vai trò của bạn để bắt đầu.',
-                                  style: AppTypography.bodyLarge.copyWith(
-                                    color: AppColors.textSecondary,
-                                    height: 1.5,
-                                  ),
-                                ),
-                              ],
-                            ),
+                        Expanded(
+                          child: _buildModernCard(
+                            role: 'Cứu hộ',
+                            imagePath: 'assets/images/victim_modern.png',
+                            backgroundColor: const Color(0xFFD3EBEB), // Light teal
+                            borderColor: const Color(0xFF008989), // Dark teal border
+                            isSelected: selectedRole == 'victim',
+                            onTap: () => setState(() => selectedRole = 'victim'),
                           ),
                         ),
-
-                        SizedBox(height: 32.h),
-
-                        // ── Victim Card (Animated) ──
-                        FadeTransition(
-                          opacity: _victimOpacity,
-                          child: SlideTransition(
-                            position: _victimSlide,
-                            child: _RoleCard(
-                              icon: LucideIcons.lifeBuoy,
-                              title: 'TÔI CẦN CỨU HỘ',
-                              subtitle:
-                                  'Gửi tín hiệu SOS khẩn cấp đến đội cứu hộ gần nhất',
-                              accentColor: AppColors.statusPending,
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) => const PhoneAuthScreen(role: 'victim')),
-                              ),
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: 16.h),
-
-                        // ── Volunteer Card (Animated) ──
-                        FadeTransition(
-                          opacity: _volunteerOpacity,
-                          child: SlideTransition(
-                            position: _volunteerSlide,
-                            child: _RoleCard(
-                              icon: LucideIcons.shieldCheck,
-                              title: 'TÔI LÀ TÌNH NGUYỆN VIÊN',
-                              subtitle:
-                                  'Tham gia cứu trợ, nhận ca SOS và hỗ trợ nạn nhân',
-                              accentColor: AppColors.primary,
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) =>
-                                        const PhoneAuthScreen(role: 'volunteer')),
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        const Spacer(),
-
-                        // ── Footer ──
-                        SafeArea(
-                          top: false,
-                          child: Padding(
-                            padding: EdgeInsets.only(bottom: 24.h),
-                            child: Center(
-                              child: Text(
-                                'Phiên bản 0.1.0 · KLTN 2026',
-                                style: AppTypography.caption,
-                              ),
-                            ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _buildModernCard(
+                            role: 'Tình nguyện viên',
+                            imagePath: 'assets/images/volunteer_modern.png',
+                            backgroundColor: const Color(0xFFFFE6D5), // Light orange
+                            borderColor: const Color(0xFFF19D60), // Dark orange border
+                            isSelected: selectedRole == 'volunteer',
+                            onTap: () => setState(() => selectedRole = 'volunteer'),
                           ),
                         ),
                       ],
                     ),
-                  ),
+                    
+                    const Spacer(),
+                    
+                    // Nút Tiếp tục (Đen nguyên khối)
+                    SizedBox(
+                      width: double.infinity,
+                      height: 56,
+                      child: ElevatedButton(
+                        onPressed: selectedRole == null ? null : () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => PhoneAuthScreen(role: selectedRole!),
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.black,
+                          disabledBackgroundColor: Colors.grey[300],
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: Text(
+                          'Tiếp tục',
+                          style: GoogleFonts.inter(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: selectedRole == null ? Colors.grey[500] : Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ],
       ),
     );
   }
-}
 
-class _RoleCard extends StatefulWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Color accentColor;
-  final VoidCallback onTap;
-
-  const _RoleCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.accentColor,
-    required this.onTap,
-  });
-
-  @override
-  State<_RoleCard> createState() => _RoleCardState();
-}
-
-class _RoleCardState extends State<_RoleCard>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-  late Animation<double> _scaleAnim;
-  bool _pressed = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 150),
-    );
-    _scaleAnim = Tween<double>(begin: 1.0, end: 0.96).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeOutQuart),
-    );
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildModernCard({
+    required String role,
+    required String imagePath,
+    required Color backgroundColor,
+    required Color borderColor,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
-      onTapDown: (_) {
-        setState(() => _pressed = true);
-        _ctrl.forward();
-      },
-      onTapUp: (_) {
-        setState(() => _pressed = false);
-        _ctrl.reverse();
-        widget.onTap();
-      },
-      onTapCancel: () {
-        setState(() => _pressed = false);
-        _ctrl.reverse();
-      },
-      child: AnimatedBuilder(
-        animation: _scaleAnim,
-        builder: (_, child) => Transform.scale(
-          scale: _scaleAnim.value,
-          child: child,
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 24),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: isSelected ? borderColor : Colors.transparent,
+            width: 2,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: borderColor.withOpacity(0.2),
+                    blurRadius: 16,
+                    offset: const Offset(0, 8),
+                  )
+                ]
+              : [],
         ),
-        child: Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: AppColors.surfaceCard,
-            borderRadius: BorderRadius.circular(20.r),
-            border: Border.all(
-              color: _pressed
-                  ? widget.accentColor.withValues(alpha: 0.5)
-                  : widget.accentColor.withValues(alpha: 0.1),
-              width: 1.5,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: widget.accentColor
-                    .withValues(alpha: _pressed ? 0.15 : 0.05),
-                blurRadius: _pressed ? 24 : 12,
-                spreadRadius: _pressed ? 2 : 0,
-                offset: const Offset(0, 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Circular Avatar Image
+            Container(
+              width: 84,
+              height: 84,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.2), // Fallback
               ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20.r),
-            child: Stack(
-              children: [
-                // Subtle gradient background
-                Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          widget.accentColor.withValues(alpha: 0.08),
-                          Colors.transparent,
-                        ],
-                      ),
-                    ),
-                  ),
+              child: ClipOval(
+                child: Image.asset(
+                  imagePath,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.person, color: Colors.white, size: 40),
                 ),
-
-                // Content
-                Padding(
-                  padding: EdgeInsets.all(20.w),
-                  child: Row(
-                    children: [
-                      // Icon container
-                      Container(
-                        width: 56.w,
-                        height: 56.w,
-                        decoration: BoxDecoration(
-                          color: widget.accentColor.withValues(alpha: 0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: Icon(
-                            widget.icon,
-                            color: widget.accentColor,
-                            size: 28.sp,
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: 16.w),
-                      // Text
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              widget.title,
-                              style: AppTypography.labelLarge.copyWith(
-                                color: widget.accentColor,
-                                fontSize: 16.sp,
-                                letterSpacing: 0.5,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            SizedBox(height: 6.h),
-                            Text(
-                              widget.subtitle,
-                              style: AppTypography.bodyMedium.copyWith(
-                                color: AppColors.textSecondary,
-                                height: 1.3,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      SizedBox(width: 8.w),
-                      // Arrow
-                      Container(
-                        width: 32.w,
-                        height: 32.w,
-                        decoration: BoxDecoration(
-                          color: AppColors.background,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: AppColors.surfaceBorder,
-                          ),
-                        ),
-                        child: Icon(
-                          LucideIcons.chevronRight,
-                          color: AppColors.textMuted,
-                          size: 18.sp,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
+            const SizedBox(height: 16),
+            Text(
+              role,
+              style: GoogleFonts.inter(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
       ),
     );
