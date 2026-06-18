@@ -8,7 +8,7 @@ export default function VolunteerPanel() {
   const activeCount = volunteers.filter(v => !v.is_available).length;
 
   return (
-    <div className="glass-panel rounded-xl flex flex-col border border-outline-variant/30 w-full overflow-hidden">
+    <div className="glass-panel rounded-xl flex flex-col border border-outline-variant/30 w-full h-full overflow-hidden">
       <div className="px-lg py-sm border-b border-outline-variant/30 flex justify-between items-center cursor-pointer hover:bg-surface-bright/20">
         <div className="flex items-center gap-md">
           <span className="material-symbols-outlined text-primary text-[20px]" data-icon="history">history</span>

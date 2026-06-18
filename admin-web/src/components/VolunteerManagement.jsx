@@ -36,10 +36,10 @@ export default function VolunteerManagement() {
   return (
     <div className="absolute inset-0 z-10 bg-background overflow-auto p-gutter">
       {/* Header */}
-      <div className="flex items-center justify-between mb-lg">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-md mb-lg">
         <div>
-          <h1 className="font-h1 text-3xl text-on-surface flex items-center gap-md">
-            <span className="material-symbols-outlined text-primary text-3xl" data-icon="group">group</span>
+          <h1 className="font-h1 text-2xl md:text-3xl text-on-surface flex items-center gap-md">
+            <span className="material-symbols-outlined text-primary text-2xl md:text-3xl" data-icon="group">group</span>
             Quản lý Tình nguyện viên
           </h1>
           <p className="font-label-sm text-on-surface-variant mt-xs">
@@ -48,7 +48,7 @@ export default function VolunteerManagement() {
         </div>
 
         {/* Filter Tabs */}
-        <div className="flex gap-xs bg-surface-dim/40 p-xs rounded-xl">
+        <div className="flex flex-wrap gap-xs bg-surface-dim/40 p-xs rounded-xl w-full md:w-auto">
           {[
             { key: 'all', label: 'Tất cả' },
             { key: 'pending', label: `Chờ duyệt (${pendingCount})` },
@@ -57,7 +57,7 @@ export default function VolunteerManagement() {
             <button
               key={tab.key}
               onClick={() => setFilter(tab.key)}
-              className={`px-lg py-sm rounded-lg font-label-sm text-xs transition-all ${
+              className={`flex-1 md:flex-none px-md md:px-lg py-sm rounded-lg font-label-sm text-xs transition-all ${
                 filter === tab.key
                   ? 'bg-primary text-on-primary shadow-md'
                   : 'text-on-surface-variant hover:bg-surface-bright/30'
@@ -71,17 +71,18 @@ export default function VolunteerManagement() {
 
       {/* Table */}
       <div className="glass-panel rounded-xl border border-outline-variant/30 overflow-hidden">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-outline-variant/30 text-left">
-              <th className="px-lg py-md font-label-sm text-[10px] text-on-surface-variant uppercase tracking-widest">TNV</th>
-              <th className="px-lg py-md font-label-sm text-[10px] text-on-surface-variant uppercase tracking-widest">SĐT</th>
-              <th className="px-lg py-md font-label-sm text-[10px] text-on-surface-variant uppercase tracking-widest">eKYC</th>
-              <th className="px-lg py-md font-label-sm text-[10px] text-on-surface-variant uppercase tracking-widest">Kỹ năng</th>
-              <th className="px-lg py-md font-label-sm text-[10px] text-on-surface-variant uppercase tracking-widest">Trạng thái</th>
-              <th className="px-lg py-md font-label-sm text-[10px] text-on-surface-variant uppercase tracking-widest">Ngày ĐK</th>
-              <th className="px-lg py-md font-label-sm text-[10px] text-on-surface-variant uppercase tracking-widest text-center">Hành động</th>
-            </tr>
+        <div className="overflow-x-auto w-full">
+          <table className="w-full min-w-[800px]">
+            <thead>
+              <tr className="border-b border-outline-variant/30 text-left">
+                <th className="px-lg py-md font-label-sm text-[10px] text-on-surface-variant uppercase tracking-widest whitespace-nowrap">TNV</th>
+                <th className="px-lg py-md font-label-sm text-[10px] text-on-surface-variant uppercase tracking-widest whitespace-nowrap">SĐT</th>
+                <th className="px-lg py-md font-label-sm text-[10px] text-on-surface-variant uppercase tracking-widest whitespace-nowrap">eKYC</th>
+                <th className="px-lg py-md font-label-sm text-[10px] text-on-surface-variant uppercase tracking-widest whitespace-nowrap">Kỹ năng</th>
+                <th className="px-lg py-md font-label-sm text-[10px] text-on-surface-variant uppercase tracking-widest whitespace-nowrap">Trạng thái</th>
+                <th className="px-lg py-md font-label-sm text-[10px] text-on-surface-variant uppercase tracking-widest whitespace-nowrap">Ngày ĐK</th>
+                <th className="px-lg py-md font-label-sm text-[10px] text-on-surface-variant uppercase tracking-widest text-center whitespace-nowrap">Hành động</th>
+              </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
@@ -213,6 +214,7 @@ export default function VolunteerManagement() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

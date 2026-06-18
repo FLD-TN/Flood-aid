@@ -1,8 +1,17 @@
-export default function TopBar() {
+export default function TopBar({ onMenuClick }) {
   return (
-    <header className="fixed top-0 right-0 left-20 z-40 bg-surface/80 backdrop-blur-md border-b border-outline-variant flex justify-between items-center h-16 px-gutter w-[calc(100%-5rem)]">
-      <div className="flex items-center gap-xl">
-        <h2 className="font-h1 text-2xl text-on-surface">RescueCore Admin</h2>
+    <header className="fixed top-0 right-0 left-0 md:left-20 z-40 bg-surface/80 backdrop-blur-md border-b border-outline-variant flex justify-between items-center h-16 px-md md:px-gutter w-full md:w-[calc(100%-5rem)] transition-all duration-300">
+      <div className="flex items-center gap-sm md:gap-xl">
+        {/* Mobile Hamburger Menu */}
+        <button 
+          className="md:hidden p-2 text-on-surface-variant hover:bg-surface-bright rounded-lg transition-colors"
+          onClick={onMenuClick}
+        >
+          <span className="material-symbols-outlined" data-icon="menu">menu</span>
+        </button>
+        
+        <h2 className="font-h1 text-xl md:text-2xl text-on-surface">RescueCore Admin</h2>
+        
         <div className="relative hidden lg:block w-96">
           <span className="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-on-surface-variant" data-icon="search">search</span>
           <input 
@@ -12,8 +21,9 @@ export default function TopBar() {
           />
         </div>
       </div>
-      <div className="flex items-center gap-lg">
-        <div className="flex items-center gap-md">
+      
+      <div className="flex items-center gap-sm md:gap-lg">
+        <div className="flex items-center gap-xs md:gap-md">
           <button className="p-2 text-on-surface-variant hover:bg-surface-bright rounded-full transition-all duration-200">
             <span className="material-symbols-outlined" data-icon="notifications_active">notifications_active</span>
           </button>
@@ -21,8 +31,8 @@ export default function TopBar() {
             <span className="material-symbols-outlined" data-icon="sensors">sensors</span>
           </button>
         </div>
-        <div className="h-8 w-px bg-outline-variant"></div>
-        <div className="flex items-center gap-sm cursor-pointer hover:bg-surface-bright p-1 pr-3 rounded-full transition-all">
+        <div className="h-8 w-px bg-outline-variant hidden sm:block"></div>
+        <div className="flex items-center gap-sm cursor-pointer hover:bg-surface-bright p-1 sm:pr-3 rounded-full transition-all">
           <img 
             alt="Chief Controller Profile" 
             className="h-8 w-8 rounded-full border border-primary object-cover" 
