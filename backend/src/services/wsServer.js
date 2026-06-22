@@ -16,6 +16,16 @@ const WebSocket = require('ws');
 const url = require('url');
 const { db } = require('../db');
 
+// Lazy require để tránh circular dependency với chatController
+function saveChatMessage(caseId, senderRole, senderId, content) {
+  return db.query(
+    `INSERT INTO chat_messages (case_id, sender_role, sender_id, content)
+     VALUES ($1, $2, $3, $4)
+     RETURNING id, sender_role, content, created_at`,
+    [caseId, senderRole, senderId || null, content]
+  );
+}
+
 // Room map: caseId -> { volunteers: Set<ws>, victims: Set<ws> }
 const rooms = new Map();
 
@@ -166,6 +176,50 @@ async function handleMessage(ws, msg) {
             victim.send(payload);
           }
         }
+      }
+
+      break;
+    }
+
+    case 'chat': {
+      const { content } = msg;
+      if (!content || typeof content !== 'string' || !content.trim()) return;
+
+      const caseId = ws.caseId;
+      const senderRole = ws.role; // 'volunteer' or 'victim'
+      const senderId = ws.volunteerId || null;
+
+      // Lưu vào DB
+      let savedMsg;
+      try {
+        const result = await saveChatMessage(caseId, senderRole, senderId, content.trim());
+        savedMsg = result.rows[0];
+      } catch (err) {
+        console.error('[WS] Chat DB save error:', err.message);
+        return;
+      }
+
+      // Forward cho bên còn lại trong room
+      const room = rooms.get(caseId);
+      if (!room) return;
+
+      const payload = JSON.stringify({
+        type: 'chat',
+        senderRole,
+        content: savedMsg.content,
+        createdAt: savedMsg.created_at,
+      });
+
+      const targets = senderRole === 'volunteer' ? room.victims : room.volunteers;
+      for (const peer of targets) {
+        if (peer.readyState === WebSocket.OPEN) {
+          peer.send(payload);
+        }
+      }
+
+      // Echo lại cho chính người gửi (để confirm tin đã lưu)
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(payload);
       }
 
       break;

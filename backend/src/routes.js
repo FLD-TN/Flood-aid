@@ -13,6 +13,7 @@ const adminController = require('./controllers/adminController');
 const sseController = require('./controllers/sseController');
 const authController = require('./controllers/authController');
 const kycController = require('./controllers/kycController');
+const chatController = require('./controllers/chatController');
 const { authMiddleware } = require('./middleware/authMiddleware');
 
 // ====== Module 0: Auth & eKYC ======
@@ -34,6 +35,8 @@ router.post('/case/:id/accept', sosController.acceptCase);
 router.get('/case/:id/my-assignment', sosController.checkMyAssignment);
 router.post('/case/:id/resolve', sosController.resolveCase);
 router.post('/case/:id/revoke', sosController.revokeCase);
+router.get('/case/:id/messages', chatController.getMessages);
+router.post('/case/:id/messages', chatController.sendMessage);
 
 // ====== Module 3: Location Tracking ======
 router.post('/location', locationController.updateVolunteerLocation);
