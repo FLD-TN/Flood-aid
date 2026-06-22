@@ -233,6 +233,9 @@ WHERE v.admin_approved = true
 `;
 
 const migration010 = `
+-- Drop view trước vì nó còn tham chiếu flag_count (từ migration009)
+DROP VIEW IF EXISTS v_available_volunteers;
+
 -- Xóa cột flag_count khỏi bảng volunteers
 ALTER TABLE volunteers DROP COLUMN IF EXISTS flag_count;
 
