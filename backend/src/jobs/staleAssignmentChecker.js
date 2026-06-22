@@ -75,13 +75,7 @@ cron.schedule('*/2 * * * *', async () => {
               [row.case_id]
             );
 
-            // Gắn cờ vi phạm
-            await db.query(
-              'UPDATE volunteers SET flag_count = flag_count + 1 WHERE id = $1',
-              [row.volunteer_id]
-            );
-
-            console.warn(`[staleAssignment] ⚠️ TNV ${row.volunteer_id} revoked from case ${row.case_id} — flag count increased`);
+            console.warn(`[staleAssignment] ⚠️ TNV ${row.volunteer_id} revoked from case ${row.case_id} due to inactivity`);
 
             // Re-dispatch
             setImmediate(() => {

@@ -38,9 +38,6 @@ export default function VolunteerPanel() {
                 <p className="font-label-sm text-xs text-on-surface truncate">{vol.full_name}</p>
                 <p className={`font-label-sm text-[9px] truncate ${isActive ? 'text-primary' : 'text-on-surface-variant'}`}>{statusText}</p>
               </div>
-              <span className="font-label-sm text-[9px] text-on-surface-variant">
-                {vol.flag_count > 0 ? `⚠ ${vol.flag_count}` : '✓'}
-              </span>
             </div>
           );
         })}

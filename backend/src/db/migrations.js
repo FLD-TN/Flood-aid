@@ -228,6 +228,26 @@ WHERE v.admin_approved = true
   AND v.current_coords IS NOT NULL;
 `;
 
+const migration010 = `
+-- Xóa cột flag_count khỏi bảng volunteers
+ALTER TABLE volunteers DROP COLUMN IF EXISTS flag_count;
+
+-- Cập nhật view v_available_volunteers (bỏ v.flag_count)
+CREATE OR REPLACE VIEW v_available_volunteers AS
+SELECT 
+  v.id,
+  v.full_name,
+  v.fcm_token,
+  v.is_available,
+  ST_X(v.current_coords::geometry) AS lon,
+  ST_Y(v.current_coords::geometry) AS lat,
+  v.last_seen_at,
+  EXTRACT(EPOCH FROM (NOW() - v.last_seen_at))/60 AS minutes_since_update
+FROM volunteers v
+WHERE v.admin_approved = true
+  AND v.current_coords IS NOT NULL;
+`;
+
 async function runMigrations() {
   const client = await pool.connect();
   try {
@@ -266,6 +286,10 @@ async function runMigrations() {
     console.log('[Migration] Running migration 009: Drop skills column + update view...');
     await client.query(migration009);
     console.log('[Migration] ✓ Migration 009 complete');
+
+    console.log('[Migration] Running migration 010: Drop flag_count column + update view...');
+    await client.query(migration010);
+    console.log('[Migration] ✓ Migration 010 complete');
 
     console.log('[Migration] All migrations completed successfully!');
   } catch (err) {
