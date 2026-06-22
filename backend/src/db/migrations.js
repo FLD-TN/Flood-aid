@@ -133,13 +133,12 @@ WHERE c.status != 'resolved'
 GROUP BY c.id;
 
 -- View: Available volunteers với vị trí hiện tại
+-- (skills và flag_count đã bị xóa ở migration009/010)
 CREATE OR REPLACE VIEW v_available_volunteers AS
-SELECT 
+SELECT
   v.id,
   v.full_name,
-  v.skills,
   v.fcm_token,
-  v.flag_count,
   v.is_available,
   ST_X(v.current_coords::geometry) AS lon,
   ST_Y(v.current_coords::geometry) AS lat,
