@@ -16,6 +16,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../widgets/slide_to_confirm.dart';
+import '../chat/chat_screen.dart';
 
 class ActiveMissionScreen extends StatefulWidget {
   final String caseId;
@@ -55,6 +56,9 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
 
   // Volunteer UUID (loaded from SharedPreferences)
   String _volunteerId = '';
+
+  // SĐT nạn nhân — lấy từ acceptCase response
+  String? _victimPhone;
 
   // Case state
   bool _accepted = false;
@@ -301,13 +305,13 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
     try {
       // Use _volunteerId already loaded from SharedPreferences
       final volunteerId = _volunteerId;
-      final success = await ApiService.acceptCase(
+      final result = await ApiService.acceptCase(
         widget.caseId,
         volunteerId,
         lat: _myLat,
         lon: _myLon,
       );
-      if (!success && mounted) {
+      if (result == null && mounted) {
         // Rollback on failure
         setState(() => _accepted = false);
         // Reconnect SSE vì accept thất bại
@@ -318,6 +322,8 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
           message: 'Nhận ca thất bại. Thử lại sau.',
         );
       } else if (mounted) {
+        // Lưu SĐT nạn nhân từ response
+        setState(() => _victimPhone = result?['victimPhone'] as String?);
         // Accept succeeded — start GPS tracking via WebSocket
         _startGpsTracking();
       }
@@ -766,48 +772,53 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    SizedBox(
-                      width: 50.w,
-                      height: 50.w,
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          final phone = widget.victimPhone ?? '';
-                          if (phone.isEmpty) return;
-                          final Uri url = Uri(scheme: 'tel', path: phone);
-                          if (await canLaunchUrl(url)) {
-                            await launchUrl(url);
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green.shade600,
-                          shape: const CircleBorder(),
-                          padding: EdgeInsets.zero,
-                          elevation: 2,
+                    // Nút Gọi điện
+                    _buildCircleButton(
+                      icon: Icons.phone_in_talk,
+                      color: Colors.green.shade600,
+                      iconColor: Colors.white,
+                      tooltip: 'Gọi nạn nhân',
+                      onTap: () async {
+                        final phone = _victimPhone ?? widget.victimPhone ?? '';
+                        if (phone.isEmpty) return;
+                        final Uri url = Uri(scheme: 'tel', path: phone);
+                        if (await canLaunchUrl(url)) await launchUrl(url);
+                      },
+                    ),
+                    SizedBox(width: 20.w),
+                    // Nút Chat
+                    _buildCircleButton(
+                      icon: Icons.chat_bubble_outline_rounded,
+                      color: AppColors.primary,
+                      iconColor: Colors.white,
+                      tooltip: 'Chat',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ChatScreen(
+                            caseId: widget.caseId,
+                            myRole: 'volunteer',
+                            myId: _volunteerId,
+                            peerPhone: _victimPhone ?? widget.victimPhone,
+                          ),
                         ),
-                        child: Icon(Icons.phone_in_talk, color: Colors.white, size: 24.r),
                       ),
                     ),
-                    SizedBox(width: 24.w),
-                    SizedBox(
-                      width: 50.w,
-                      height: 50.w,
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          final Uri url = Uri.parse(
-                            'https://www.google.com/maps/dir/?api=1&destination=$_victimLat,$_victimLon',
-                          );
-                          if (await canLaunchUrl(url)) {
-                            await launchUrl(url, mode: LaunchMode.externalApplication);
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.amber.shade300,
-                          shape: const CircleBorder(),
-                          padding: EdgeInsets.zero,
-                          elevation: 2,
-                        ),
-                        child: Icon(Icons.directions, color: Colors.black87, size: 26.r),
-                      ),
+                    SizedBox(width: 20.w),
+                    // Nút Chỉ đường
+                    _buildCircleButton(
+                      icon: Icons.directions,
+                      color: Colors.amber.shade300,
+                      iconColor: Colors.black87,
+                      tooltip: 'Chỉ đường',
+                      onTap: () async {
+                        final Uri url = Uri.parse(
+                          'https://www.google.com/maps/dir/?api=1&destination=$_victimLat,$_victimLon',
+                        );
+                        if (await canLaunchUrl(url)) {
+                          await launchUrl(url, mode: LaunchMode.externalApplication);
+                        }
+                      },
                     ),
                   ],
                 ),
@@ -887,6 +898,32 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCircleButton({
+    required IconData icon,
+    required Color color,
+    required Color iconColor,
+    required String tooltip,
+    required VoidCallback onTap,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: SizedBox(
+        width: 50.w,
+        height: 50.w,
+        child: ElevatedButton(
+          onPressed: onTap,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: color,
+            shape: const CircleBorder(),
+            padding: EdgeInsets.zero,
+            elevation: 2,
+          ),
+          child: Icon(icon, color: iconColor, size: 24.r),
+        ),
       ),
     );
   }

@@ -12,6 +12,8 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../../widgets/slide_to_confirm.dart';
 import 'package:lottie/lottie.dart' hide Marker;
+import 'package:url_launcher/url_launcher.dart';
+import '../chat/chat_screen.dart';
 
 class TrackingScreen extends StatefulWidget {
   final String caseId;
@@ -43,6 +45,9 @@ class _TrackingScreenState extends State<TrackingScreen> {
   bool _isResolving = false;
   bool _isCancelling = false;
   bool _isExpanded = true;
+
+  // SĐT TNV — nhận từ SSE case:accepted
+  String? _volunteerPhone;
 
   // Victim position
   late double _victimLat;
@@ -135,6 +140,9 @@ class _TrackingScreenState extends State<TrackingScreen> {
               _hasVolunteer = true;
               if (event.data['initialDistance'] != null) {
                 _distanceM = (event.data['initialDistance'] as num).toInt();
+              }
+              if (event.data['volunteerPhone'] != null) {
+                _volunteerPhone = event.data['volunteerPhone'] as String?;
               }
             });
             // Start WS GPS to receive TNV location in real-time
@@ -550,6 +558,32 @@ class _TrackingScreenState extends State<TrackingScreen> {
     return markers;
   }
 
+  Widget _buildCircleButton({
+    required IconData icon,
+    required Color color,
+    required Color iconColor,
+    required String tooltip,
+    required VoidCallback onTap,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: SizedBox(
+        width: 50.w,
+        height: 50.w,
+        child: ElevatedButton(
+          onPressed: onTap,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: color,
+            shape: const CircleBorder(),
+            padding: EdgeInsets.zero,
+            elevation: 2,
+          ),
+          child: Icon(icon, color: iconColor, size: 24.r),
+        ),
+      ),
+    );
+  }
+
   /// Fix #8: Tính ETA ước tính dựa trên khoảng cách
   /// Tốc độ trung bình xuồng cứu hộ vùng ngập ~15km/h
   String _calculateEta(int distanceMeters) {
@@ -900,6 +934,45 @@ class _TrackingScreenState extends State<TrackingScreen> {
                             ),
                           ],
                         ),
+
+                      // ── Nút liên lạc TNV ──
+                      if (_hasVolunteer) ...[
+                        SizedBox(height: 20.h),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            _buildCircleButton(
+                              icon: Icons.phone_in_talk,
+                              color: Colors.green.shade600,
+                              iconColor: Colors.white,
+                              tooltip: 'Gọi TNV',
+                              onTap: () async {
+                                final phone = _volunteerPhone ?? '';
+                                if (phone.isEmpty) return;
+                                final uri = Uri(scheme: 'tel', path: phone);
+                                if (await canLaunchUrl(uri)) await launchUrl(uri);
+                              },
+                            ),
+                            SizedBox(width: 20.w),
+                            _buildCircleButton(
+                              icon: Icons.chat_bubble_outline_rounded,
+                              color: AppColors.primary,
+                              iconColor: Colors.white,
+                              tooltip: 'Chat',
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ChatScreen(
+                                    caseId: widget.caseId,
+                                    myRole: 'victim',
+                                    peerPhone: _volunteerPhone,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
 
                       if (_isExpanded) ...[
                         const SizedBox(height: 32),
