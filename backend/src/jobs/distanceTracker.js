@@ -45,13 +45,8 @@ async function onVolunteerLocationUpdate(volunteerId, newCoordsWkt) {
       const vol = await db.query('SELECT fcm_token FROM volunteers WHERE id = $1', [volunteerId]);
       const tnvFcm = vol.rows[0]?.fcm_token;
 
-      // FCM ngưỡng 300m — chỉ gửi 1 lần
+      // FCM ngưỡng 300m — chỉ gửi cho TNV
       if (distM < 300 && !row.notif_sent_300m) {
-        await sendFcmToVictim(null, {
-          title: '🟠 Người cứu hộ sắp đến!',
-          body: `Người cứu hộ còn cách bạn ~${distM}m, hãy ra hiệu!`,
-          type: 'NEAR_300',
-        });
         await sendFcmToVolunteer(tnvFcm, {
           id: row.case_id,
           urgency_level: 3,
@@ -61,19 +56,33 @@ async function onVolunteerLocationUpdate(volunteerId, newCoordsWkt) {
           'UPDATE case_assignments SET notif_sent_300m = true WHERE case_id = $1 AND volunteer_id = $2',
           [row.case_id, volunteerId]
         );
-        console.log(`[distanceTracker] Case ${row.case_id}: 300m notification sent`);
+        console.log(`[distanceTracker] Case ${row.case_id}: 300m notification sent to volunteer`);
       }
 
-      // FCM ngưỡng 100m — chỉ gửi 1 lần
+      // FCM ngưỡng 100m — gửi cho cả nạn nhân lẫn TNV, chỉ 1 lần
       if (distM < 100 && !row.notif_sent_100m) {
-        await sendFcmToVictim(null, {
-          title: '🟢 Người cứu hộ đã rất gần!',
-          body: 'Người cứu hộ đã đến khu vực của bạn!',
+        // Lấy FCM token nạn nhân từ DB
+        const victimRow = await db.query(
+          `SELECT vi.fcm_token FROM victims vi
+           JOIN cases c ON c.phone_hash = vi.phone_hash
+           WHERE c.id = $1`,
+          [row.case_id]
+        );
+        const victimFcm = victimRow.rows[0]?.fcm_token || null;
+
+        await sendFcmToVictim(victimFcm, {
+          title: '🟢 Người cứu hộ đã đến!',
+          body: 'Đội cứu hộ đã đến khu vực của bạn!',
           type: 'NEAR_100',
         });
+        await sendFcmToVolunteer(tnvFcm, {
+          id: row.case_id,
+          urgency_level: 3,
+          summary_1line: 'Bạn đã đến nơi — hãy tìm nạn nhân trong khu vực!',
+        });
         await db.query(
-          `UPDATE case_assignments 
-           SET notif_sent_100m = true, arrived_at = NOW() 
+          `UPDATE case_assignments
+           SET notif_sent_100m = true, arrived_at = NOW()
            WHERE case_id = $1 AND volunteer_id = $2`,
           [row.case_id, volunteerId]
         );
@@ -81,7 +90,7 @@ async function onVolunteerLocationUpdate(volunteerId, newCoordsWkt) {
           `UPDATE cases SET status = 'on_scene' WHERE id = $1 AND status = 'responding'`,
           [row.case_id]
         );
-        console.log(`[distanceTracker] Case ${row.case_id}: TNV on-scene (<100m)`);
+        console.log(`[distanceTracker] Case ${row.case_id}: 100m — both sides notified, status → on_scene`);
       }
     }
 
