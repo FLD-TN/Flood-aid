@@ -133,8 +133,9 @@ WHERE c.status != 'resolved'
 GROUP BY c.id;
 
 -- View: Available volunteers với vị trí hiện tại
--- (skills và flag_count đã bị xóa ở migration009/010)
-CREATE OR REPLACE VIEW v_available_volunteers AS
+-- DROP trước vì CREATE OR REPLACE không cho phép xóa cột khỏi view
+DROP VIEW IF EXISTS v_available_volunteers;
+CREATE VIEW v_available_volunteers AS
 SELECT
   v.id,
   v.full_name,
@@ -214,7 +215,8 @@ DROP VIEW IF EXISTS v_available_volunteers;
 ALTER TABLE volunteers DROP COLUMN IF EXISTS skills;
 
 -- Tạo lại view v_available_volunteers (bỏ v.skills)
-CREATE OR REPLACE VIEW v_available_volunteers AS
+DROP VIEW IF EXISTS v_available_volunteers;
+CREATE VIEW v_available_volunteers AS
 SELECT
   v.id,
   v.full_name,
@@ -235,7 +237,8 @@ const migration010 = `
 ALTER TABLE volunteers DROP COLUMN IF EXISTS flag_count;
 
 -- Cập nhật view v_available_volunteers (bỏ v.flag_count)
-CREATE OR REPLACE VIEW v_available_volunteers AS
+DROP VIEW IF EXISTS v_available_volunteers;
+CREATE VIEW v_available_volunteers AS
 SELECT
   v.id,
   v.full_name,
