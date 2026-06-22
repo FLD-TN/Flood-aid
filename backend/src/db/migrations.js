@@ -207,6 +207,27 @@ const migration008 = `
 ALTER TABLE volunteers ADD COLUMN IF NOT EXISTS cccd_number_encrypted TEXT;
 `;
 
+const migration009 = `
+-- Xóa cột skills — không còn dùng cho dispatch hay volunteer profile
+ALTER TABLE volunteers DROP COLUMN IF EXISTS skills;
+
+-- Cập nhật view v_available_volunteers (bỏ v.skills)
+CREATE OR REPLACE VIEW v_available_volunteers AS
+SELECT 
+  v.id,
+  v.full_name,
+  v.fcm_token,
+  v.flag_count,
+  v.is_available,
+  ST_X(v.current_coords::geometry) AS lon,
+  ST_Y(v.current_coords::geometry) AS lat,
+  v.last_seen_at,
+  EXTRACT(EPOCH FROM (NOW() - v.last_seen_at))/60 AS minutes_since_update
+FROM volunteers v
+WHERE v.admin_approved = true
+  AND v.current_coords IS NOT NULL;
+`;
+
 async function runMigrations() {
   const client = await pool.connect();
   try {
@@ -241,6 +262,10 @@ async function runMigrations() {
     console.log('[Migration] Running migration 008: eKYC cccd_number_encrypted...');
     await client.query(migration008);
     console.log('[Migration] ✓ Migration 008 complete');
+
+    console.log('[Migration] Running migration 009: Drop skills column + update view...');
+    await client.query(migration009);
+    console.log('[Migration] ✓ Migration 009 complete');
 
     console.log('[Migration] All migrations completed successfully!');
   } catch (err) {

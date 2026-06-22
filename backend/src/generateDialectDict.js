@@ -59,10 +59,10 @@ function applyRules(word) {
 
 async function downloadWordlist() {
   if (fs.existsSync(RAW_VOCAB_PATH)) {
-    console.log('📦 File Viet74K.txt đã tồn tại, tiến hành đọc...');
+    console.log('File Viet74K.txt đã tồn tại, tiến hành đọc...');
     return;
   }
-  console.log('⏳ Đang tải 74,000 từ vựng tiếng Việt từ GitHub...');
+  console.log('Đang tải 74,000 từ vựng tiếng Việt từ GitHub...');
   return new Promise((resolve, reject) => {
     const file = fs.createWriteStream(RAW_VOCAB_PATH);
     https.get(WORDLIST_URL, (response) => {
@@ -83,7 +83,7 @@ async function generateDictionary() {
 
   const standardVocab = new Set();
   const fileStream = fs.createReadStream(RAW_VOCAB_PATH);
-  
+
   const rl = readline.createInterface({
     input: fileStream,
     crlfDelay: Infinity
@@ -96,7 +96,7 @@ async function generateDictionary() {
     }
   }
 
-  console.log(`✅ Đã đọc ${standardVocab.size} từ vựng chuẩn. Đang áp dụng công thức...`);
+  console.log(` Đã đọc ${standardVocab.size} từ vựng chuẩn. Đang áp dụng công thức...`);
 
   const dict = { ...hardcodedDict };
 
@@ -113,8 +113,8 @@ async function generateDictionary() {
   }
 
   fs.writeFileSync(DICT_OUTPUT_PATH, JSON.stringify(dict, null, 2), 'utf8');
-  console.log(`🎉 HOÀN THÀNH! Đã tạo thành công từ điển với ${Object.keys(dict).length} mục.`);
-  console.log(`📄 Đường dẫn: ${DICT_OUTPUT_PATH}`);
+  console.log(`Đã tạo thành công từ điển với ${Object.keys(dict).length} mục.`);
+  console.log(`Đường dẫn: ${DICT_OUTPUT_PATH}`);
 }
 
 generateDictionary().catch(console.error);

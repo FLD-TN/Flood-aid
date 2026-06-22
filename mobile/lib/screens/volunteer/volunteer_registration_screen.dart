@@ -29,17 +29,6 @@ class _VolunteerRegistrationScreenState
   final _cccdController = TextEditingController();
   bool _isSubmitting = false;
 
-  // Danh sách kỹ năng có thể chọn
-  static const List<String> _availableSkills = [
-    'Y tế / Sơ cứu',
-    'Cứu hộ đường thủy',
-    'Lái xe / Phương tiện',
-    'Cung cấp nhu yếu phẩm',
-    'Tìm kiếm & Cứu nạn',
-    'Hỗ trợ tâm lý',
-    'Liên lạc / Điều phối',
-  ];
-  final Set<String> _selectedSkills = {};
 
   @override
   void initState() {
@@ -70,7 +59,6 @@ class _VolunteerRegistrationScreenState
       final result = await ApiService.registerVolunteer(
         phone: widget.phone,
         fullName: _nameController.text.trim(),
-        skills: _selectedSkills.toList(),
         cccdNumber: _cccdController.text.trim().isNotEmpty
             ? _cccdController.text.trim()
             : null,
@@ -323,64 +311,6 @@ class _VolunteerRegistrationScreenState
                           size: 16.r, color: AppColors.textMuted),
                     ],
                   ),
-                ),
-                SizedBox(height: 28.h),
-
-                // ── Kỹ năng ──
-                Text(
-                  'Kỹ năng cứu hộ',
-                  style: AppTypography.labelMedium.copyWith(
-                    color: AppColors.textPrimary,
-                    letterSpacing: 0,
-                  ),
-                ),
-                SizedBox(height: 4.h),
-                Text(
-                  'Chọn các kỹ năng bạn có để Admin phân công nhiệm vụ phù hợp.',
-                  style: AppTypography.caption.copyWith(
-                    color: AppColors.textMuted,
-                  ),
-                ),
-                SizedBox(height: 12.h),
-                Wrap(
-                  spacing: 8.w,
-                  runSpacing: 8.h,
-                  children: _availableSkills.map((skill) {
-                    final isSelected = _selectedSkills.contains(skill);
-                    return FilterChip(
-                      label: Text(
-                        skill,
-                        style: AppTypography.caption.copyWith(
-                          color: isSelected
-                              ? Colors.white
-                              : AppColors.textPrimary,
-                          fontWeight:
-                              isSelected ? FontWeight.w600 : FontWeight.w400,
-                        ),
-                      ),
-                      selected: isSelected,
-                      onSelected: (selected) {
-                        setState(() {
-                          if (selected) {
-                            _selectedSkills.add(skill);
-                          } else {
-                            _selectedSkills.remove(skill);
-                          }
-                        });
-                      },
-                      selectedColor: AppColors.primary,
-                      backgroundColor: AppColors.surfaceCard,
-                      checkmarkColor: Colors.white,
-                      side: BorderSide(
-                        color: isSelected
-                            ? AppColors.primary
-                            : AppColors.surfaceBorder,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20.r),
-                      ),
-                    );
-                  }).toList(),
                 ),
                 SizedBox(height: 40.h),
 

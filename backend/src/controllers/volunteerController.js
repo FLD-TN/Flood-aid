@@ -55,7 +55,7 @@ function decryptPhone(encryptedStr) {
  */
 async function registerVolunteer(req, res) {
   try {
-    const { fullName, skills, cccdNumber } = req.body;
+    const { fullName, cccdNumber } = req.body;
     const phone = req.user?.phone_number || req.body.phone;
     const firebaseUid = req.user?.uid;
 
@@ -91,14 +91,13 @@ async function registerVolunteer(req, res) {
     }
 
     const result = await db.query(
-      `INSERT INTO volunteers (phone_hash, firebase_uid, full_name, skills, is_available, admin_approved, cccd_verified, phone_encrypted, cccd_number_encrypted)
-       VALUES ($1, $2, $3, $4::jsonb, false, false, $5, $6, $7)
-       RETURNING id, full_name, skills, is_available, admin_approved, cccd_verified, created_at`,
+      `INSERT INTO volunteers (phone_hash, firebase_uid, full_name, is_available, admin_approved, cccd_verified, phone_encrypted, cccd_number_encrypted)
+       VALUES ($1, $2, $3, false, false, $4, $5, $6)
+       RETURNING id, full_name, is_available, admin_approved, cccd_verified, created_at`,
       [
         phoneHash,
         firebaseUid || null,
         fullName.trim(),
-        JSON.stringify(skills || []),
         !!cccdNumber,
         encryptPhone(phone),
         cccdNumber ? encryptPhone(cccdNumber) : null,
@@ -124,7 +123,7 @@ async function registerVolunteer(req, res) {
 async function listVolunteers(req, res) {
   try {
     const result = await db.query(`
-      SELECT id, full_name, skills, is_available, admin_approved, 
+      SELECT id, full_name, is_available, admin_approved, 
              cccd_verified, phone_encrypted, notification_radius_km, created_at,
              ST_X(current_coords::geometry) AS lon,
              ST_Y(current_coords::geometry) AS lat,

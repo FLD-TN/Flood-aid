@@ -105,13 +105,6 @@ function buildVolPopup(vol) {
       <div style="padding:10px 14px;display:flex;flex-direction:column;gap:6px;">
         <div style="display:flex;gap:8px;align-items:center;">
           <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#475569;
-            text-transform:uppercase;letter-spacing:0.08em;width:60px;">Kỹ năng</span>
-          <span style="font-size:12px;color:#94A3B8;">
-            ${(vol.skills || []).join(', ') || 'Chưa khai báo'}
-          </span>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#475569;
             text-transform:uppercase;letter-spacing:0.08em;width:60px;">Cập nhật</span>
           <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#94A3B8;">
             ${mins}p trước

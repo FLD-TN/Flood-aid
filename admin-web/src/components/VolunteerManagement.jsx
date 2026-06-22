@@ -78,7 +78,6 @@ export default function VolunteerManagement() {
                 <th className="px-lg py-md font-label-sm text-[10px] text-on-surface-variant uppercase tracking-widest whitespace-nowrap">TNV</th>
                 <th className="px-lg py-md font-label-sm text-[10px] text-on-surface-variant uppercase tracking-widest whitespace-nowrap">SĐT</th>
                 <th className="px-lg py-md font-label-sm text-[10px] text-on-surface-variant uppercase tracking-widest whitespace-nowrap">eKYC</th>
-                <th className="px-lg py-md font-label-sm text-[10px] text-on-surface-variant uppercase tracking-widest whitespace-nowrap">Kỹ năng</th>
                 <th className="px-lg py-md font-label-sm text-[10px] text-on-surface-variant uppercase tracking-widest whitespace-nowrap">Trạng thái</th>
                 <th className="px-lg py-md font-label-sm text-[10px] text-on-surface-variant uppercase tracking-widest whitespace-nowrap">Ngày ĐK</th>
                 <th className="px-lg py-md font-label-sm text-[10px] text-on-surface-variant uppercase tracking-widest text-center whitespace-nowrap">Hành động</th>
@@ -87,7 +86,7 @@ export default function VolunteerManagement() {
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={7} className="text-center py-xl text-on-surface-variant font-label-sm">
+                <td colSpan={6} className="text-center py-xl text-on-surface-variant font-label-sm">
                   Không có TNV nào.
                 </td>
               </tr>
@@ -134,24 +133,6 @@ export default function VolunteerManagement() {
                         Chưa có
                       </span>
                     )}
-                  </td>
-
-                  {/* Skills */}
-                  <td className="px-lg py-md">
-                    <div className="flex flex-wrap gap-xs max-w-[200px]">
-                      {vol.skills && vol.skills.length > 0 ? (
-                        vol.skills.slice(0, 2).map((skill, i) => (
-                          <span key={i} className="px-sm py-xs bg-primary/10 text-primary rounded-md text-[10px] font-label-sm whitespace-nowrap">
-                            {skill}
-                          </span>
-                        ))
-                      ) : (
-                        <span className="text-[10px] text-on-surface-variant">—</span>
-                      )}
-                      {vol.skills && vol.skills.length > 2 && (
-                        <span className="text-[10px] text-on-surface-variant">+{vol.skills.length - 2}</span>
-                      )}
-                    </div>
                   </td>
 
                   {/* Trạng thái */}

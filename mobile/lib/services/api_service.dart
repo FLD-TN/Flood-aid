@@ -322,7 +322,6 @@ class ApiService {
   static Future<Map<String, dynamic>?> registerVolunteer({
     required String phone,
     required String fullName,
-    List<String>? skills,
     String? cccdNumber,
   }) async {
     try {
@@ -333,7 +332,6 @@ class ApiService {
         body: json.encode({
           'phone': phone,
           'fullName': fullName,
-          'skills': skills ?? [],
           'cccdNumber': cccdNumber,
         }),
       );
