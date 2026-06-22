@@ -21,7 +21,7 @@ function hashPhone(phone) {
  */
 async function createSos(req, res) {
   try {
-    const { text, lat, lon } = req.body;
+    const { text, lat, lon, fcmToken } = req.body;
     const phone = req.user?.phone_number || req.body.phone;
     const firebaseUid = req.user?.uid;
 
@@ -31,15 +31,16 @@ async function createSos(req, res) {
     }
 
     const phoneHash = hashPhone(phone);
-    
-    // Upsert victims table — luôn lưu phone_encrypted để TNV có thể gọi sau khi nhận ca
+
+    // Upsert victims table — lưu phone_encrypted và fcm_token để TNV/server có thể liên lạc
     await db.query(
-      `INSERT INTO victims (phone_hash, firebase_uid, phone_encrypted)
-       VALUES ($1, $2, $3)
+      `INSERT INTO victims (phone_hash, firebase_uid, phone_encrypted, fcm_token)
+       VALUES ($1, $2, $3, $4)
        ON CONFLICT (phone_hash) DO UPDATE SET
          firebase_uid = COALESCE(EXCLUDED.firebase_uid, victims.firebase_uid),
-         phone_encrypted = EXCLUDED.phone_encrypted`,
-      [phoneHash, firebaseUid || null, encryptPhone(phone)]
+         phone_encrypted = EXCLUDED.phone_encrypted,
+         fcm_token = COALESCE(EXCLUDED.fcm_token, victims.fcm_token)`,
+      [phoneHash, firebaseUid || null, encryptPhone(phone), fcmToken || null]
     );
 
     // Anti-spam: 1 SĐT chỉ có 1 ca active (RULE-1)

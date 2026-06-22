@@ -22,19 +22,22 @@ class ApiService {
     required double lat,
     required double lon,
     required String phone,
+    String? fcmToken,
   }) async {
     try {
       final headers = await _getHeaders();
+      final body = <String, dynamic>{
+        'text': text,
+        'lat': lat,
+        'lon': lon,
+        'phone': phone,
+      };
+      if (fcmToken != null) body['fcmToken'] = fcmToken;
       final response = await http
           .post(
             Uri.parse('$_baseUrl/api/sos'),
             headers: headers,
-            body: json.encode({
-              'text': text,
-              'lat': lat,
-              'lon': lon,
-              'phone': phone,
-            }),
+            body: json.encode(body),
           )
           .timeout(const Duration(seconds: 10));
 
