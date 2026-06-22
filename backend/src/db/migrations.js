@@ -208,12 +208,15 @@ ALTER TABLE volunteers ADD COLUMN IF NOT EXISTS cccd_number_encrypted TEXT;
 `;
 
 const migration009 = `
+-- Drop view trước để tránh lỗi "depends on column skills"
+DROP VIEW IF EXISTS v_available_volunteers;
+
 -- Xóa cột skills — không còn dùng cho dispatch hay volunteer profile
 ALTER TABLE volunteers DROP COLUMN IF EXISTS skills;
 
--- Cập nhật view v_available_volunteers (bỏ v.skills)
+-- Tạo lại view v_available_volunteers (bỏ v.skills)
 CREATE OR REPLACE VIEW v_available_volunteers AS
-SELECT 
+SELECT
   v.id,
   v.full_name,
   v.fcm_token,
