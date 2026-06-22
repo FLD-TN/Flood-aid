@@ -8,6 +8,7 @@ const { db } = require('../db');
 const crypto = require('crypto');
 const { emitCaseEvent } = require('./sseController');
 const { broadcastToRoom } = require('../services/wsServer');
+const { encryptPhone, decryptPhone } = require('../utils/crypto');
 
 const SALT = process.env.PHONE_HASH_SALT || 'default_salt';
 
@@ -31,14 +32,15 @@ async function createSos(req, res) {
 
     const phoneHash = hashPhone(phone);
     
-    if (firebaseUid) {
-      // Upsert victims table
-      await db.query(
-        `INSERT INTO victims (phone_hash, firebase_uid) VALUES ($1, $2)
-         ON CONFLICT (phone_hash) DO UPDATE SET firebase_uid = EXCLUDED.firebase_uid`,
-        [phoneHash, firebaseUid]
-      );
-    }
+    // Upsert victims table — luôn lưu phone_encrypted để TNV có thể gọi sau khi nhận ca
+    await db.query(
+      `INSERT INTO victims (phone_hash, firebase_uid, phone_encrypted)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (phone_hash) DO UPDATE SET
+         firebase_uid = COALESCE(EXCLUDED.firebase_uid, victims.firebase_uid),
+         phone_encrypted = EXCLUDED.phone_encrypted`,
+      [phoneHash, firebaseUid || null, encryptPhone(phone)]
+    );
 
     // Anti-spam: 1 SĐT chỉ có 1 ca active (RULE-1)
     const existing = await db.query(
@@ -166,9 +168,9 @@ async function acceptCase(req, res) {
       return res.status(400).json({ error: 'Missing volunteerId' });
     }
 
-    // Kiểm tra ca còn active
+    // Kiểm tra ca còn active + lấy phone_hash để lookup victim
     const caseRow = await db.query(
-      `SELECT id, coords, status FROM cases WHERE id = $1`,
+      `SELECT id, coords, status, phone_hash FROM cases WHERE id = $1`,
       [id]
     );
     if (caseRow.rows.length === 0) {
@@ -263,14 +265,29 @@ async function acceptCase(req, res) {
 
     console.log(`[sosController] TNV ${volunteerId} accepted case ${id}, distance: ${initialDistance}m`);
 
-    // Emit SSE event to all listeners (victim app)
+    // Lấy SĐT nạn nhân để TNV có thể gọi
+    const victimRow = await db.query(
+      `SELECT phone_encrypted FROM victims WHERE phone_hash = $1`,
+      [caseRow.rows[0].phone_hash]
+    );
+    const victimPhone = decryptPhone(victimRow.rows[0]?.phone_encrypted) || null;
+
+    // Lấy SĐT TNV để nạn nhân có thể gọi lại
+    const volPhoneRow = await db.query(
+      `SELECT phone_encrypted FROM volunteers WHERE id = $1`,
+      [volunteerId]
+    );
+    const volunteerPhone = decryptPhone(volPhoneRow.rows[0]?.phone_encrypted) || null;
+
+    // Emit SSE event to all listeners (victim app) — gửi kèm volunteerPhone
     emitCaseEvent(id, 'case:accepted', {
       volunteerId,
       initialDistance,
       status: 'responding',
+      volunteerPhone,
     });
 
-    res.json({ success: true, initialDistance });
+    res.json({ success: true, initialDistance, victimPhone });
   } catch (err) {
     console.error('[sosController][acceptCase]', err.message);
     res.status(500).json({ error: 'Internal error' });
@@ -312,11 +329,14 @@ async function resolveCase(req, res) {
 
     // Release TNV
     await db.query(`
-      UPDATE volunteers SET is_available = true 
+      UPDATE volunteers SET is_available = true
       WHERE id IN (
         SELECT volunteer_id FROM case_assignments WHERE case_id = $1
       )
     `, [id]);
+
+    // Xóa tin nhắn chat khi ca đóng
+    await db.query(`DELETE FROM chat_messages WHERE case_id = $1`, [id]);
 
     console.log(`[sosController] Case ${id} resolved by ${resolvedBy}`);
 
@@ -754,9 +774,9 @@ async function cancelCase(req, res) {
       if (caseData.status === 'responding') {
         // Giải phóng TNV (đánh dấu available lại) TRƯỚC KHI revoke
         await client.query(`
-          UPDATE volunteers SET is_available = true 
+          UPDATE volunteers SET is_available = true
           WHERE id IN (
-            SELECT volunteer_id FROM case_assignments 
+            SELECT volunteer_id FROM case_assignments
             WHERE case_id = $1 AND revoked_at IS NULL
           )
         `, [caseId]);
@@ -766,6 +786,9 @@ async function cancelCase(req, res) {
           [caseId]
         );
       }
+
+      // Xóa tin nhắn chat khi ca bị hủy
+      await client.query(`DELETE FROM chat_messages WHERE case_id = $1`, [caseId]);
 
       await client.query('COMMIT');
     } catch (txErr) {
