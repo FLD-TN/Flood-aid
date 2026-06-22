@@ -169,8 +169,8 @@ class ApiService {
   }
 
   /// POST /api/case/:id/accept — TNV nhận ca
-  /// Gửi kèm lat/lon hiện tại để backend tính khoảng cách ban đầu
-  static Future<bool> acceptCase(String caseId, String volunteerId, {double? lat, double? lon}) async {
+  /// Trả về Map với { success, initialDistance, victimPhone } hoặc null nếu thất bại
+  static Future<Map<String, dynamic>?> acceptCase(String caseId, String volunteerId, {double? lat, double? lon}) async {
     try {
       final headers = await _getHeaders();
       final body = <String, dynamic>{'volunteerId': volunteerId};
@@ -183,8 +183,49 @@ class ApiService {
         headers: headers,
         body: json.encode(body),
       );
-      return response.statusCode == 200;
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      }
+      return null;
     } catch (e) {
+      return null;
+    }
+  }
+
+  /// GET /api/case/:id/messages — Lấy lịch sử chat
+  static Future<List<Map<String, dynamic>>> getChatMessages(String caseId) async {
+    try {
+      final response = await http
+          .get(Uri.parse('$_baseUrl/api/case/$caseId/messages'))
+          .timeout(const Duration(seconds: 8));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data is List) {
+          return List<Map<String, dynamic>>.from(data);
+        }
+      }
+      return [];
+    } catch (e) {
+      debugPrint('[ApiService] getChatMessages error: $e');
+      return [];
+    }
+  }
+
+  /// POST /api/case/:id/messages — REST fallback gửi tin nhắn (khi WS mất)
+  static Future<bool> sendChatMessage(String caseId, String senderRole, String content, {String? senderId}) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/case/$caseId/messages'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'senderRole': senderRole,
+          'senderId': senderId,
+          'content': content,
+        }),
+      ).timeout(const Duration(seconds: 8));
+      return response.statusCode == 201;
+    } catch (e) {
+      debugPrint('[ApiService] sendChatMessage error: $e');
       return false;
     }
   }
