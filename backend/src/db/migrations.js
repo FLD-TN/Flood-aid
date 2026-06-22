@@ -234,7 +234,7 @@ ALTER TABLE volunteers DROP COLUMN IF EXISTS flag_count;
 
 -- Cập nhật view v_available_volunteers (bỏ v.flag_count)
 CREATE OR REPLACE VIEW v_available_volunteers AS
-SELECT 
+SELECT
   v.id,
   v.full_name,
   v.fcm_token,
@@ -246,6 +246,23 @@ SELECT
 FROM volunteers v
 WHERE v.admin_approved = true
   AND v.current_coords IS NOT NULL;
+`;
+
+const migration011 = `
+-- Lưu SĐT mã hoá cho nạn nhân (để TNV đã nhận ca có thể gọi)
+ALTER TABLE victims ADD COLUMN IF NOT EXISTS phone_encrypted TEXT;
+
+-- Bảng tin nhắn chat trong ca SOS
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  case_id     UUID NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
+  sender_role VARCHAR(10) NOT NULL CHECK (sender_role IN ('volunteer', 'victim')),
+  sender_id   UUID,
+  content     TEXT NOT NULL,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_chat_messages_case ON chat_messages (case_id, created_at);
 `;
 
 async function runMigrations() {
@@ -290,6 +307,10 @@ async function runMigrations() {
     console.log('[Migration] Running migration 010: Drop flag_count column + update view...');
     await client.query(migration010);
     console.log('[Migration] ✓ Migration 010 complete');
+
+    console.log('[Migration] Running migration 011: victims.phone_encrypted + chat_messages table...');
+    await client.query(migration011);
+    console.log('[Migration] ✓ Migration 011 complete');
 
     console.log('[Migration] All migrations completed successfully!');
   } catch (err) {
