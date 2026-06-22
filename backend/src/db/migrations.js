@@ -272,6 +272,11 @@ CREATE TABLE IF NOT EXISTS chat_messages (
 CREATE INDEX IF NOT EXISTS idx_chat_messages_case ON chat_messages (case_id, created_at);
 `;
 
+const migration012 = `
+-- FCM token cho nạn nhân — dùng để gửi push notification khi TNV còn cách 100m
+ALTER TABLE victims ADD COLUMN IF NOT EXISTS fcm_token TEXT;
+`;
+
 async function runMigrations() {
   const client = await pool.connect();
   try {
@@ -318,6 +323,10 @@ async function runMigrations() {
     console.log('[Migration] Running migration 011: victims.phone_encrypted + chat_messages table...');
     await client.query(migration011);
     console.log('[Migration] ✓ Migration 011 complete');
+
+    console.log('[Migration] Running migration 012: victims.fcm_token...');
+    await client.query(migration012);
+    console.log('[Migration] ✓ Migration 012 complete');
 
     console.log('[Migration] All migrations completed successfully!');
   } catch (err) {
