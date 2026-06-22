@@ -214,14 +214,13 @@ DROP VIEW IF EXISTS v_available_volunteers;
 -- Xóa cột skills — không còn dùng cho dispatch hay volunteer profile
 ALTER TABLE volunteers DROP COLUMN IF EXISTS skills;
 
--- Tạo lại view v_available_volunteers (bỏ v.skills)
+-- Tạo lại view v_available_volunteers (bỏ v.skills, không có flag_count vì migration010 sẽ xóa)
 DROP VIEW IF EXISTS v_available_volunteers;
 CREATE VIEW v_available_volunteers AS
 SELECT
   v.id,
   v.full_name,
   v.fcm_token,
-  v.flag_count,
   v.is_available,
   ST_X(v.current_coords::geometry) AS lon,
   ST_Y(v.current_coords::geometry) AS lat,
