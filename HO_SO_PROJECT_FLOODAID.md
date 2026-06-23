@@ -48,7 +48,6 @@ Giao tiếp:
 
 ### 3.2. Tình nguyện viên (TNV / Volunteer)
 - Đăng ký eKYC: Chụp CCCD → FPT.AI nhận diện → Chụp selfie → FPT.AI FaceMatch (similarity ≥ 80%) → Chờ Admin duyệt
-- Khai báo kỹ năng tùy chọn: CPR, y tá, bác sĩ (lưu trong JSONB `skills`)
 - Nhận Push Notification (FCM) khi có ca SOS gần, nội dung đã được AI tóm tắt 1 dòng
 - Xem bản đồ SOS tổng thể, lọc theo mức độ/khoảng cách/tags, sắp xếp gần↔xa / mới↔cũ
 - Nhận ca → GPS tracking adaptive → Di chuyển đến nạn nhân → Hoàn thành

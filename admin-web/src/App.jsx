@@ -5,6 +5,7 @@ import TopBar from './components/TopBar';
 import Sidebar from './components/Sidebar';
 import VolunteerPanel from './components/VolunteerPanel';
 import VolunteerManagement from './components/VolunteerManagement';
+import LoginPage from './components/LoginPage';
 import { usePolling } from './hooks/usePolling';
 import './App.css';
 
@@ -12,6 +13,31 @@ function App() {
   const [activeSection, setActiveSection] = useState('dashboard');
   const [selectedCase, setSelectedCase] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Auth state — khởi tạo từ localStorage
+  const [adminToken, setAdminToken] = useState(() => localStorage.getItem('adminToken'));
+  const [adminInfo, setAdminInfo] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('adminInfo')); } catch { return null; }
+  });
+
+  function handleLogin(token, info) {
+    localStorage.setItem('adminToken', token);
+    localStorage.setItem('adminInfo', JSON.stringify(info));
+    setAdminToken(token);
+    setAdminInfo(info);
+  }
+
+  function handleLogout() {
+    localStorage.removeItem('adminToken');
+    localStorage.removeItem('adminInfo');
+    setAdminToken(null);
+    setAdminInfo(null);
+  }
+
+  // Hiển thị trang login nếu chưa xác thực
+  if (!adminToken) {
+    return <LoginPage onLogin={handleLogin} />;
+  }
 
   // Lấy dữ liệu thống kê từ backend (polling mỗi 10s)
   const { data: stats } = usePolling('/api/admin/stats', 10000);
@@ -35,7 +61,7 @@ function App() {
       
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col relative h-full overflow-hidden w-full md:ml-20">
-        <TopBar onMenuClick={() => setIsSidebarOpen(true)} />
+        <TopBar onMenuClick={() => setIsSidebarOpen(true)} adminInfo={adminInfo} onLogout={handleLogout} />
         
         <main className="flex-1 relative bg-background h-full w-full pt-16 md:pt-0">
           {activeSection === 'teams' ? (

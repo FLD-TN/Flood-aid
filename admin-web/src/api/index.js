@@ -7,6 +7,28 @@ const api = axios.create({
   timeout: 10000,
 });
 
+// Tự động đính JWT admin token vào mọi request
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('adminToken');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// 401 → xóa token, reload về trang login
+api.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    if (err.response?.status === 401) {
+      localStorage.removeItem('adminToken');
+      localStorage.removeItem('adminInfo');
+      window.location.reload();
+    }
+    return Promise.reject(err);
+  }
+);
+
 // SOS Cases
 export const getCaseClusters = () => api.get('/api/admin/case-clusters');
 export const getAllCases = (status) => api.get('/api/admin/cases', { params: { status } });

@@ -277,6 +277,11 @@ const migration012 = `
 ALTER TABLE victims ADD COLUMN IF NOT EXISTS fcm_token TEXT;
 `;
 
+const migration013 = `
+-- Admin password login: thêm password_hash để Admin đăng nhập bằng email/password
+ALTER TABLE admins ADD COLUMN IF NOT EXISTS password_hash TEXT;
+`;
+
 async function runMigrations() {
   const client = await pool.connect();
   try {
@@ -327,6 +332,10 @@ async function runMigrations() {
     console.log('[Migration] Running migration 012: victims.fcm_token...');
     await client.query(migration012);
     console.log('[Migration] ✓ Migration 012 complete');
+
+    console.log('[Migration] Running migration 013: admins.password_hash...');
+    await client.query(migration013);
+    console.log('[Migration] ✓ Migration 013 complete');
 
     console.log('[Migration] All migrations completed successfully!');
   } catch (err) {

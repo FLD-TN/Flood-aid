@@ -10,11 +10,17 @@ const sosController = require('./controllers/sosController');
 const locationController = require('./controllers/locationController');
 const volunteerController = require('./controllers/volunteerController');
 const adminController = require('./controllers/adminController');
+const adminAuthController = require('./controllers/adminAuthController');
 const sseController = require('./controllers/sseController');
 const authController = require('./controllers/authController');
 const kycController = require('./controllers/kycController');
 const chatController = require('./controllers/chatController');
 const { authMiddleware } = require('./middleware/authMiddleware');
+const { adminAuthMiddleware } = require('./middleware/adminAuthMiddleware');
+
+// ====== Admin Auth ======
+router.post('/admin/register', adminAuthController.register);
+router.post('/admin/login', adminAuthController.login);
 
 // ====== Module 0: Auth & eKYC ======
 router.post('/auth/verify-phone', authMiddleware, authController.verifyPhone);
@@ -52,10 +58,10 @@ router.put('/volunteers/:id/radius', volunteerController.updateNotificationRadiu
 router.get('/volunteers/:volunteerId/history', sosController.getVolunteerHistory);
 router.get('/volunteers/:volunteerId/active-mission', sosController.getActiveAssignment);
 
-// ====== Module 5: Admin Dashboard ======
-router.get('/admin/case-clusters', adminController.getCaseClusters);
-router.get('/admin/cases', adminController.getAllCases);
-router.get('/admin/stats', adminController.getDashboardStats);
+// ====== Module 5: Admin Dashboard (protected) ======
+router.get('/admin/case-clusters', adminAuthMiddleware, adminController.getCaseClusters);
+router.get('/admin/cases', adminAuthMiddleware, adminController.getAllCases);
+router.get('/admin/stats', adminAuthMiddleware, adminController.getDashboardStats);
 
 
 module.exports = router;
