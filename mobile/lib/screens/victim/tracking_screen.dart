@@ -948,9 +948,23 @@ class _TrackingScreenState extends State<TrackingScreen> {
                               tooltip: 'Gọi TNV',
                               onTap: () async {
                                 final phone = _volunteerPhone ?? '';
-                                if (phone.isEmpty) return;
-                                final uri = Uri(scheme: 'tel', path: phone);
-                                if (await canLaunchUrl(uri)) await launchUrl(uri);
+                                debugPrint('[Tracking] Gọi TNV: phone="$phone"');
+                                if (phone.isEmpty) {
+                                  if (mounted) {
+                                    ToastService.show(
+                                      context: context,
+                                      type: ToastType.warning,
+                                      message: 'Chưa có số điện thoại tình nguyện viên.',
+                                    );
+                                  }
+                                  return;
+                                }
+                                final uri = Uri.parse('tel:$phone');
+                                try {
+                                  await launchUrl(uri);
+                                } catch (e) {
+                                  debugPrint('[Tracking] launchUrl error: $e');
+                                }
                               },
                             ),
                             SizedBox(width: 20.w),

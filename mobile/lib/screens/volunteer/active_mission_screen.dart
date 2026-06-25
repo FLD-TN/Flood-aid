@@ -84,6 +84,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
       // Re-entry: TNV quay lại từ HomeScreen → khôi phục state
       _accepted = true;
       _volunteerId = _manager.volunteerId ?? '';
+      _victimPhone = _manager.victimPhone;
       _wsConnected = _manager.wsConnected;
       // Đăng ký callback khi ca bị đóng từ bên ngoài
       _manager.onMissionEndedExternally = _onMissionEndedExternally;
@@ -228,7 +229,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
       summary: widget.summary,
       description: widget.description,
       urgencyLevel: widget.urgencyLevel,
-      victimPhone: widget.victimPhone,
+      victimPhone: _victimPhone ?? widget.victimPhone,
     );
     _manager.onMissionEndedExternally = _onMissionEndedExternally;
     _manager.addListener(_onManagerChanged);
@@ -323,7 +324,9 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
         );
       } else if (mounted) {
         // Lưu SĐT nạn nhân từ response
-        setState(() => _victimPhone = result?['victimPhone'] as String?);
+        final phone = result?['victimPhone'] as String?;
+        debugPrint('[ActiveMission] acceptCase response victimPhone="$phone", full=$result');
+        setState(() => _victimPhone = phone);
         // Accept succeeded — start GPS tracking via WebSocket
         _startGpsTracking();
       }
@@ -780,9 +783,23 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                       tooltip: 'Gọi nạn nhân',
                       onTap: () async {
                         final phone = _victimPhone ?? widget.victimPhone ?? '';
-                        if (phone.isEmpty) return;
-                        final Uri url = Uri(scheme: 'tel', path: phone);
-                        if (await canLaunchUrl(url)) await launchUrl(url);
+                        debugPrint('[ActiveMission] Gọi điện: phone="$phone"');
+                        if (phone.isEmpty) {
+                          if (mounted) {
+                            ToastService.show(
+                              context: context,
+                              type: ToastType.warning,
+                              message: 'Chưa có số điện thoại nạn nhân.',
+                            );
+                          }
+                          return;
+                        }
+                        final uri = Uri.parse('tel:$phone');
+                        try {
+                          await launchUrl(uri);
+                        } catch (e) {
+                          debugPrint('[ActiveMission] launchUrl error: $e');
+                        }
                       },
                     ),
                     SizedBox(width: 20.w),

@@ -193,9 +193,14 @@ async function acceptCase(req, res) {
         [id, volunteerId]
       );
       if (existingAssignment.rows.length > 0) {
-        // CÙNG TNV đã nhận ca này → return success (idempotent)
+        // CÙNG TNV đã nhận ca này → return success (idempotent), kèm victimPhone
         console.log(`[sosController] TNV ${volunteerId} re-accepted case ${id} (idempotent)`);
-        return res.json({ success: true, idempotent: true });
+        const idempotentVictimRow = await db.query(
+          `SELECT phone_encrypted FROM victims WHERE phone_hash = $1`,
+          [caseRow.rows[0].phone_hash]
+        );
+        const idempotentVictimPhone = decryptPhone(idempotentVictimRow.rows[0]?.phone_encrypted) || null;
+        return res.json({ success: true, idempotent: true, victimPhone: idempotentVictimPhone });
       }
       // TNV KHÁC đã nhận ca → reject
       return res.status(409).json({ error: 'Case already accepted by another volunteer' });
