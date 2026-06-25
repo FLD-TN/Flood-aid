@@ -381,6 +381,13 @@ async function getActiveByPhone(req, res) {
     }
 
     const phoneHash = hashPhone(phone);
+
+    // Làm mới phone_encrypted mỗi lần victim kiểm tra ca active (fix record cũ thiếu key)
+    await db.query(
+      `UPDATE victims SET phone_encrypted = $2 WHERE phone_hash = $1 AND $2 IS NOT NULL`,
+      [phoneHash, encryptPhone(phone)]
+    );
+
     const result = await db.query(
       `SELECT id, urgency_level, tags, summary_1line, status,
               ST_X(coords::geometry) AS lon, ST_Y(coords::geometry) AS lat,

@@ -5,6 +5,7 @@
 
 const { db } = require('../db');
 const crypto = require('crypto');
+const { encryptPhone } = require('../utils/crypto');
 
 const SALT = process.env.PHONE_HASH_SALT || 'default_salt';
 
@@ -54,10 +55,10 @@ async function verifyPhone(req, res) {
     }
 
     // TH 1: Đã đăng ký & được duyệt → Đăng nhập thành công
-    // Cập nhật trạng thái sẵn sàng khi đăng nhập
+    // Cập nhật trạng thái sẵn sàng + làm mới phone_encrypted mỗi lần login
     await db.query(
-      'UPDATE volunteers SET is_available = true WHERE id = $1',
-      [volunteer.id]
+      'UPDATE volunteers SET is_available = true, phone_encrypted = $2 WHERE id = $1',
+      [volunteer.id, encryptPhone(phone)]
     );
 
     return res.status(200).json({
