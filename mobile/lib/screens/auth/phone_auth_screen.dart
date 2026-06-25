@@ -50,12 +50,30 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
       final savedPhone = prefs.getString('victim_phone');
 
       if (savedPhone != null && savedPhone.isNotEmpty) {
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const SosScreen()),
-          );
-          return;
+        // Kiểm tra Firebase user hiện tại có khớp victim_phone không
+        // Nếu TNV vừa đăng nhập bằng số khác, Firebase user sẽ là của TNV
+        final currentUser = AuthService.currentUser;
+        String firebasePhone = '';
+        if (currentUser?.phoneNumber != null) {
+          firebasePhone = currentUser!.phoneNumber!;
+          if (firebasePhone.startsWith('+84')) {
+            firebasePhone = '0${firebasePhone.substring(3)}';
+          }
+        }
+
+        if (firebasePhone == savedPhone) {
+          // Firebase user khớp victim → vào SosScreen
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const SosScreen()),
+            );
+            return;
+          }
+        } else {
+          // Firebase user là người khác (ví dụ TNV vừa đăng nhập)
+          // Xóa victim_phone cũ để bắt buộc xác thực lại
+          await prefs.remove('victim_phone');
         }
       }
     }

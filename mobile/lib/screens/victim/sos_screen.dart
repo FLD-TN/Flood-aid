@@ -76,6 +76,19 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _loadPhone() async {
+    // Firebase auth là nguồn thật — SharedPrefs chỉ là cache
+    final currentUser = AuthService.currentUser;
+    if (currentUser?.phoneNumber != null) {
+      String firebasePhone = currentUser!.phoneNumber!;
+      if (firebasePhone.startsWith('+84')) {
+        firebasePhone = '0${firebasePhone.substring(3)}';
+      }
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('victim_phone', firebasePhone);
+      setState(() => _phone = firebasePhone);
+      return;
+    }
+    // Fallback: đọc từ SharedPrefs nếu Firebase không có
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString('victim_phone');
     if (saved != null && saved.isNotEmpty) {
