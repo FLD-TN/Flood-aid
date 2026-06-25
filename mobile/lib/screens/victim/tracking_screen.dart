@@ -81,7 +81,9 @@ class _TrackingScreenState extends State<TrackingScreen> {
 
   /// Fetch TNV location once on startup
   Future<void> _fetchInitialTnvLocation() async {
+    debugPrint('[Tracking] _fetchInitialTnvLocation: calling API...');
     final data = await ApiService.getTnvLocation(widget.caseId);
+    debugPrint('[Tracking] getTnvLocation response: $data');
     if (data != null && mounted) {
       setState(() {
         _distanceM = data['distance_m'] != null
@@ -91,8 +93,11 @@ class _TrackingScreenState extends State<TrackingScreen> {
         _tnvLon = data['lon'] != null ? (data['lon'] as num).toDouble() : null;
         _hasVolunteer = data['has_volunteer'] == true;
         // Lấy SĐT TNV từ initial fetch (trường hợp victim vào sau khi TNV đã nhận ca)
-        if (data['volunteerPhone'] != null && _volunteerPhone == null) {
-          _volunteerPhone = data['volunteerPhone'] as String?;
+        final vPhone = data['volunteerPhone'] as String?;
+        debugPrint('[Tracking] volunteerPhone from API: "$vPhone", _volunteerPhone hiện tại: "$_volunteerPhone"');
+        if (vPhone != null && _volunteerPhone == null) {
+          _volunteerPhone = vPhone;
+          debugPrint('[Tracking] _volunteerPhone set from initial fetch: "$_volunteerPhone"');
         }
         final fetchedStatus = data['status'] as String?;
         if (fetchedStatus != null) {
@@ -102,6 +107,8 @@ class _TrackingScreenState extends State<TrackingScreen> {
           }
         }
       });
+    } else {
+      debugPrint('[Tracking] getTnvLocation trả null hoặc không mounted');
     }
   }
 
@@ -143,6 +150,8 @@ class _TrackingScreenState extends State<TrackingScreen> {
         if (!mounted) return;
         switch (event.event) {
           case 'case:accepted':
+            debugPrint('[Tracking] SSE case:accepted data: ${event.data}');
+            debugPrint('[Tracking] SSE volunteerPhone: "${event.data['volunteerPhone']}"');
             setState(() {
               _status = 'responding';
               _hasVolunteer = true;
@@ -151,6 +160,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
               }
               if (event.data['volunteerPhone'] != null) {
                 _volunteerPhone = event.data['volunteerPhone'] as String?;
+                debugPrint('[Tracking] _volunteerPhone set from SSE: "$_volunteerPhone"');
               }
             });
             // Start WS GPS to receive TNV location in real-time

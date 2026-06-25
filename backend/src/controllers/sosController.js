@@ -146,6 +146,7 @@ async function getTnvLocation(req, res) {
 
     const row = result.rows[0];
     const volunteerPhone = decryptPhone(row.volunteer_phone_encrypted) || null;
+    console.log(`[getTnvLocation] case=${id} volunteer_id=${row.volunteer_id} phone_encrypted=${row.volunteer_phone_encrypted ? 'SET' : 'NULL'} volunteerPhone=${volunteerPhone ? 'DECRYPTED' : 'NULL'}`);
     res.json({
       status: row.status,
       distance_m: row.distance_m,
@@ -289,6 +290,7 @@ async function acceptCase(req, res) {
     const volunteerPhone = decryptPhone(volPhoneRow.rows[0]?.phone_encrypted) || null;
 
     // Emit SSE event to all listeners (victim app) — gửi kèm volunteerPhone
+    console.log(`[acceptCase] Emitting case:accepted, volunteerPhone=${volunteerPhone ? 'SET' : 'NULL'}`);
     emitCaseEvent(id, 'case:accepted', {
       volunteerId,
       initialDistance,
