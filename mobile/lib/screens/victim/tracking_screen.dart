@@ -73,6 +73,12 @@ class _TrackingScreenState extends State<TrackingScreen> {
     super.dispose();
   }
 
+  /// Chuẩn hóa SĐT: +84XXXXXXXXX → 0XXXXXXXXX
+  String _normalizePhone(String phone) {
+    if (phone.startsWith('+84')) return '0${phone.substring(3)}';
+    return phone;
+  }
+
   /// Fetch TNV location once on startup
   Future<void> _fetchInitialTnvLocation() async {
     final data = await ApiService.getTnvLocation(widget.caseId);
@@ -84,11 +90,13 @@ class _TrackingScreenState extends State<TrackingScreen> {
         _tnvLat = data['lat'] != null ? (data['lat'] as num).toDouble() : null;
         _tnvLon = data['lon'] != null ? (data['lon'] as num).toDouble() : null;
         _hasVolunteer = data['has_volunteer'] == true;
-        // Also update status from initial fetch
+        // Lấy SĐT TNV từ initial fetch (trường hợp victim vào sau khi TNV đã nhận ca)
+        if (data['volunteerPhone'] != null && _volunteerPhone == null) {
+          _volunteerPhone = data['volunteerPhone'] as String?;
+        }
         final fetchedStatus = data['status'] as String?;
         if (fetchedStatus != null) {
           _status = fetchedStatus;
-          // If already responding, start WS GPS immediately
           if (_status == 'responding' && _hasVolunteer) {
             _startWsGps();
           }
@@ -947,9 +955,9 @@ class _TrackingScreenState extends State<TrackingScreen> {
                               iconColor: Colors.white,
                               tooltip: 'Gọi TNV',
                               onTap: () async {
-                                final phone = _volunteerPhone ?? '';
-                                debugPrint('[Tracking] Gọi TNV: phone="$phone"');
-                                if (phone.isEmpty) {
+                                final raw = _volunteerPhone ?? '';
+                                debugPrint('[Tracking] Gọi TNV: phone="$raw"');
+                                if (raw.isEmpty) {
                                   if (mounted) {
                                     ToastService.show(
                                       context: context,
@@ -959,6 +967,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
                                   }
                                   return;
                                 }
+                                final phone = _normalizePhone(raw);
                                 final uri = Uri.parse('tel:$phone');
                                 try {
                                   await launchUrl(uri);

@@ -124,14 +124,15 @@ async function getTnvLocation(req, res) {
   try {
     const { id } = req.params;
     const result = await db.query(`
-      SELECT 
+      SELECT
         c.status,
         c.tnv_distance_m AS distance_m,
         ST_X(v.current_coords::geometry) AS lon,
         ST_Y(v.current_coords::geometry) AS lat,
-        v.id AS volunteer_id
+        v.id AS volunteer_id,
+        v.phone_encrypted AS volunteer_phone_encrypted
       FROM cases c
-      LEFT JOIN case_assignments ca ON ca.case_id = c.id 
+      LEFT JOIN case_assignments ca ON ca.case_id = c.id
         AND ca.revoked_at IS NULL AND ca.completed_at IS NULL
       LEFT JOIN volunteers v ON v.id = ca.volunteer_id
       WHERE c.id = $1
@@ -144,12 +145,14 @@ async function getTnvLocation(req, res) {
     }
 
     const row = result.rows[0];
+    const volunteerPhone = decryptPhone(row.volunteer_phone_encrypted) || null;
     res.json({
       status: row.status,
       distance_m: row.distance_m,
       lat: row.lat,
       lon: row.lon,
       has_volunteer: !!row.volunteer_id,
+      volunteerPhone,
     });
   } catch (err) {
     console.error('[sosController][getTnvLocation]', err.message);

@@ -107,6 +107,12 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
     });
   }
 
+  /// Chuẩn hóa SĐT: +84XXXXXXXXX → 0XXXXXXXXX
+  String _normalizePhone(String phone) {
+    if (phone.startsWith('+84')) return '0${phone.substring(3)}';
+    return phone;
+  }
+
   void _onManagerChanged() {
     if (mounted) {
       setState(() {
@@ -782,9 +788,9 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                       iconColor: Colors.white,
                       tooltip: 'Gọi nạn nhân',
                       onTap: () async {
-                        final phone = _victimPhone ?? widget.victimPhone ?? '';
-                        debugPrint('[ActiveMission] Gọi điện: phone="$phone"');
-                        if (phone.isEmpty) {
+                        final raw = _victimPhone ?? widget.victimPhone ?? '';
+                        debugPrint('[ActiveMission] Gọi điện: phone="$raw"');
+                        if (raw.isEmpty) {
                           if (mounted) {
                             ToastService.show(
                               context: context,
@@ -794,6 +800,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                           }
                           return;
                         }
+                        final phone = _normalizePhone(raw);
                         final uri = Uri.parse('tel:$phone');
                         try {
                           await launchUrl(uri);
