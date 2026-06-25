@@ -190,9 +190,12 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _callPeer() async {
     final phone = widget.peerPhone;
     if (phone == null || phone.isEmpty) return;
-    final uri = Uri(scheme: 'tel', path: phone);
-    if (await canLaunchUrl(uri)) {
+    debugPrint('[ChatScreen] Gọi điện: phone="$phone"');
+    final uri = Uri.parse('tel:$phone');
+    try {
       await launchUrl(uri);
+    } catch (e) {
+      debugPrint('[ChatScreen] launchUrl error: $e');
     }
   }
 
