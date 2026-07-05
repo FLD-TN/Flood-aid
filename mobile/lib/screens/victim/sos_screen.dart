@@ -780,7 +780,10 @@ class _SosFormSheetState extends State<_SosFormSheet> {
     super.initState();
     _fetchCurrentLocation();
     _initSpeech();
-    DialectNormalizer.load(); // Load từ điển phương ngữ miền Trung (chỉ chạy 1 lần)
+    // Load từ điển gốc (offline), rồi đồng bộ overrides từ backend nếu có mạng.
+    // Sync fire-and-forget: offline vẫn dùng bản bundle/cache bình thường.
+    DialectNormalizer.load()
+        .then((_) => DialectNormalizer.syncFromBackend());
   }
 
   @override

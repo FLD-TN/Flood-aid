@@ -61,7 +61,14 @@ export default function Sidebar({ activeSection, setActiveSection, isOpen, setIs
             <span className="material-symbols-outlined shrink-0" data-icon="map">map</span>
             <span className={`ml-lg font-label-sm transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 md:group-hover:opacity-100'}`}>Map</span>
           </a>
-          <a 
+          <a
+            onClick={(e) => { e.preventDefault(); setActiveSection('dialect'); setIsOpen(false); }}
+            className={`flex items-center p-md rounded-lg cursor-pointer transition-colors ${activeSection === 'dialect' ? 'text-primary border-l-4 border-primary bg-primary/10' : 'text-on-surface-variant hover:bg-surface-bright'}`}
+          >
+            <span className="material-symbols-outlined shrink-0" data-icon="translate">translate</span>
+            <span className={`ml-lg font-label-sm transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 md:group-hover:opacity-100'}`}>Từ điển</span>
+          </a>
+          <a
             onClick={(e) => { e.preventDefault(); setActiveSection('reports'); setIsOpen(false); }}
             className={`flex items-center p-md rounded-lg cursor-pointer transition-colors ${activeSection === 'reports' ? 'text-primary border-l-4 border-primary bg-primary/10' : 'text-on-surface-variant hover:bg-surface-bright'}`}
           >

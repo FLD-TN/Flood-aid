@@ -15,6 +15,7 @@ const sseController = require('./controllers/sseController');
 const authController = require('./controllers/authController');
 const kycController = require('./controllers/kycController');
 const chatController = require('./controllers/chatController');
+const dialectController = require('./controllers/dialectController');
 const { authMiddleware } = require('./middleware/authMiddleware');
 const { adminAuthMiddleware } = require('./middleware/adminAuthMiddleware');
 
@@ -43,6 +44,12 @@ router.post('/case/:id/resolve', sosController.resolveCase);
 router.post('/case/:id/revoke', sosController.revokeCase);
 router.get('/case/:id/messages', chatController.getMessages);
 router.post('/case/:id/messages', chatController.sendMessage);
+
+// ====== Từ điển phương ngữ (override, không DB) ======
+router.get('/dialect-dict', dialectController.getDict);            // app tải về để merge
+router.get('/dialect-dict/version', dialectController.getVersion); // app kiểm tra version
+router.post('/dialect-dict', adminAuthMiddleware, dialectController.addTerm);      // admin thêm/sửa
+router.delete('/dialect-dict', adminAuthMiddleware, dialectController.removeTerm); // admin xoá
 
 // ====== Module 3: Location Tracking ======
 router.post('/location', locationController.updateVolunteerLocation);

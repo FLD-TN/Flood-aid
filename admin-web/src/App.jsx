@@ -5,6 +5,7 @@ import TopBar from './components/TopBar';
 import Sidebar from './components/Sidebar';
 import VolunteerPanel from './components/VolunteerPanel';
 import VolunteerManagement from './components/VolunteerManagement';
+import DialectManagement from './components/DialectManagement';
 import LoginPage from './components/LoginPage';
 import { usePolling } from './hooks/usePolling';
 import './App.css';
@@ -66,6 +67,8 @@ function App() {
         <main className="flex-1 relative bg-background h-full w-full pt-16 md:pt-0">
           {activeSection === 'teams' ? (
             <VolunteerManagement />
+          ) : activeSection === 'dialect' ? (
+            <DialectManagement />
           ) : (
             <>
           {/* FULL BACKGROUND MAP */}

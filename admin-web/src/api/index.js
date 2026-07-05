@@ -40,4 +40,9 @@ export const getVolunteerLocations = () => api.get('/api/volunteers/locations');
 export const getVolunteers = () => api.get('/api/volunteers');
 export const approveVolunteer = (id, approved) => api.put(`/api/volunteers/${id}/approve`, { approved });
 
+// Từ điển phương ngữ (override)
+export const getDialectDict = () => api.get('/api/dialect-dict');
+export const addDialectTerm = (dialect, standard) => api.post('/api/dialect-dict', { dialect, standard });
+export const removeDialectTerm = (dialect) => api.delete('/api/dialect-dict', { data: { dialect } });
+
 export default api;
