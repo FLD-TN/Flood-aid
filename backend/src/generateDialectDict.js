@@ -6,10 +6,12 @@
 const fs = require('fs');
 const https = require('https');
 const readline = require('readline');
+const path = require('path');
 
 const WORDLIST_URL = 'https://raw.githubusercontent.com/duyet/vietnamese-wordlist/master/Viet74K.txt';
-const DICT_OUTPUT_PATH = './dialect_dict.json';
-const RAW_VOCAB_PATH = './Viet74K.txt';
+// Ghi thẳng ra file mà app đóng gói — 1 nguồn sự thật duy nhất, không copy tay.
+const DICT_OUTPUT_PATH = path.join(__dirname, '../../mobile/assets/dialect_dict.json');
+const RAW_VOCAB_PATH = path.join(__dirname, '../Viet74K.txt');
 
 // 1. Từ điển cứng (Hardcoded Dictionary)
 const hardcodedDict = {
