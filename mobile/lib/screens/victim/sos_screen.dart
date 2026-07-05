@@ -767,6 +767,14 @@ class _SosFormSheetState extends State<_SosFormSheet> {
   bool _isListening = false;
   bool _speechAvailable = false;
 
+  // Text đã có trong khung TRƯỚC khi bắt đầu phiên nghe hiện tại.
+  // Kết quả nhận diện luôn = _baseText + từ vừa nói, nên xoá khung rồi nói lại
+  // sẽ chỉ ra text mới (không lẫn nội dung cũ của session cũ).
+  String _baseText = '';
+  // Cờ đánh dấu lần setText này là do CODE (kết quả speech) chứ không phải người
+  // dùng gõ/xoá tay → tránh onChanged tự tắt mic khi ta cập nhật khung.
+  bool _programmaticEdit = false;
+
   @override
   void initState() {
     super.initState();
@@ -807,32 +815,62 @@ class _SosFormSheetState extends State<_SosFormSheet> {
   void _toggleListening() async {
     if (_isListening) {
       await _speech.stop();
-      setState(() => _isListening = false);
-    } else {
-      if (_speechAvailable) {
-        setState(() => _isListening = true);
-        await _speech.listen(
-          onResult: (result) {
-            if (mounted) {
-              setState(() {
-                // Chuẩn hóa phương ngữ miền Trung → tiếng Việt phổ thông (real-time)
-                _textController.text = DialectNormalizer.normalize(result.recognizedWords);
-                _textController.selection = TextSelection.fromPosition(
-                  TextPosition(offset: _textController.text.length),
-                );
-              });
-            }
-          },
-          localeId: 'vi_VN',
-          listenMode: ListenMode.dictation,
-        );
-      } else {
+      if (mounted) setState(() => _isListening = false);
+      return;
+    }
+
+    // Nếu chưa init được (lần đầu bị từ chối quyền, v.v.) thử init lại.
+    if (!_speechAvailable) {
+      await _initSpeech();
+    }
+    if (!_speechAvailable) {
+      if (mounted) {
         ToastService.show(
           context: context,
           type: ToastType.error,
           message: 'Không thể khởi tạo nhận dạng giọng nói.',
         );
       }
+      return;
+    }
+
+    // Đảm bảo phiên cũ (nếu còn) được huỷ hẳn để recognizedWords bắt đầu lại từ đầu.
+    await _speech.cancel();
+
+    // Chốt nội dung hiện có trong khung làm mốc. Nếu người dùng vừa xoá sạch,
+    // _baseText = '' → kết quả nói mới sẽ KHÔNG dính text cũ.
+    _baseText = _textController.text.trim();
+
+    setState(() => _isListening = true);
+    await _speech.listen(
+      onResult: (result) {
+        if (!mounted) return;
+        final spoken = DialectNormalizer.normalize(result.recognizedWords).trim();
+        final combined = _baseText.isEmpty
+            ? spoken
+            : (spoken.isEmpty ? _baseText : '$_baseText $spoken');
+        setState(() {
+          _programmaticEdit = true; // cập nhật này do code, đừng để onChanged tắt mic
+          _textController.text = combined;
+          _textController.selection = TextSelection.fromPosition(
+            TextPosition(offset: _textController.text.length),
+          );
+          _programmaticEdit = false;
+        });
+      },
+      localeId: 'vi_VN',
+      listenMode: ListenMode.dictation,
+    );
+  }
+
+  // Gọi khi người dùng tự gõ/xoá trong khung ghi chú (KHÔNG gọi khi code tự set).
+  // Nếu đang nghe mà người dùng sửa tay → tắt mic để lần bấm mic sau bắt đầu
+  // phiên mới với mốc là nội dung hiện tại (xoá sạch thì nói lại ra text mới).
+  void _onNoteChangedByUser(String value) {
+    if (_programmaticEdit) return;
+    if (_isListening) {
+      _speech.stop();
+      if (mounted) setState(() => _isListening = false);
     }
   }
 
@@ -1046,6 +1084,7 @@ class _SosFormSheetState extends State<_SosFormSheet> {
                     child: TextField(
                       controller: _textController,
                       maxLines: 3,
+                      onChanged: _onNoteChangedByUser,
                       decoration: InputDecoration(
                         hintText: 'Mô tả tình trạng của bạn...',
                         hintStyle: AppTypography.bodyMedium.copyWith(color: AppColors.textMuted),
@@ -1143,6 +1182,10 @@ class _SosFormSheetState extends State<_SosFormSheet> {
           _textController.selection = TextSelection.fromPosition(
             TextPosition(offset: _textController.text.length),
           );
+          // Nếu đang nghe, đồng bộ mốc để text vừa nói nối tiếp sau tag (không mất tag)
+          if (_isListening) {
+            _baseText = _textController.text.trim();
+          }
         });
       },
       child: Container(
