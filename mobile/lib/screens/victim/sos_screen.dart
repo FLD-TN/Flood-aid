@@ -814,8 +814,9 @@ class _SosFormSheetState extends State<_SosFormSheet> {
 
   void _toggleListening() async {
     if (_isListening) {
+      // Tắt cờ trước khi stop để chặn final result đến muộn ghi đè text.
+      setState(() => _isListening = false);
       await _speech.stop();
-      if (mounted) setState(() => _isListening = false);
       return;
     }
 
@@ -844,7 +845,10 @@ class _SosFormSheetState extends State<_SosFormSheet> {
     setState(() => _isListening = true);
     await _speech.listen(
       onResult: (result) {
-        if (!mounted) return;
+        // Bỏ qua kết quả đến MUỘN sau khi đã tắt mic (stop/cancel vẫn bắn 1
+        // final result) — nếu không nó sẽ ghi đè lại text người dùng vừa
+        // xoá/gõ tay -> khôi phục nội dung cũ.
+        if (!mounted || !_isListening) return;
         final spoken = DialectNormalizer.normalize(result.recognizedWords).trim();
         final combined = _baseText.isEmpty
             ? spoken
@@ -869,8 +873,11 @@ class _SosFormSheetState extends State<_SosFormSheet> {
   void _onNoteChangedByUser(String value) {
     if (_programmaticEdit) return;
     if (_isListening) {
-      _speech.stop();
-      if (mounted) setState(() => _isListening = false);
+      // Tắt cờ TRƯỚC để onResult (final result đến muộn) bị chặn ngay,
+      // giữ nguyên đúng những gì người dùng vừa gõ/xoá.
+      setState(() => _isListening = false);
+      // cancel() (khác stop) huỷ hẳn, không trả về final result.
+      _speech.cancel();
     }
   }
 
