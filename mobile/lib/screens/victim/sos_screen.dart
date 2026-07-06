@@ -775,6 +775,13 @@ class _SosFormSheetState extends State<_SosFormSheet> {
   // dùng gõ/xoá tay → tránh onChanged tự tắt mic khi ta cập nhật khung.
   bool _programmaticEdit = false;
 
+  // Số phiên nghe. Tăng mỗi lần bắt đầu/kết thúc một phiên. Closure onResult
+  // giữ id của phiên nó thuộc về; kết quả/sự kiện đến trễ từ phiên cũ (id khác)
+  // sẽ bị loại → chống lẫn text giữa các phiên (race chính của STT bất đồng bộ).
+  int _sessionId = 0;
+  // Khoá chống reentrancy khi đang khởi động phiên (có nhiều await bên trong).
+  bool _isStarting = false;
+
   @override
   void initState() {
     super.initState();
@@ -796,18 +803,25 @@ class _SosFormSheetState extends State<_SosFormSheet> {
   Future<void> _initSpeech() async {
     _speechAvailable = await _speech.initialize(
       onStatus: (status) {
-        if (status == 'notListening' && mounted) {
+        // Phiên tự kết thúc (hết thời gian im lặng). Chỉ tắt cờ nếu đang nghe.
+        // KHÔNG tăng _sessionId ở đây để tránh vô hiệu nhầm phiên mới khi status
+        // của phiên cũ đến trễ.
+        if (status == 'notListening' && mounted && _isListening) {
           setState(() => _isListening = false);
         }
       },
       onError: (error) {
-        print('[SpeechError] Lỗi nhận diện giọng nói: ${error.errorMsg}');
-        if (mounted) {
-          setState(() => _isListening = false);
+        print('[SpeechError] ${error.errorMsg}');
+        // Lỗi lành tính (không nghe rõ / hết thời gian) → đừng dừng, đừng doạ
+        // người dùng bằng toast đỏ. Chỉ xử lý lỗi thật.
+        const benign = {'error_no_match', 'error_speech_timeout', 'error_no_speech'};
+        if (benign.contains(error.errorMsg)) return;
+        if (mounted && _isListening) {
+          _endSession();
           ToastService.show(
             context: context,
             type: ToastType.error,
-            message: 'Chi tiết lỗi: ${error.errorMsg}',
+            message: 'Không nghe được, vui lòng thử lại.',
           );
         }
       },
@@ -816,72 +830,85 @@ class _SosFormSheetState extends State<_SosFormSheet> {
   }
 
   void _toggleListening() async {
+    if (_isStarting) return; // đang khởi động dở → bỏ qua tap thừa (chống reentrancy)
     if (_isListening) {
-      // Tắt cờ trước khi stop để chặn final result đến muộn ghi đè text.
-      setState(() => _isListening = false);
-      await _speech.stop();
+      _endSession();
       return;
     }
+    await _startSession();
+  }
 
-    // Nếu chưa init được (lần đầu bị từ chối quyền, v.v.) thử init lại.
+  // Kết thúc phiên đang chạy: tăng id để vô hiệu closure của phiên hiện tại,
+  // tắt cờ, và huỷ hẳn (cancel không phát final result).
+  void _endSession() {
+    _sessionId++;
+    if (mounted) setState(() => _isListening = false);
+    _speech.cancel();
+  }
+
+  Future<void> _startSession() async {
     if (!_speechAvailable) {
       await _initSpeech();
-    }
-    if (!_speechAvailable) {
-      if (mounted) {
-        ToastService.show(
-          context: context,
-          type: ToastType.error,
-          message: 'Không thể khởi tạo nhận dạng giọng nói.',
-        );
+      if (!_speechAvailable) {
+        if (mounted) {
+          ToastService.show(
+            context: context,
+            type: ToastType.error,
+            message: 'Không thể khởi tạo nhận dạng giọng nói.',
+          );
+        }
+        return;
       }
-      return;
     }
 
-    // Đảm bảo phiên cũ (nếu còn) được huỷ hẳn để recognizedWords bắt đầu lại từ đầu.
-    await _speech.cancel();
+    _isStarting = true;
+    final int myId = ++_sessionId; // đánh dấu phiên này
+    try {
+      // Huỷ hẳn phiên cũ (nếu còn) rồi CHỜ native flush hết kết quả tồn đọng
+      // trước khi mở phiên mới → chặn final result cũ lọt sang phiên mới.
+      await _speech.cancel();
+      await Future.delayed(const Duration(milliseconds: 150));
+      // Nếu trong lúc chờ có toggle khác chen vào (id đổi) thì bỏ phiên này.
+      if (!mounted || myId != _sessionId) return;
 
-    // Chốt nội dung hiện có trong khung làm mốc. Nếu người dùng vừa xoá sạch,
-    // _baseText = '' → kết quả nói mới sẽ KHÔNG dính text cũ.
-    _baseText = _textController.text.trim();
+      // Chốt nội dung hiện có làm mốc. Xoá sạch → base rỗng → không dính text cũ.
+      _baseText = _textController.text.trim();
+      setState(() => _isListening = true);
 
-    setState(() => _isListening = true);
-    await _speech.listen(
-      onResult: (result) {
-        // Bỏ qua kết quả đến MUỘN sau khi đã tắt mic (stop/cancel vẫn bắn 1
-        // final result) — nếu không nó sẽ ghi đè lại text người dùng vừa
-        // xoá/gõ tay -> khôi phục nội dung cũ.
-        if (!mounted || !_isListening) return;
-        final spoken = DialectNormalizer.normalize(result.recognizedWords).trim();
-        final combined = _baseText.isEmpty
-            ? spoken
-            : (spoken.isEmpty ? _baseText : '$_baseText $spoken');
-        setState(() {
-          _programmaticEdit = true; // cập nhật này do code, đừng để onChanged tắt mic
-          _textController.text = combined;
-          _textController.selection = TextSelection.fromPosition(
-            TextPosition(offset: _textController.text.length),
+      await _speech.listen(
+        onResult: (result) {
+          // Chỉ nhận kết quả của ĐÚNG phiên này và khi vẫn đang nghe.
+          if (!mounted || !_isListening || myId != _sessionId) return;
+          final spoken =
+              DialectNormalizer.normalize(result.recognizedWords).trim();
+          final combined = _baseText.isEmpty
+              ? spoken
+              : (spoken.isEmpty ? _baseText : '$_baseText $spoken');
+          _programmaticEdit = true; // do code set → đừng để onChanged tắt mic
+          _textController.value = TextEditingValue(
+            text: combined,
+            selection: TextSelection.collapsed(offset: combined.length),
           );
           _programmaticEdit = false;
-        });
-      },
-      localeId: 'vi_VN',
-      listenMode: ListenMode.dictation,
-    );
+        },
+        listenOptions: SpeechListenOptions(
+          localeId: 'vi_VN',
+          listenMode: ListenMode.dictation,
+          listenFor: const Duration(minutes: 2), // không tự cắt ngang khi nói dài
+          pauseFor: const Duration(seconds: 30), // cho phép ngập ngừng lâu
+        ),
+      );
+    } finally {
+      _isStarting = false;
+    }
   }
 
   // Gọi khi người dùng tự gõ/xoá trong khung ghi chú (KHÔNG gọi khi code tự set).
-  // Nếu đang nghe mà người dùng sửa tay → tắt mic để lần bấm mic sau bắt đầu
-  // phiên mới với mốc là nội dung hiện tại (xoá sạch thì nói lại ra text mới).
+  // Nếu đang nghe mà người dùng sửa tay → kết thúc phiên để lần bấm mic sau bắt
+  // đầu phiên mới với mốc là nội dung hiện tại (xoá sạch thì nói lại ra text mới).
   void _onNoteChangedByUser(String value) {
     if (_programmaticEdit) return;
-    if (_isListening) {
-      // Tắt cờ TRƯỚC để onResult (final result đến muộn) bị chặn ngay,
-      // giữ nguyên đúng những gì người dùng vừa gõ/xoá.
-      setState(() => _isListening = false);
-      // cancel() (khác stop) huỷ hẳn, không trả về final result.
-      _speech.cancel();
-    }
+    if (_isListening) _endSession();
   }
 
   Future<void> _fetchCurrentLocation() async {
