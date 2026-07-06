@@ -282,6 +282,25 @@ const migration013 = `
 ALTER TABLE admins ADD COLUMN IF NOT EXISTS password_hash TEXT;
 `;
 
+const migration014 = `
+-- Từ điển phương ngữ (override) — bền qua DB thay cho file ephemeral trên Render.
+-- Chỉ chứa phần admin thêm/sửa; app merge chồng lên bộ 26k gốc trong bundle.
+CREATE TABLE IF NOT EXISTS dialect_terms (
+  dialect     TEXT PRIMARY KEY,        -- cách nói phương ngữ (đã lowercase)
+  standard    TEXT NOT NULL,           -- nghĩa phổ thông
+  updated_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Bộ đếm version đơn hàng (single-row) — tăng đơn điệu mỗi lần thay đổi để app
+-- biết khi nào cần đồng bộ lại (không suy ra từ dữ liệu vì delete sẽ làm version lùi).
+CREATE TABLE IF NOT EXISTS dialect_meta (
+  id       INT PRIMARY KEY DEFAULT 1,
+  version  INT NOT NULL DEFAULT 0,
+  CONSTRAINT dialect_meta_single_row CHECK (id = 1)
+);
+INSERT INTO dialect_meta (id, version) VALUES (1, 0) ON CONFLICT (id) DO NOTHING;
+`;
+
 async function runMigrations() {
   const client = await pool.connect();
   try {
@@ -336,6 +355,10 @@ async function runMigrations() {
     console.log('[Migration] Running migration 013: admins.password_hash...');
     await client.query(migration013);
     console.log('[Migration] ✓ Migration 013 complete');
+
+    console.log('[Migration] Running migration 014: dialect_terms + dialect_meta...');
+    await client.query(migration014);
+    console.log('[Migration] ✓ Migration 014 complete');
 
     console.log('[Migration] All migrations completed successfully!');
   } catch (err) {
