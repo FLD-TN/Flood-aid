@@ -25,9 +25,10 @@ const hardcodedDict = {
   "chu cha": "ôi trời",
   "tau": "tao",
   "mi": "mày",
-  "eng": "anh",
-  "o": "cô",
-  "nác": "nước"
+  "con trơ": "con trai",
+  "thằng trơ": "thằng trai",
+  "con gớ": "con gái",
+  "mớ nhoà": "mái nhà",
 };
 
 // 2. Công thức biến âm (Rules)

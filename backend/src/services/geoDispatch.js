@@ -1,17 +1,17 @@
 /**
  * Geo-Dispatch Service — Module 2 (Smart Radius)
- * 
- * Luồng dispatch FCM khi có ca SOS mới:
- *   Phút 0  → broadcastToAllVolunteers (gửi TẤT CẢ TNV đang bật thông báo, không giới hạn khoảng cách)
- *   Phút 15 → alertAdminOrphanCase (thông báo Admin ca mồ côi)
+ *
+ * Giai đoạn 1 (phút 0): broadcastToAllVolunteers — gửi thông báo cho TẤT CẢ TNV
+ * đang bật nhận báo (không giới hạn khoảng cách; xem lý giải trong báo cáo).
+ *
+ * Giai đoạn 2 (ca mồ côi) KHÔNG còn nằm ở đây. Trước đây nó dùng setTimeout, tức
+ * bộ hẹn giờ trong bộ nhớ tiến trình — mất trắng khi máy chủ khởi động lại. Nay
+ * việc phát hiện ca mồ côi do jobs/orphanCaseChecker.js đảm nhiệm: quét CSDL định
+ * kỳ theo cases.created_at và đánh dấu cases.orphan_alerted_at.
  */
 
 const { db } = require('../db');
 const { sendFcmToVolunteer } = require('./fcmService');
-const { emitCaseEvent } = require('../controllers/sseController');
-
-// Thời gian chờ giữa các phase (ms)
-const ORPHAN_ALERT_MS = parseInt(process.env.ORPHAN_ALERT_MS) || 15 * 60 * 1000;
 
 /**
  * Main dispatch flow sau khi tạo ca SOS
@@ -25,20 +25,11 @@ async function dispatchToNearbyVolunteers(caseId) {
     if (!caseRow.rows.length) return;
     const sosCase = caseRow.rows[0];
 
-    // ── Phase 1 (Phút 0): Broadcast cho TẤT CẢ TNV — TÔN TRỌNG radius cá nhân (Không giới hạn khoảng cách) ──
+    // ── Giai đoạn 1 (phút 0): Broadcast cho TNV đang bật nhận thông báo ──
     const broadcastCount = await broadcastToAllVolunteers(sosCase);
     console.log(`[geoDispatch] Case ${caseId}: broadcast to ${broadcastCount} TNV (personal radius)`);
 
-    // ── Phase 2 (Phút 15): Alert Admin — ca mồ côi ──
-    setTimeout(async () => {
-      try {
-        const caseNow = await db.query('SELECT status FROM cases WHERE id = $1', [caseId]);
-        if (caseNow.rows[0]?.status !== 'pending') return;
-        await alertAdminOrphanCase(caseId, sosCase.urgency_level);
-      } catch (err) {
-        console.error('[geoDispatch] Orphan alert error:', err.message);
-      }
-    }, ORPHAN_ALERT_MS);
+    // ── Giai đoạn 2 (ca mồ côi): do jobs/orphanCaseChecker.js quét định kỳ từ CSDL ──
 
   } catch (err) {
     console.error('[geoDispatch][dispatchToNearbyVolunteers]', err.message);
@@ -67,19 +58,6 @@ async function broadcastToAllVolunteers(sosCase) {
   return result.rows.length;
 }
 
-
-async function alertAdminOrphanCase(caseId, urgencyLevel) {
-  console.warn(`[geoDispatch] ORPHAN CASE: ${caseId}, urgency: ${urgencyLevel} — Admin cần can thiệp!`);
-
-  // Emit SSE event to victim
-  emitCaseEvent(caseId, 'case:orphaned', {
-    caseId,
-    urgencyLevel,
-    status: 'orphaned',
-  });
-
-  // TODO: Gửi FCM cho Admin khi có Firebase Admin SDK
-}
 
 module.exports = { dispatchToNearbyVolunteers };
 

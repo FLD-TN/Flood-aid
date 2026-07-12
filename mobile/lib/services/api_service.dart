@@ -17,8 +17,15 @@ class ApiService {
   }
 
   /// POST /api/sos — Gửi SOS
+  ///
+  /// [text]         : văn bản ĐÃ chuẩn hóa phương ngữ (dùng để phân loại + hiển thị).
+  /// [textOriginal] : văn bản GỐC từ nhận dạng giọng nói, TRƯỚC khi chuẩn hóa.
+  ///                  Gửi kèm để máy chủ lưu lại phục vụ đối chiếu khi bộ chuẩn hóa
+  ///                  thay sai, và để thu thập dữ liệu cải thiện từ điển phương ngữ.
+  ///                  Null nếu người dùng gõ tay (không qua chuẩn hóa).
   static Future<Map<String, dynamic>?> sendSos({
     required String text,
+    String? textOriginal,
     required double lat,
     required double lon,
     required String phone,
@@ -32,6 +39,9 @@ class ApiService {
         'lon': lon,
         'phone': phone,
       };
+      if (textOriginal != null && textOriginal.isNotEmpty) {
+        body['textOriginal'] = textOriginal;
+      }
       if (fcmToken != null) body['fcmToken'] = fcmToken;
       final response = await http
           .post(

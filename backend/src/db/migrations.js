@@ -301,6 +301,29 @@ CREATE TABLE IF NOT EXISTS dialect_meta (
 INSERT INTO dialect_meta (id, version) VALUES (1, 0) ON CONFLICT (id) DO NOTHING;
 `;
 
+const migration015 = `
+-- (1) Lưu văn bản GỐC (trước khi client chuẩn hóa phương ngữ).
+--     Cần cho việc đối chiếu khi bộ chuẩn hóa thay sai, và để cải thiện từ điển.
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS text_original TEXT;
+
+-- (2) Đổi tên text_raw -> text_normalized cho đúng ngữ nghĩa: cột này thực chất
+--     lưu văn bản ĐÃ được chuẩn hóa ở client trước khi gửi lên, không phải bản thô.
+DO $$ BEGIN
+  ALTER TABLE cases RENAME COLUMN text_raw TO text_normalized;
+EXCEPTION WHEN undefined_column THEN NULL;
+END $$;
+
+-- (3) Mốc thời điểm đã cảnh báo ca mồ côi. Thay cho setTimeout trong bộ nhớ tiến
+--     trình (bộ hẹn giờ đó mất khi máy chủ khởi động lại — đúng lúc cần nhất).
+--     Trạng thái cần bền vững phải nằm trong CSDL.
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS orphan_alerted_at TIMESTAMPTZ;
+
+-- (4) Index phục vụ job quét ca mồ côi
+CREATE INDEX IF NOT EXISTS idx_cases_pending_orphan
+  ON cases (created_at)
+  WHERE status = 'pending' AND orphan_alerted_at IS NULL;
+`;
+
 async function runMigrations() {
   const client = await pool.connect();
   try {
@@ -359,6 +382,10 @@ async function runMigrations() {
     console.log('[Migration] Running migration 014: dialect_terms + dialect_meta...');
     await client.query(migration014);
     console.log('[Migration] ✓ Migration 014 complete');
+
+    console.log('[Migration] Running migration 015: text_original + rename text_raw + orphan_alerted_at...');
+    await client.query(migration015);
+    console.log('[Migration] ✓ Migration 015 complete');
 
     console.log('[Migration] All migrations completed successfully!');
   } catch (err) {

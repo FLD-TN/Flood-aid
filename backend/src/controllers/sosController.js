@@ -21,7 +21,10 @@ function hashPhone(phone) {
  */
 async function createSos(req, res) {
   try {
-    const { text, lat, lon, fcmToken } = req.body;
+    // text         = văn bản ĐÃ được client chuẩn hóa phương ngữ (dùng để phân loại + hiển thị)
+    // textOriginal = văn bản GỐC từ nhận dạng giọng nói, trước chuẩn hóa (để đối chiếu,
+    //                audit khi bộ chuẩn hóa thay sai, và thu thập dữ liệu cải thiện từ điển)
+    const { text, textOriginal, lat, lon, fcmToken } = req.body;
     const phone = req.user?.phone_number || req.body.phone;
     const firebaseUid = req.user?.uid;
 
@@ -62,10 +65,10 @@ async function createSos(req, res) {
 
     // Lưu vào PostGIS
     const insert = await db.query(
-      `INSERT INTO cases (phone_hash, coords, text_raw, urgency_level, tags, summary_1line, status, ai_source)
-       VALUES ($1, ST_SetSRID(ST_MakePoint($2, $3), 4326), $4, $5, $6::jsonb, $7, 'pending', $8)
+      `INSERT INTO cases (phone_hash, coords, text_normalized, text_original, urgency_level, tags, summary_1line, status, ai_source)
+       VALUES ($1, ST_SetSRID(ST_MakePoint($2, $3), 4326), $4, $5, $6, $7::jsonb, $8, 'pending', $9)
        RETURNING id, urgency_level, tags, summary_1line, status, created_at`,
-      [phoneHash, lon, lat, sosText, aiResult.urgency_level, JSON.stringify(aiResult.tags), aiResult.summary_1line, aiResult.source]
+      [phoneHash, lon, lat, sosText, textOriginal || null, aiResult.urgency_level, JSON.stringify(aiResult.tags), aiResult.summary_1line, aiResult.source]
     );
 
     const newCase = insert.rows[0];
@@ -497,7 +500,7 @@ async function getNearbyCases(req, res) {
         c.tags,
         c.summary_1line,
         c.status,
-        c.text_raw,
+        c.text_normalized,
         c.phone_hash,
         ST_X(c.coords::geometry) AS lon,
         ST_Y(c.coords::geometry) AS lat,
@@ -540,7 +543,7 @@ async function getNearbyCases(req, res) {
         tags_vi: rawTags.map(t => TAG_MAP[t] || t),
         summary_1line: row.summary_1line,
         ai_summary: row.summary_1line,
-        description: row.text_raw,
+        description: row.text_normalized,
         status: row.status,
         lat: row.lat,
         lon: row.lon,
@@ -694,7 +697,7 @@ async function getHistoryByPhone(req, res) {
         c.urgency_level,
         c.tags,
         c.summary_1line,
-        c.text_raw,
+        c.text_normalized,
         c.status,
         ST_X(c.coords::geometry) AS lon,
         ST_Y(c.coords::geometry) AS lat,
@@ -721,7 +724,7 @@ async function getHistoryByPhone(req, res) {
         urgency_level: row.urgency_level,
         tags: rawTags,
         summary: row.summary_1line,
-        description: row.text_raw,
+        description: row.text_normalized,
         status: row.status,
         lat: row.lat,
         lon: row.lon,
@@ -855,7 +858,7 @@ async function getVolunteerHistory(req, res) {
         c.urgency_level,
         c.tags,
         c.summary_1line,
-        c.text_raw,
+        c.text_normalized,
         ST_X(c.coords::geometry) AS lon,
         ST_Y(c.coords::geometry) AS lat,
         c.created_at AS case_created_at,
@@ -884,7 +887,7 @@ async function getVolunteerHistory(req, res) {
         urgency_level: row.urgency_level,
         tags: rawTags,
         summary: row.summary_1line,
-        description: row.text_raw,
+        description: row.text_normalized,
         initial_distance_m: row.initial_distance_m,
         assigned_at: row.assigned_at,
         completed_at: row.completed_at,
@@ -946,7 +949,7 @@ async function getActiveAssignment(req, res) {
         c.urgency_level,
         c.tags,
         c.summary_1line,
-        c.text_raw,
+        c.text_normalized,
         ST_X(c.coords::geometry) AS lon,
         ST_Y(c.coords::geometry) AS lat,
         ca.assigned_at
@@ -973,7 +976,7 @@ async function getActiveAssignment(req, res) {
       urgencyLevel: row.urgency_level,
       tags: row.tags,
       summary: row.summary_1line,
-      description: row.text_raw,
+      description: row.text_normalized,
       lat: row.lat,
       lon: row.lon,
       assignedAt: row.assigned_at,

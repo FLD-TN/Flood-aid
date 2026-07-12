@@ -45,6 +45,7 @@ async function start() {
     // Load background jobs
     require('./jobs/autoResolve');
     require('./jobs/staleAssignmentChecker');
+    require('./jobs/orphanCaseChecker');
     console.log('[JOBS] Background jobs loaded');
 
     // Initialize WebSocket GPS server

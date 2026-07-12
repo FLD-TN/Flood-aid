@@ -136,9 +136,9 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
             bottom: MediaQuery.of(context).viewInsets.bottom,
           ),
           child: _SosFormSheet(
-            onSubmit: (location, text) {
+            onSubmit: (location, text, textOriginal) {
               Navigator.pop(context); // close modal
-              _handleSendActual(location, text);
+              _handleSendActual(location, text, textOriginal);
             },
           ),
         );
@@ -147,7 +147,7 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _handleSendActual(
-      LatLng location, String text) async {
+      LatLng location, String text, String? textOriginal) async {
     HapticFeedback.heavyImpact(); // Rung mạnh khi gửi SOS
     if (_isSending) return;
     setState(() => _isSending = true);
@@ -157,6 +157,7 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
 
     final result = await ApiService.sendSos(
       text: sosText,
+      textOriginal: textOriginal, // bản gốc trước chuẩn hóa (null nếu gõ tay)
       lat: location.latitude,
       lon: location.longitude,
       phone: _phone,
@@ -749,7 +750,10 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
 }
 
 class _SosFormSheet extends StatefulWidget {
-  final Function(LatLng location, String text) onSubmit;
+  /// [text]         : nội dung khung nhập (đã qua chuẩn hóa phương ngữ nếu nói bằng mic).
+  /// [textOriginal] : bản gốc do nhận dạng giọng nói sinh ra, TRƯỚC chuẩn hóa.
+  ///                  Null nếu người dùng chỉ gõ tay.
+  final Function(LatLng location, String text, String? textOriginal) onSubmit;
 
   const _SosFormSheet({required this.onSubmit});
 
@@ -771,6 +775,13 @@ class _SosFormSheetState extends State<_SosFormSheet> {
   // Kết quả nhận diện luôn = _baseText + từ vừa nói, nên xoá khung rồi nói lại
   // sẽ chỉ ra text mới (không lẫn nội dung cũ của session cũ).
   String _baseText = '';
+
+  // Bản GỐC do nhận dạng giọng nói sinh ra, TRƯỚC khi qua bộ chuẩn hóa phương ngữ.
+  // Giữ song song với _baseText/_textController để gửi kèm lên máy chủ (textOriginal):
+  // có bản gốc thì mới đối chiếu được khi bộ chuẩn hóa thay sai, và mới thu thập
+  // được dữ liệu để bổ sung/sửa từ điển. Rỗng nếu người dùng chỉ gõ tay.
+  String _rawSpoken = '';
+  String _rawSpokenBase = '';
   // Cờ đánh dấu lần setText này là do CODE (kết quả speech) chứ không phải người
   // dùng gõ/xoá tay → tránh onChanged tự tắt mic khi ta cập nhật khung.
   bool _programmaticEdit = false;
@@ -873,17 +884,27 @@ class _SosFormSheetState extends State<_SosFormSheet> {
 
       // Chốt nội dung hiện có làm mốc. Xoá sạch → base rỗng → không dính text cũ.
       _baseText = _textController.text.trim();
+      // Khung bị xoá sạch → bỏ luôn bản gốc của các phiên trước cho khớp.
+      if (_baseText.isEmpty) _rawSpoken = '';
+      _rawSpokenBase = _rawSpoken;
       setState(() => _isListening = true);
 
       await _speech.listen(
         onResult: (result) {
           // Chỉ nhận kết quả của ĐÚNG phiên này và khi vẫn đang nghe.
           if (!mounted || !_isListening || myId != _sessionId) return;
+          final rawSpoken = result.recognizedWords.trim();
           final spoken =
               DialectNormalizer.normalize(result.recognizedWords).trim();
           final combined = _baseText.isEmpty
               ? spoken
               : (spoken.isEmpty ? _baseText : '$_baseText $spoken');
+          // Tích luỹ song song bản gốc (chưa chuẩn hóa) tương ứng.
+          _rawSpoken = _rawSpokenBase.isEmpty
+              ? rawSpoken
+              : (rawSpoken.isEmpty
+                  ? _rawSpokenBase
+                  : '$_rawSpokenBase $rawSpoken');
           _programmaticEdit = true; // do code set → đừng để onChanged tắt mic
           _textController.value = TextEditingValue(
             text: combined,
@@ -1189,9 +1210,11 @@ class _SosFormSheetState extends State<_SosFormSheet> {
                     );
                     return;
                   }
+                  final rawSpoken = _rawSpoken.trim();
                   widget.onSubmit(
                     _currentLocation!,
                     _textController.text,
+                    rawSpoken.isEmpty ? null : rawSpoken,
                   );
                 },
                 child: Text('GỬI YÊU CẦU CỨU TRỢ',
