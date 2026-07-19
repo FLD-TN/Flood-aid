@@ -27,6 +27,7 @@ class ActiveMissionScreen extends StatefulWidget {
   final String? address;
   final int? urgencyLevel;
   final String? victimPhone;
+  final int? initialDistanceM; // khoảng cách chim bay từ màn danh sách (để khớp số khi chưa nhận ca)
 
   const ActiveMissionScreen({
     super.key,
@@ -38,6 +39,7 @@ class ActiveMissionScreen extends StatefulWidget {
     this.address,
     this.urgencyLevel,
     this.victimPhone,
+    this.initialDistanceM,
   });
 
   @override
@@ -116,8 +118,11 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
   }
 
   /// Đọc quãng đường + ETA THẬT (Route v4) từ cache backend.
-  /// Backend tự tính khi TNV gửi GPS (ActiveMissionManager) — ở đây chỉ đọc kết quả.
+  /// CHỈ dùng khi mình ĐÃ nhận ca — vì cache tnv_route_distance_m gắn với TNV được gán
+  /// (nếu chưa nhận, đó có thể là số của TNV khác). Chưa nhận → dùng khoảng cách chim bay
+  /// giống hệt màn danh sách để 2 màn khớp số.
   Future<void> _fetchRouteCache() async {
+    if (!_accepted) return; // chưa nhận ca thì không đọc cache route (tránh lệch/nhầm TNV)
     final data = await ApiService.getCaseById(widget.caseId);
     if (data == null || !mounted) return;
     setState(() {
@@ -1005,28 +1010,35 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
     return '${(etaMins / 60).floor()}h${etaMins % 60 > 0 ? '${etaMins % 60}p' : ''}';
   }
 
-  /// Chuỗi khoảng cách hiển thị: ưu tiên quãng đường THẬT (Route v4), fallback chim bay.
-  String? _displayDistanceText(double? distKm) {
-    if (_routeDistanceM != null) {
-      return _routeDistanceM! >= 1000
-          ? '${(_routeDistanceM! / 1000).toStringAsFixed(1)} km'
-          : '${_routeDistanceM!} m';
-    }
-    if (distKm != null) {
-      return distKm >= 1 ? '${distKm.toStringAsFixed(1)} km' : '${(distKm * 1000).toInt()} m';
-    }
+  /// Quãng đường (mét) dùng để hiển thị, theo thứ tự ưu tiên:
+  /// 1) Đã nhận ca + có route thật (Route v4) → quãng đường theo đường đi.
+  /// 2) Có số chim bay từ màn danh sách (initialDistanceM) → dùng để KHỚP với list.
+  /// 3) Tự tính chim bay từ GPS hiện tại (fallback cuối).
+  int? _effectiveDistanceM(double? distKm) {
+    if (_accepted && _routeDistanceM != null) return _routeDistanceM;
+    if (widget.initialDistanceM != null) return widget.initialDistanceM;
+    if (distKm != null) return (distKm * 1000).round();
     return null;
   }
 
-  /// Chuỗi ETA hiển thị: ưu tiên thời gian THẬT (Route v4), fallback ước tính chim bay.
+  /// Chuỗi khoảng cách hiển thị (khớp màn danh sách khi chưa nhận ca).
+  String? _displayDistanceText(double? distKm) {
+    final m = _effectiveDistanceM(distKm);
+    if (m == null) return null;
+    return m >= 1000 ? '${(m / 1000).toStringAsFixed(1)} km' : '$m m';
+  }
+
+  /// Chuỗi ETA hiển thị: ưu tiên thời gian THẬT (Route v4) khi đã nhận ca,
+  /// còn lại ước tính từ cùng khoảng cách + cùng công thức với màn danh sách.
   String? _displayEtaText(double? distKm) {
-    if (_etaSec != null) {
+    if (_accepted && _etaSec != null) {
       final m = (_etaSec! / 60).round();
       if (m < 1) return 'Sắp tới';
       if (m < 60) return '$m phút';
       return '${m ~/ 60}h${m % 60 > 0 ? '${m % 60}p' : ''}';
     }
-    if (distKm != null) return _formatEta(distKm);
+    final distM = _effectiveDistanceM(distKm);
+    if (distM != null) return _formatEta(distM / 1000);
     return null;
   }
 }

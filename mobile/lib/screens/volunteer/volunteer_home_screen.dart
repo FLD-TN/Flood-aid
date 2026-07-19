@@ -325,6 +325,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
           address: caseData['address'] as String?,
           urgencyLevel: (caseData['urgency_level'] as num?)?.toInt(),
           victimPhone: caseData['victim_phone']?.toString(),
+          initialDistanceM: (caseData['distance_m'] as num?)?.toInt(),
         ),
       ),
     );
