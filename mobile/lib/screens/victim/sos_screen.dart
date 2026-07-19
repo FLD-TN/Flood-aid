@@ -136,9 +136,9 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
             bottom: MediaQuery.of(context).viewInsets.bottom,
           ),
           child: _SosFormSheet(
-            onSubmit: (location, text, textOriginal) {
+            onSubmit: (location, text, textOriginal, address) {
               Navigator.pop(context); // close modal
-              _handleSendActual(location, text, textOriginal);
+              _handleSendActual(location, text, textOriginal, address);
             },
           ),
         );
@@ -147,7 +147,7 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _handleSendActual(
-      LatLng location, String text, String? textOriginal) async {
+      LatLng location, String text, String? textOriginal, String? address) async {
     HapticFeedback.heavyImpact(); // Rung mạnh khi gửi SOS
     if (_isSending) return;
     setState(() => _isSending = true);
@@ -162,6 +162,7 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
       lon: location.longitude,
       phone: _phone,
       fcmToken: fcmToken,
+      address: address, // địa chỉ user chọn/nhập (null → backend tự reverse-geocode)
     );
 
     if (!mounted) return;
@@ -753,7 +754,7 @@ class _SosFormSheet extends StatefulWidget {
   /// [text]         : nội dung khung nhập (đã qua chuẩn hóa phương ngữ nếu nói bằng mic).
   /// [textOriginal] : bản gốc do nhận dạng giọng nói sinh ra, TRƯỚC chuẩn hóa.
   ///                  Null nếu người dùng chỉ gõ tay.
-  final Function(LatLng location, String text, String? textOriginal) onSubmit;
+  final Function(LatLng location, String text, String? textOriginal, String? address) onSubmit;
 
   const _SosFormSheet({required this.onSubmit});
 
@@ -763,6 +764,7 @@ class _SosFormSheet extends StatefulWidget {
 
 class _SosFormSheetState extends State<_SosFormSheet> {
   LatLng? _currentLocation;
+  String? _pickedAddress; // địa chỉ user chọn/nhập ở màn Chọn vị trí (null nếu chỉ dùng GPS)
   bool _isFetchingLocation = false;
   final _textController = TextEditingController();
 
@@ -957,6 +959,7 @@ class _SosFormSheetState extends State<_SosFormSheet> {
         if (lastKnown != null && mounted) {
           setState(() {
             _currentLocation = LatLng(lastKnown.latitude, lastKnown.longitude);
+            _pickedAddress = null; // GPS mới → địa chỉ chọn tay không còn khớp
           });
         }
 
@@ -971,6 +974,7 @@ class _SosFormSheetState extends State<_SosFormSheet> {
           if (mounted) {
             setState(() {
               _currentLocation = LatLng(position.latitude, position.longitude);
+              _pickedAddress = null; // GPS mới → địa chỉ chọn tay không còn khớp
             });
           }
         } catch (e) {
@@ -1039,18 +1043,21 @@ class _SosFormSheetState extends State<_SosFormSheet> {
                           )
                         : _currentLocation != null
                             ? Text(
-                                '${_currentLocation!.latitude.toStringAsFixed(4)}, ${_currentLocation!.longitude.toStringAsFixed(4)}',
+                                _pickedAddress ??
+                                    '${_currentLocation!.latitude.toStringAsFixed(4)}, ${_currentLocation!.longitude.toStringAsFixed(4)}',
                                 style: AppTypography.bodyMedium.copyWith(
                                   color: AppColors.primary,
                                   fontWeight: FontWeight.bold,
                                 ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               )
                             : Text('Chưa có vị trí',
                                 style: AppTypography.bodyMedium.copyWith(color: AppColors.danger)),
                   ),
                   TextButton(
                     onPressed: () async {
-                      final LatLng? picked = await Navigator.push(
+                      final LocationPickResult? picked = await Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (_) => LocationPickerScreen(
@@ -1061,7 +1068,8 @@ class _SosFormSheetState extends State<_SosFormSheet> {
                       );
                       if (picked != null) {
                         setState(() {
-                          _currentLocation = picked;
+                          _currentLocation = picked.latLng;
+                          _pickedAddress = picked.address;
                         });
                       }
                     },
@@ -1215,6 +1223,7 @@ class _SosFormSheetState extends State<_SosFormSheet> {
                     _currentLocation!,
                     _textController.text,
                     rawSpoken.isEmpty ? null : rawSpoken,
+                    _pickedAddress,
                   );
                 },
                 child: Text('GỬI YÊU CẦU CỨU TRỢ',

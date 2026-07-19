@@ -114,6 +114,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
       victimLon: lon ?? 108.2022,
       summary: data['summary'] as String?,
       description: data['description'] as String?,
+      address: data['address'] as String?,
       urgencyLevel: (data['urgencyLevel'] as num?)?.toInt(),
     );
 
@@ -321,6 +322,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
           victimLon: (caseData['lon'] as num?)?.toDouble(),
           summary: caseData['ai_summary'] as String? ?? caseData['summary_1line'] as String?,
           description: caseData['description'] as String?,
+          address: caseData['address'] as String?,
           urgencyLevel: (caseData['urgency_level'] as num?)?.toInt(),
           victimPhone: caseData['victim_phone']?.toString(),
         ),
@@ -621,6 +623,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
               victimLon: manager.victimLon,
               summary: manager.summary,
               description: manager.description,
+              address: manager.address,
               urgencyLevel: manager.urgencyLevel,
               victimPhone: manager.victimPhone,
             ),
@@ -1081,6 +1084,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
         caseData['summary_1line'] as String? ??
         'Yêu cầu cứu trợ';
     final description = caseData['description'] as String?;
+    final address = caseData['address'] as String?;
     final createdAt = caseData['created_at'] as String?;
     final victimPhone = caseData['victim_phone']?.toString();
 
@@ -1243,6 +1247,30 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                     ),
                   ],
                 ),
+
+                // ── Địa chỉ (reverse-geocode / user nhập) ──
+                if (address != null && address.trim().isNotEmpty) ...[
+                  SizedBox(height: 12.h),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.location_on, size: 16.r, color: AppColors.alertRed),
+                      SizedBox(width: 6.w),
+                      Expanded(
+                        child: Text(
+                          address,
+                          style: TextStyle(
+                            color: Colors.black.withValues(alpha: 0.7),
+                            fontSize: 13.sp,
+                            height: 1.3,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
 
                 SizedBox(height: 14.h),
 

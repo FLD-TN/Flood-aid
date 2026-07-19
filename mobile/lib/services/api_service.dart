@@ -30,6 +30,7 @@ class ApiService {
     required double lon,
     required String phone,
     String? fcmToken,
+    String? address,
   }) async {
     try {
       final headers = await _getHeaders();
@@ -41,6 +42,9 @@ class ApiService {
       };
       if (textOriginal != null && textOriginal.isNotEmpty) {
         body['textOriginal'] = textOriginal;
+      }
+      if (address != null && address.trim().isNotEmpty) {
+        body['address'] = address.trim();
       }
       if (fcmToken != null) body['fcmToken'] = fcmToken;
       final response = await http
@@ -61,6 +65,93 @@ class ApiService {
     } catch (e) {
       print('[ApiService] sendSos error: $e');
       return null; // Offline → queue sẽ xử lý
+    }
+  }
+
+  /// GET /api/geo/autocomplete — gợi ý địa chỉ khi gõ (proxy VietMap).
+  /// [lat]/[lon] là toạ độ hiện tại để ưu tiên địa điểm gần.
+  static Future<List<Map<String, dynamic>>> geoAutocomplete(
+    String text, {
+    double? lat,
+    double? lon,
+  }) async {
+    if (text.trim().length < 2) return [];
+    try {
+      final headers = await _getHeaders();
+      var url = '$_baseUrl/api/geo/autocomplete?text=${Uri.encodeComponent(text.trim())}';
+      if (lat != null && lon != null) url += '&lat=$lat&lon=$lon';
+      final response = await http
+          .get(Uri.parse(url), headers: headers)
+          .timeout(const Duration(seconds: 5));
+      if (response.statusCode == 200) {
+        final list = json.decode(response.body) as List;
+        return list.cast<Map<String, dynamic>>();
+      }
+      return [];
+    } catch (e) {
+      print('[ApiService] geoAutocomplete error: $e');
+      return [];
+    }
+  }
+
+  /// GET /api/geo/place — ref_id → toạ độ + địa chỉ (proxy VietMap).
+  static Future<Map<String, dynamic>?> geoPlace(String refId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http
+          .get(Uri.parse('$_baseUrl/api/geo/place?refid=${Uri.encodeComponent(refId)}'),
+              headers: headers)
+          .timeout(const Duration(seconds: 5));
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      }
+      return null;
+    } catch (e) {
+      print('[ApiService] geoPlace error: $e');
+      return null;
+    }
+  }
+
+  /// GET /api/geo/reverse — toạ độ → địa chỉ chữ (proxy VietMap).
+  static Future<String?> geoReverse(double lat, double lon) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http
+          .get(Uri.parse('$_baseUrl/api/geo/reverse?lat=$lat&lon=$lon'), headers: headers)
+          .timeout(const Duration(seconds: 5));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        return data['address'] as String?;
+      }
+      return null;
+    } catch (e) {
+      print('[ApiService] geoReverse error: $e');
+      return null;
+    }
+  }
+
+  /// GET /api/geo/route — quãng đường + ETA + hình học tuyến (để vẽ polyline).
+  /// Trả { distanceM, etaSec, points: [[lat,lng],...] } hoặc null.
+  static Future<Map<String, dynamic>?> geoRoute({
+    required double fromLat,
+    required double fromLon,
+    required double toLat,
+    required double toLon,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+      final url = '$_baseUrl/api/geo/route'
+          '?fromLat=$fromLat&fromLon=$fromLon&toLat=$toLat&toLon=$toLon';
+      final response = await http
+          .get(Uri.parse(url), headers: headers)
+          .timeout(const Duration(seconds: 6));
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      }
+      return null;
+    } catch (e) {
+      print('[ApiService] geoRoute error: $e');
+      return null;
     }
   }
 

@@ -22,6 +22,7 @@ class ActiveMissionManager extends ChangeNotifier {
   double? _victimLon;
   String? _summary;
   String? _description;
+  String? _address;
   int? _urgencyLevel;
   String? _victimPhone;
 
@@ -37,6 +38,7 @@ class ActiveMissionManager extends ChangeNotifier {
   double? get victimLon => _victimLon;
   String? get summary => _summary;
   String? get description => _description;
+  String? get address => _address;
   int? get urgencyLevel => _urgencyLevel;
   String? get victimPhone => _victimPhone;
   bool get hasActiveMission => _activeCaseId != null;
@@ -56,6 +58,7 @@ class ActiveMissionManager extends ChangeNotifier {
     required double victimLon,
     String? summary,
     String? description,
+    String? address,
     int? urgencyLevel,
     String? victimPhone,
   }) {
@@ -70,6 +73,7 @@ class ActiveMissionManager extends ChangeNotifier {
     _victimLon = victimLon;
     _summary = summary;
     _description = description;
+    _address = address;
     _urgencyLevel = urgencyLevel;
     _victimPhone = victimPhone;
 
@@ -164,6 +168,7 @@ class ActiveMissionManager extends ChangeNotifier {
     _victimLon = null;
     _summary = null;
     _description = null;
+    _address = null;
     _urgencyLevel = null;
     _victimPhone = null;
     onMissionEndedExternally = null;

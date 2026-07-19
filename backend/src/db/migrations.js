@@ -324,6 +324,23 @@ CREATE INDEX IF NOT EXISTS idx_cases_pending_orphan
   WHERE status = 'pending' AND orphan_alerted_at IS NULL;
 `;
 
+const migration016 = `
+-- VietMap Phase 1: Lưu địa chỉ dạng chữ cho ca SOS.
+-- Nguồn: user tự nhập/chọn (Autocomplete/Place) hoặc reverse-geocode từ toạ độ GPS.
+-- NULL nghĩa là chưa có địa chỉ (VietMap lỗi/timeout) — app fallback hiện toạ độ.
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS address_text TEXT;
+`;
+
+const migration017 = `
+-- VietMap Phase 2: Khoảng cách + thời gian (ETA) THẬT theo đường đi từ TNV → nạn nhân.
+-- Trước đây chỉ có tnv_distance_m = đường chim bay (ST_Distance). Nay tính bằng Route v4.
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS tnv_route_distance_m INT;   -- quãng đường thật (mét)
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS tnv_eta_sec INT;            -- thời gian tới (giây)
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS route_updated_at TIMESTAMPTZ; -- lần gọi Route gần nhất
+-- Vị trí TNV lúc tính Route gần nhất — để quyết định khi nào cần gọi lại (throttle chống cháy transaction)
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS route_anchor GEOMETRY(POINT, 4326);
+`;
+
 async function runMigrations() {
   const client = await pool.connect();
   try {
@@ -386,6 +403,14 @@ async function runMigrations() {
     console.log('[Migration] Running migration 015: text_original + rename text_raw + orphan_alerted_at...');
     await client.query(migration015);
     console.log('[Migration] ✓ Migration 015 complete');
+
+    console.log('[Migration] Running migration 016: cases.address_text (VietMap)...');
+    await client.query(migration016);
+    console.log('[Migration] ✓ Migration 016 complete');
+
+    console.log('[Migration] Running migration 017: cases route distance/ETA columns (VietMap)...');
+    await client.query(migration017);
+    console.log('[Migration] ✓ Migration 017 complete');
 
     console.log('[Migration] All migrations completed successfully!');
   } catch (err) {

@@ -38,7 +38,9 @@ class _TrackingScreenState extends State<TrackingScreen> {
 
   // State from API
   String _status = 'pending';
-  int? _distanceM;
+  int? _distanceM;            // đường chim bay (mét) — fallback
+  int? _routeDistanceM;       // quãng đường thật theo đường đi (Route v4)
+  int? _etaSec;               // thời gian tới thật (giây) từ Route v4
   double? _tnvLat;
   double? _tnvLon;
   bool _hasVolunteer = false;
@@ -89,6 +91,10 @@ class _TrackingScreenState extends State<TrackingScreen> {
         _distanceM = data['distance_m'] != null
             ? (data['distance_m'] as num).toInt()
             : null;
+        _routeDistanceM = data['route_distance_m'] != null
+            ? (data['route_distance_m'] as num).toInt()
+            : null;
+        _etaSec = data['eta_sec'] != null ? (data['eta_sec'] as num).toInt() : null;
         _tnvLat = data['lat'] != null ? (data['lat'] as num).toDouble() : null;
         _tnvLon = data['lon'] != null ? (data['lon'] as num).toDouble() : null;
         _hasVolunteer = data['has_volunteer'] == true;
@@ -128,6 +134,12 @@ class _TrackingScreenState extends State<TrackingScreen> {
           }
           if (data['distance_m'] != null) {
             _distanceM = (data['distance_m'] as num).toInt();
+          }
+          if (data['route_distance_m'] != null) {
+            _routeDistanceM = (data['route_distance_m'] as num).toInt();
+          }
+          if (data['eta_sec'] != null) {
+            _etaSec = (data['eta_sec'] as num).toInt();
           }
           _hasVolunteer = true;
         });
@@ -602,6 +614,25 @@ class _TrackingScreenState extends State<TrackingScreen> {
     );
   }
 
+  /// Khoảng cách hiển thị: ưu tiên quãng đường THẬT (Route v4), fallback đường chim bay.
+  int? get _displayDistanceM => _routeDistanceM ?? _distanceM;
+
+  /// ETA hiển thị: ưu tiên thời gian THẬT từ Route v4 (eta_sec).
+  /// Chỉ khi chưa có route mới ước tính tạm theo đường chim bay.
+  String _etaText() {
+    if (_etaSec != null) {
+      final s = _etaSec!;
+      if (s < 60) return '⏱ Sắp đến nơi!';
+      final m = (s / 60).round();
+      if (m < 60) return '⏱ Ước tính ~$m phút nữa';
+      final h = m ~/ 60;
+      final mm = m % 60;
+      return '⏱ Ước tính ~${h}h${mm > 0 ? '${mm}p' : ''} nữa';
+    }
+    if (_distanceM != null) return _calculateEta(_distanceM!);
+    return '';
+  }
+
   /// Fix #8: Tính ETA ước tính dựa trên khoảng cách
   /// Tốc độ trung bình xuồng cứu hộ vùng ngập ~15km/h
   String _calculateEta(int distanceMeters) {
@@ -917,7 +948,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
                                   ),
                                   SizedBox(height: 4.h),
                                   Text(
-                                    _calculateEta(_distanceM!).replaceAll('⏱ ', '').replaceAll(' Ước tính ~', ''),
+                                    _etaText().replaceAll('⏱ ', '').replaceAll('Ước tính ~', '').replaceAll(' nữa', '').trim(),
                                     style: AppTypography.displayMedium.copyWith(
                                       color: AppColors.textPrimary,
                                       fontWeight: FontWeight.w900,
@@ -940,9 +971,9 @@ class _TrackingScreenState extends State<TrackingScreen> {
                                 ),
                                 SizedBox(height: 4.h),
                                 Text(
-                                  _distanceM! >= 1000
-                                      ? '${(_distanceM! / 1000).toStringAsFixed(1)} km'
-                                      : '$_distanceM m',
+                                  (_displayDistanceM ?? 0) >= 1000
+                                      ? '${(_displayDistanceM! / 1000).toStringAsFixed(1)} km'
+                                      : '${_displayDistanceM ?? 0} m',
                                   style: AppTypography.headingLarge.copyWith(
                                     color: AppColors.primary,
                                     fontWeight: FontWeight.w800,

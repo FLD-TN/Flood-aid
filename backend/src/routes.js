@@ -16,6 +16,7 @@ const authController = require('./controllers/authController');
 const kycController = require('./controllers/kycController');
 const chatController = require('./controllers/chatController');
 const dialectController = require('./controllers/dialectController');
+const geoController = require('./controllers/geoController');
 const { authMiddleware } = require('./middleware/authMiddleware');
 const { adminAuthMiddleware } = require('./middleware/adminAuthMiddleware');
 
@@ -50,6 +51,12 @@ router.get('/dialect-dict', dialectController.getDict);            // app tải 
 router.get('/dialect-dict/version', dialectController.getVersion); // app kiểm tra version
 router.post('/dialect-dict', adminAuthMiddleware, dialectController.addTerm);      // admin thêm/sửa
 router.delete('/dialect-dict', adminAuthMiddleware, dialectController.removeTerm); // admin xoá
+
+// ====== VietMap Geo (proxy — giấu API key) ======
+router.get('/geo/autocomplete', geoController.geoAutocomplete); // gợi ý địa chỉ khi gõ
+router.get('/geo/place', geoController.geoPlace);               // ref_id → toạ độ
+router.get('/geo/reverse', geoController.geoReverse);           // toạ độ → địa chỉ
+router.get('/geo/route', geoController.geoRoute);               // tuyến đường (vẽ polyline)
 
 // ====== Module 3: Location Tracking ======
 router.post('/location', locationController.updateVolunteerLocation);

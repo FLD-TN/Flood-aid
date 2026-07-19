@@ -1,12 +1,18 @@
-import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:http/http.dart' as http;
 import '../../theme/app_theme.dart';
-import '../../services/toast_service.dart';
+import '../../services/api_service.dart';
+
+/// Kết quả trả về từ màn chọn vị trí: toạ độ + địa chỉ chữ (nếu có).
+class LocationPickResult {
+  final LatLng latLng;
+  final String? address;
+  const LocationPickResult(this.latLng, this.address);
+}
 
 class LocationPickerScreen extends StatefulWidget {
   final double? initialLat;
@@ -21,9 +27,14 @@ class LocationPickerScreen extends StatefulWidget {
 class _LocationPickerScreenState extends State<LocationPickerScreen> {
   late MapController _mapController;
   LatLng? _selectedLocation;
+  String? _selectedAddress;
   final TextEditingController _searchController = TextEditingController();
   bool _isLoadingLocation = false;
+
+  // Gợi ý địa chỉ (VietMap Autocomplete)
+  List<Map<String, dynamic>> _suggestions = [];
   bool _isSearching = false;
+  Timer? _debounce;
 
   @override
   void initState() {
@@ -31,6 +42,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
     _mapController = MapController();
     if (widget.initialLat != null && widget.initialLon != null) {
       _selectedLocation = LatLng(widget.initialLat!, widget.initialLon!);
+      _reverseFill(_selectedLocation!);
     } else {
       _getCurrentLocation();
     }
@@ -52,14 +64,14 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
             _selectedLocation = LatLng(position.latitude, position.longitude);
             _mapController.move(_selectedLocation!, 15.0);
           });
+          _reverseFill(_selectedLocation!);
         }
       }
     } catch (e) {
       // Ignore
     } finally {
-      setState(() => _isLoadingLocation = false);
+      if (mounted) setState(() => _isLoadingLocation = false);
       if (_selectedLocation == null) {
-        // Fallback location
         setState(() {
           _selectedLocation = const LatLng(16.0544, 108.2022); // Da Nang
           _mapController.move(_selectedLocation!, 13.0);
@@ -68,47 +80,62 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
     }
   }
 
-  Future<void> _searchLocation() async {
-    final query = _searchController.text.trim();
-    if (query.isEmpty) return;
+  /// Reverse-geocode để điền địa chỉ khi user chạm bản đồ / lấy GPS.
+  Future<void> _reverseFill(LatLng point) async {
+    final addr = await ApiService.geoReverse(point.latitude, point.longitude);
+    if (!mounted) return;
+    if (addr != null) setState(() => _selectedAddress = addr);
+  }
 
-    setState(() => _isSearching = true);
-    FocusScope.of(context).unfocus();
-
-    try {
-      final response = await http.get(Uri.parse(
-          'https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(query)}&format=json&limit=1'));
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body) as List;
-        if (data.isNotEmpty) {
-          final lat = double.parse(data[0]['lat']);
-          final lon = double.parse(data[0]['lon']);
-          setState(() {
-            _selectedLocation = LatLng(lat, lon);
-            _mapController.move(_selectedLocation!, 15.0);
-          });
-        } else {
-          ToastService.show(
-            context: context,
-            type: ToastType.error,
-            message: 'Không tìm thấy địa điểm.',
-          );
-        }
-      }
-    } catch (e) {
-      ToastService.show(
-        context: context,
-        type: ToastType.error,
-        message: 'Lỗi khi tìm kiếm địa điểm.',
+  /// Gõ tìm địa chỉ — debounce 300ms rồi gọi VietMap Autocomplete.
+  void _onSearchChanged(String text) {
+    _debounce?.cancel();
+    if (text.trim().length < 2) {
+      setState(() => _suggestions = []);
+      return;
+    }
+    _debounce = Timer(const Duration(milliseconds: 300), () async {
+      setState(() => _isSearching = true);
+      final results = await ApiService.geoAutocomplete(
+        text,
+        lat: _selectedLocation?.latitude,
+        lon: _selectedLocation?.longitude,
       );
-    } finally {
-      setState(() => _isSearching = false);
+      if (!mounted) return;
+      setState(() {
+        _suggestions = results;
+        _isSearching = false;
+      });
+    });
+  }
+
+  /// Chọn 1 gợi ý → Place v4 lấy toạ độ chính xác.
+  Future<void> _selectSuggestion(Map<String, dynamic> s) async {
+    FocusScope.of(context).unfocus();
+    final refId = s['ref_id'] as String?;
+    final display = s['display'] as String?;
+    setState(() {
+      _suggestions = [];
+      _searchController.text = display ?? '';
+      _selectedAddress = display;
+    });
+    if (refId == null) return;
+    final place = await ApiService.geoPlace(refId);
+    if (!mounted || place == null) return;
+    final lat = (place['lat'] as num?)?.toDouble();
+    final lng = (place['lng'] as num?)?.toDouble();
+    if (lat != null && lng != null) {
+      setState(() {
+        _selectedLocation = LatLng(lat, lng);
+        _selectedAddress = (place['display'] as String?) ?? display;
+        _mapController.move(_selectedLocation!, 16.0);
+      });
     }
   }
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -122,7 +149,10 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
           TextButton(
             onPressed: () {
               if (_selectedLocation != null) {
-                Navigator.pop(context, _selectedLocation);
+                Navigator.pop(
+                  context,
+                  LocationPickResult(_selectedLocation!, _selectedAddress),
+                );
               }
             },
             child: Text(
@@ -142,7 +172,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                   child: TextField(
                     controller: _searchController,
                     decoration: InputDecoration(
-                      hintText: 'Tìm kiếm địa điểm...',
+                      hintText: 'Tìm địa chỉ (số nhà, đường, phường)...',
                       prefixIcon: const Icon(Icons.search),
                       suffixIcon: _isSearching
                           ? Padding(
@@ -157,10 +187,11 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                               icon: const Icon(Icons.clear),
                               onPressed: () {
                                 _searchController.clear();
+                                setState(() => _suggestions = []);
                               },
                             ),
                     ),
-                    onSubmitted: (_) => _searchLocation(),
+                    onChanged: _onSearchChanged,
                   ),
                 ),
                 SizedBox(width: 8.w),
@@ -184,7 +215,9 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                       onTap: (tapPosition, point) {
                         setState(() {
                           _selectedLocation = point;
+                          _suggestions = [];
                         });
+                        _reverseFill(point);
                       },
                     ),
                     children: [
@@ -212,6 +245,8 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                   const Center(child: CircularProgressIndicator()),
                 if (_isLoadingLocation)
                   const Center(child: CircularProgressIndicator()),
+
+                // Panel địa chỉ đang chọn
                 Positioned(
                   bottom: 16.h,
                   left: 16.w,
@@ -228,13 +263,62 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                         )
                       ],
                     ),
-                    child: Text(
-                      'Chạm vào bản đồ để kéo thả ghim vị trí của bạn.',
-                      style: AppTypography.bodySmall,
-                      textAlign: TextAlign.center,
+                    child: Row(
+                      children: [
+                        Icon(Icons.location_on, color: AppColors.alertRed, size: 20.r),
+                        SizedBox(width: 8.w),
+                        Expanded(
+                          child: Text(
+                            _selectedAddress ??
+                                'Chạm vào bản đồ hoặc tìm địa chỉ ở trên.',
+                            style: AppTypography.bodySmall,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                )
+                ),
+
+                // Dropdown gợi ý địa chỉ (đè lên bản đồ)
+                if (_suggestions.isNotEmpty)
+                  Positioned(
+                    top: 0,
+                    left: 16.w,
+                    right: 16.w,
+                    child: Material(
+                      elevation: 4,
+                      borderRadius: BorderRadius.circular(8.r),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(maxHeight: 260.h),
+                        child: ListView.separated(
+                          shrinkWrap: true,
+                          padding: EdgeInsets.zero,
+                          itemCount: _suggestions.length,
+                          separatorBuilder: (_, __) => const Divider(height: 1),
+                          itemBuilder: (context, i) {
+                            final s = _suggestions[i];
+                            return ListTile(
+                              dense: true,
+                              leading: Icon(Icons.place, size: 20.r, color: AppColors.primary),
+                              title: Text(
+                                s['name']?.toString() ?? s['display']?.toString() ?? '',
+                                style: AppTypography.bodyMedium,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              subtitle: Text(
+                                s['address']?.toString() ?? '',
+                                style: AppTypography.bodySmall,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              onTap: () => _selectSuggestion(s),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),

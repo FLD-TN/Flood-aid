@@ -143,17 +143,24 @@ async function handleMessage(ws, msg) {
 
       // 2. Calculate distance to victim
       let distanceM = null;
+      let routeDistanceM = null;
+      let etaSec = null;
       try {
         const distResult = await db.query(`
           SELECT ROUND(ST_Distance(
             c.coords::geography,
             ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography
-          ))::int AS dist_m
+          ))::int AS dist_m,
+          c.tnv_route_distance_m AS route_distance_m,
+          c.tnv_eta_sec AS eta_sec
           FROM cases c WHERE c.id = $3
         `, [lon, lat, caseId]);
 
         if (distResult.rows.length > 0) {
           distanceM = distResult.rows[0].dist_m;
+          // Quãng đường + ETA thật (Route v4) do distanceTracker cập nhật vào cache.
+          routeDistanceM = distResult.rows[0].route_distance_m;
+          etaSec = distResult.rows[0].eta_sec;
         }
       } catch (err) {
         // Non-critical — still forward GPS
@@ -166,7 +173,9 @@ async function handleMessage(ws, msg) {
           type: 'gps_update',
           lat,
           lon,
-          distance_m: distanceM,
+          distance_m: distanceM,           // đường chim bay (fallback)
+          route_distance_m: routeDistanceM, // quãng đường thật theo đường đi
+          eta_sec: etaSec,                  // thời gian tới thật (giây)
           volunteerId,
           timestamp: new Date().toISOString(),
         });

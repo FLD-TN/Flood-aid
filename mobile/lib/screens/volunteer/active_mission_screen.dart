@@ -24,6 +24,7 @@ class ActiveMissionScreen extends StatefulWidget {
   final double? victimLon;
   final String? summary;
   final String? description;
+  final String? address;
   final int? urgencyLevel;
   final String? victimPhone;
 
@@ -34,6 +35,7 @@ class ActiveMissionScreen extends StatefulWidget {
     this.victimLon,
     this.summary,
     this.description,
+    this.address,
     this.urgencyLevel,
     this.victimPhone,
   });
@@ -49,6 +51,10 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
   // TNV (volunteer) location — realtime GPS
   double? _myLat;
   double? _myLon;
+
+  // Quãng đường + ETA THẬT theo đường đi (Route v4), đọc từ cache backend qua getCaseById.
+  int? _routeDistanceM;
+  int? _etaSec;
 
   // Victim location
   late double _victimLat;
@@ -101,9 +107,26 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
     // Get initial location once
     _getMyLocation();
 
-    // Timer local — chỉ để cập nhật vị trí TNV trên bản đồ (UI)
+    // Timer local — cập nhật vị trí TNV trên bản đồ (UI) + đọc quãng đường/ETA thật từ backend
     _localGpsTimer = Timer.periodic(const Duration(seconds: 10), (_) {
       _getMyLocation();
+      _fetchRouteCache();
+    });
+    _fetchRouteCache();
+  }
+
+  /// Đọc quãng đường + ETA THẬT (Route v4) từ cache backend.
+  /// Backend tự tính khi TNV gửi GPS (ActiveMissionManager) — ở đây chỉ đọc kết quả.
+  Future<void> _fetchRouteCache() async {
+    final data = await ApiService.getCaseById(widget.caseId);
+    if (data == null || !mounted) return;
+    setState(() {
+      if (data['tnv_route_distance_m'] != null) {
+        _routeDistanceM = (data['tnv_route_distance_m'] as num).toInt();
+      }
+      if (data['tnv_eta_sec'] != null) {
+        _etaSec = (data['tnv_eta_sec'] as num).toInt();
+      }
     });
   }
 
@@ -234,6 +257,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
       victimLon: _victimLon,
       summary: widget.summary,
       description: widget.description,
+      address: widget.address,
       urgencyLevel: widget.urgencyLevel,
       victimPhone: _victimPhone ?? widget.victimPhone,
     );
@@ -727,6 +751,29 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                 ),
               ),
               
+              // Địa chỉ nạn nhân (reverse-geocode / user nhập)
+              if (widget.address != null && widget.address!.trim().isNotEmpty)
+                Padding(
+                  padding: EdgeInsets.only(top: 12.h),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.location_on, size: 18.r, color: AppColors.alertRed),
+                      SizedBox(width: 6.w),
+                      Expanded(
+                        child: Text(
+                          widget.address!,
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.w600,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
               // Full Description (nếu có và khác summary)
               if (widget.description != null && widget.description!.isNotEmpty && widget.description != widget.summary)
                 Padding(
@@ -752,14 +799,14 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
 
               SizedBox(height: 20.h),
 
-              // Hero Metrics (Luôn hiển thị để TNV ước lượng)
-              if (distKm != null)
+              // Hero Metrics (Luôn hiển thị để TNV ước lượng) — ưu tiên quãng đường/ETA thật
+              if (_displayDistanceText(distKm) != null)
                 Row(
                   children: [
                     Expanded(
                       child: _buildMetricBox(
                         'Khoảng cách',
-                        distKm >= 1 ? '${distKm.toStringAsFixed(1)} km' : '${(distKm * 1000).toInt()} m',
+                        _displayDistanceText(distKm)!,
                         Colors.blue.shade700,
                       ),
                     ),
@@ -767,7 +814,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                     Expanded(
                       child: _buildMetricBox(
                         'Dự kiến tới',
-                        _formatEta(distKm),
+                        _displayEtaText(distKm) ?? '—',
                         Colors.orange.shade700,
                       ),
                     ),
@@ -956,5 +1003,30 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
     final etaMins = (distKm / 4 * 60).ceil();
     if (etaMins < 60) return '$etaMins phút';
     return '${(etaMins / 60).floor()}h${etaMins % 60 > 0 ? '${etaMins % 60}p' : ''}';
+  }
+
+  /// Chuỗi khoảng cách hiển thị: ưu tiên quãng đường THẬT (Route v4), fallback chim bay.
+  String? _displayDistanceText(double? distKm) {
+    if (_routeDistanceM != null) {
+      return _routeDistanceM! >= 1000
+          ? '${(_routeDistanceM! / 1000).toStringAsFixed(1)} km'
+          : '${_routeDistanceM!} m';
+    }
+    if (distKm != null) {
+      return distKm >= 1 ? '${distKm.toStringAsFixed(1)} km' : '${(distKm * 1000).toInt()} m';
+    }
+    return null;
+  }
+
+  /// Chuỗi ETA hiển thị: ưu tiên thời gian THẬT (Route v4), fallback ước tính chim bay.
+  String? _displayEtaText(double? distKm) {
+    if (_etaSec != null) {
+      final m = (_etaSec! / 60).round();
+      if (m < 1) return 'Sắp tới';
+      if (m < 60) return '$m phút';
+      return '${m ~/ 60}h${m % 60 > 0 ? '${m % 60}p' : ''}';
+    }
+    if (distKm != null) return _formatEta(distKm);
+    return null;
   }
 }

@@ -3,7 +3,8 @@
  * Module 1: Core Ingestion
  */
 
-const { runParallelAiPipeline } = require('../services/aiPipeline');
+const { runUrgencyClassification } = require('../services/aiPipeline');
+const { reverseGeocode } = require('../services/vietmap');
 const { db } = require('../db');
 const crypto = require('crypto');
 const { emitCaseEvent } = require('./sseController');
@@ -24,7 +25,7 @@ async function createSos(req, res) {
     // text         = văn bản ĐÃ được client chuẩn hóa phương ngữ (dùng để phân loại + hiển thị)
     // textOriginal = văn bản GỐC từ nhận dạng giọng nói, trước chuẩn hóa (để đối chiếu,
     //                audit khi bộ chuẩn hóa thay sai, và thu thập dữ liệu cải thiện từ điển)
-    const { text, textOriginal, lat, lon, fcmToken } = req.body;
+    const { text, textOriginal, lat, lon, fcmToken, address } = req.body;
     const phone = req.user?.phone_number || req.body.phone;
     const firebaseUid = req.user?.uid;
 
@@ -59,16 +60,20 @@ async function createSos(req, res) {
       });
     }
 
-    // Chạy AI Pipeline (Parallel Race)
+    // Phân loại mức độ khẩn cấp (rule-based + Gemini, lấy mức cao hơn)
     const sosText = text || 'SOS - Cần cứu hộ khẩn cấp';
-    const aiResult = await runParallelAiPipeline(sosText);
+    const aiResult = await runUrgencyClassification(sosText);
+
+    // Địa chỉ chữ: ưu tiên cái user tự nhập/chọn (VietMap Autocomplete/Place ở app).
+    // Nếu không có → để null và reverse-geocode bất đồng bộ sau (không chặn luồng SOS khẩn cấp).
+    const addressText = (typeof address === 'string' && address.trim()) ? address.trim() : null;
 
     // Lưu vào PostGIS
     const insert = await db.query(
-      `INSERT INTO cases (phone_hash, coords, text_normalized, text_original, urgency_level, tags, summary_1line, status, ai_source)
-       VALUES ($1, ST_SetSRID(ST_MakePoint($2, $3), 4326), $4, $5, $6, $7::jsonb, $8, 'pending', $9)
+      `INSERT INTO cases (phone_hash, coords, text_normalized, text_original, urgency_level, tags, summary_1line, status, ai_source, address_text)
+       VALUES ($1, ST_SetSRID(ST_MakePoint($2, $3), 4326), $4, $5, $6, $7::jsonb, $8, 'pending', $9, $10)
        RETURNING id, urgency_level, tags, summary_1line, status, created_at`,
-      [phoneHash, lon, lat, sosText, textOriginal || null, aiResult.urgency_level, JSON.stringify(aiResult.tags), aiResult.summary_1line, aiResult.source]
+      [phoneHash, lon, lat, sosText, textOriginal || null, aiResult.urgency_level, JSON.stringify(aiResult.tags), aiResult.summary_1line, aiResult.source, addressText]
     );
 
     const newCase = insert.rows[0];
@@ -77,6 +82,17 @@ async function createSos(req, res) {
     setImmediate(() => {
       require('../services/geoDispatch').dispatchToNearbyVolunteers(newCase.id);
     });
+
+    // Reverse-geocode bất đồng bộ khi user không tự nhập địa chỉ (không chặn response).
+    if (!addressText) {
+      setImmediate(async () => {
+        const resolved = await reverseGeocode(lat, lon);
+        if (resolved) {
+          await db.query('UPDATE cases SET address_text = $1 WHERE id = $2 AND address_text IS NULL', [resolved, newCase.id]);
+          console.log(`[sosController] Case ${newCase.id}: reverse-geocoded → ${resolved}`);
+        }
+      });
+    }
 
     console.log(`[sosController] New SOS case: ${newCase.id}, urgency: ${aiResult.urgency_level}, source: ${aiResult.source}`);
 
@@ -103,6 +119,7 @@ async function getCaseById(req, res) {
     const { id } = req.params;
     const result = await db.query(
       `SELECT id, urgency_level, tags, summary_1line, status, tnv_distance_m,
+              tnv_route_distance_m, tnv_eta_sec, address_text,
               ST_X(coords::geometry) AS lon, ST_Y(coords::geometry) AS lat,
               created_at, resolved_at
        FROM cases WHERE id = $1`,
@@ -130,6 +147,8 @@ async function getTnvLocation(req, res) {
       SELECT
         c.status,
         c.tnv_distance_m AS distance_m,
+        c.tnv_route_distance_m AS route_distance_m,
+        c.tnv_eta_sec AS eta_sec,
         ST_X(v.current_coords::geometry) AS lon,
         ST_Y(v.current_coords::geometry) AS lat,
         v.id AS volunteer_id,
@@ -152,7 +171,9 @@ async function getTnvLocation(req, res) {
     console.log(`[getTnvLocation] case=${id} volunteer_id=${row.volunteer_id} phone_encrypted=${row.volunteer_phone_encrypted ? 'SET' : 'NULL'} volunteerPhone=${volunteerPhone ? 'DECRYPTED' : 'NULL'}`);
     res.json({
       status: row.status,
-      distance_m: row.distance_m,
+      distance_m: row.distance_m,                 // đường chim bay (mét) — fallback
+      route_distance_m: row.route_distance_m,     // quãng đường thật theo đường đi (mét)
+      eta_sec: row.eta_sec,                        // thời gian tới thật (giây)
       lat: row.lat,
       lon: row.lon,
       has_volunteer: !!row.volunteer_id,
@@ -397,7 +418,7 @@ async function getActiveByPhone(req, res) {
     }
 
     const result = await db.query(
-      `SELECT id, urgency_level, tags, summary_1line, status,
+      `SELECT id, urgency_level, tags, summary_1line, status, address_text,
               ST_X(coords::geometry) AS lon, ST_Y(coords::geometry) AS lat,
               created_at
        FROM cases
@@ -420,6 +441,7 @@ async function getActiveByPhone(req, res) {
       lon: row.lon,
       urgencyLevel: row.urgency_level,
       summary: row.summary_1line,
+      address: row.address_text,
     });
   } catch (err) {
     console.error('[sosController][getActiveByPhone]', err.message);
@@ -475,8 +497,19 @@ async function getNearbyCases(req, res) {
     }
 
     // Determine ORDER BY
-    let orderClause = 'distance_m ASC, c.urgency_level DESC'; // default: gần nhất
+    // Lưu ý: trong PostgreSQL, bí danh cột (distance_m) chỉ dùng được khi đứng một mình,
+    // không dùng được bên trong biểu thức — nên phải lặp lại biểu thức khoảng cách.
+    const distExpr = `ST_Distance(c.coords::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography)`;
+
+    // Mặc định: gom ca theo vành đai 500m, trong cùng vành đai thì ca khẩn cấp hơn đứng trước.
+    // Không xếp thuần theo distance_m: vì khoảng cách là mét nguyên nên hai ca gần như không
+    // bao giờ bằng nhau, khiến urgency_level trở thành tiêu chí chết và một ca mức 2 cách 100m
+    // luôn đứng trên một ca mức 5 cách 500m.
+    let orderClause = `(${distExpr} / 500)::int ASC, c.urgency_level DESC, ${distExpr} ASC`;
     switch (sortBy) {
+      case 'distance_asc':
+        orderClause = 'distance_m ASC';   // TNV chủ động chọn "gần nhất trước"
+        break;
       case 'distance_desc':
         orderClause = 'distance_m DESC';
         break;
@@ -486,9 +519,6 @@ async function getNearbyCases(req, res) {
       case 'oldest':
         orderClause = 'c.created_at ASC';
         break;
-      case 'distance_asc':
-      default:
-        orderClause = 'distance_m ASC, c.urgency_level DESC';
     }
 
     const whereSQL = conditions.join(' AND ');
@@ -501,6 +531,7 @@ async function getNearbyCases(req, res) {
         c.summary_1line,
         c.status,
         c.text_normalized,
+        c.address_text,
         c.phone_hash,
         ST_X(c.coords::geometry) AS lon,
         ST_Y(c.coords::geometry) AS lat,
@@ -544,6 +575,7 @@ async function getNearbyCases(req, res) {
         summary_1line: row.summary_1line,
         ai_summary: row.summary_1line,
         description: row.text_normalized,
+        address: row.address_text,
         status: row.status,
         lat: row.lat,
         lon: row.lon,
@@ -698,6 +730,7 @@ async function getHistoryByPhone(req, res) {
         c.tags,
         c.summary_1line,
         c.text_normalized,
+        c.address_text,
         c.status,
         ST_X(c.coords::geometry) AS lon,
         ST_Y(c.coords::geometry) AS lat,
@@ -725,6 +758,7 @@ async function getHistoryByPhone(req, res) {
         tags: rawTags,
         summary: row.summary_1line,
         description: row.text_normalized,
+        address: row.address_text,
         status: row.status,
         lat: row.lat,
         lon: row.lon,
@@ -859,6 +893,7 @@ async function getVolunteerHistory(req, res) {
         c.tags,
         c.summary_1line,
         c.text_normalized,
+        c.address_text,
         ST_X(c.coords::geometry) AS lon,
         ST_Y(c.coords::geometry) AS lat,
         c.created_at AS case_created_at,
@@ -888,6 +923,7 @@ async function getVolunteerHistory(req, res) {
         tags: rawTags,
         summary: row.summary_1line,
         description: row.text_normalized,
+        address: row.address_text,
         initial_distance_m: row.initial_distance_m,
         assigned_at: row.assigned_at,
         completed_at: row.completed_at,
@@ -950,6 +986,7 @@ async function getActiveAssignment(req, res) {
         c.tags,
         c.summary_1line,
         c.text_normalized,
+        c.address_text,
         ST_X(c.coords::geometry) AS lon,
         ST_Y(c.coords::geometry) AS lat,
         ca.assigned_at
@@ -977,6 +1014,7 @@ async function getActiveAssignment(req, res) {
       tags: row.tags,
       summary: row.summary_1line,
       description: row.text_normalized,
+      address: row.address_text,
       lat: row.lat,
       lon: row.lon,
       assignedAt: row.assigned_at,
