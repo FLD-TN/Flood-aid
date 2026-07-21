@@ -27,7 +27,8 @@ class ActiveMissionScreen extends StatefulWidget {
   final String? address;
   final int? urgencyLevel;
   final String? victimPhone;
-  final int? initialDistanceM; // khoảng cách chim bay từ màn danh sách (để khớp số khi chưa nhận ca)
+  final int?
+  initialDistanceM; // khoảng cách chim bay từ màn danh sách (để khớp số khi chưa nhận ca)
 
   const ActiveMissionScreen({
     super.key,
@@ -49,6 +50,17 @@ class ActiveMissionScreen extends StatefulWidget {
 class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
   final MapController _mapController = MapController();
   final ActiveMissionManager _manager = ActiveMissionManager();
+
+  // Điều khiển bottom sheet (đọc size realtime để dim overlay + nút nổi bám mép)
+  final DraggableScrollableController _sheetController =
+      DraggableScrollableController();
+
+  // Chiều cao nghỉ của sheet. Nút trượt (nhận/đóng ca) đã được GHIM ở footer nên
+  // luôn hiển thị bất kể chiều cao này — giá trị chỉ quyết định lộ sẵn bao nhiêu
+  // thông tin, không còn phải đoán cho vừa nội dung theo từng máy.
+  double get _initSheet => _accepted ? 0.5 : 0.45;
+  static const double _minSheet = 0.12;
+  static const double _maxSheet = 0.9;
 
   // TNV (volunteer) location — realtime GPS
   double? _myLat;
@@ -87,6 +99,11 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
     _victimLat = widget.victimLat ?? 16.0544;
     _victimLon = widget.victimLon ?? 108.2022;
 
+    // Rebuild theo vị trí sheet để dim overlay + nút nổi phản ứng mượt
+    _sheetController.addListener(() {
+      if (mounted) setState(() {});
+    });
+
     // Kiểm tra Manager xem đã có mission đang chạy cho ca này chưa
     if (_manager.hasActiveMission && _manager.activeCaseId == widget.caseId) {
       // Re-entry: TNV quay lại từ HomeScreen → khôi phục state
@@ -122,7 +139,8 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
   /// (nếu chưa nhận, đó có thể là số của TNV khác). Chưa nhận → dùng khoảng cách chim bay
   /// giống hệt màn danh sách để 2 màn khớp số.
   Future<void> _fetchRouteCache() async {
-    if (!_accepted) return; // chưa nhận ca thì không đọc cache route (tránh lệch/nhầm TNV)
+    // chưa nhận ca thì không đọc cache route (tránh lệch/nhầm TNV)
+    if (!_accepted) return;
     final data = await ApiService.getCaseById(widget.caseId);
     if (data == null || !mounted) return;
     setState(() {
@@ -162,41 +180,52 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
 
   /// Connect SSE cho case này để phát hiện ca bị đóng trước khi accept
   void _connectCaseSSE() {
-    final baseUrl = kIsWeb ? 'http://127.0.0.1:3000' : 'https://floodaid.onrender.com';
+    final baseUrl = kIsWeb
+        ? 'http://127.0.0.1:3000'
+        : 'https://floodaid.onrender.com';
     final client = http.Client();
-    final request = http.Request('GET', Uri.parse('$baseUrl/api/case/${widget.caseId}/stream'));
-    
-    client.send(request).then((response) {
-      _sseSub = response.stream
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())
-          .listen((line) {
-        if (line.startsWith('data: ') && mounted && !_caseResolved) {
-          try {
-            final data = json.decode(line.substring(6));
-            final status = data['status'] as String?;
-            if (status == 'resolved' || status == 'cancelled') {
-              _caseResolved = true;
-              final resolvedBy = data['resolvedBy'] ?? 'victim';
-              _stopGpsTracking();
-              _sseSub?.cancel();
-              ToastService.show(
-                context: context,
-                type: ToastType.success,
-                message: resolvedBy == 'victim'
-                    ? 'Nạn nhân đã xác nhận được giúp đỡ. Ca đã đóng!'
-                    : 'Ca đã được đóng bởi $resolvedBy.',
+    final request = http.Request(
+      'GET',
+      Uri.parse('$baseUrl/api/case/${widget.caseId}/stream'),
+    );
+
+    client
+        .send(request)
+        .then((response) {
+          _sseSub = response.stream
+              .transform(utf8.decoder)
+              .transform(const LineSplitter())
+              .listen(
+                (line) {
+                  if (line.startsWith('data: ') && mounted && !_caseResolved) {
+                    try {
+                      final data = json.decode(line.substring(6));
+                      final status = data['status'] as String?;
+                      if (status == 'resolved' || status == 'cancelled') {
+                        _caseResolved = true;
+                        final resolvedBy = data['resolvedBy'] ?? 'victim';
+                        _stopGpsTracking();
+                        _sseSub?.cancel();
+                        ToastService.show(
+                          context: context,
+                          type: ToastType.success,
+                          message: resolvedBy == 'victim'
+                              ? 'Nạn nhân đã xác nhận được giúp đỡ. Ca đã đóng!'
+                              : 'Ca đã được đóng bởi $resolvedBy.',
+                        );
+                        Navigator.pop(context);
+                      }
+                    } catch (_) {}
+                  }
+                },
+                onError: (e) {
+                  debugPrint('[ActiveMission] SSE error: $e');
+                },
               );
-              Navigator.pop(context);
-            }
-          } catch (_) {}
-        }
-      }, onError: (e) {
-        debugPrint('[ActiveMission] SSE error: $e');
-      });
-    }).catchError((e) {
-      debugPrint('[ActiveMission] SSE connect error: $e');
-    });
+        })
+        .catchError((e) {
+          debugPrint('[ActiveMission] SSE connect error: $e');
+        });
   }
 
   Future<void> _loadVolunteerId() async {
@@ -219,7 +248,10 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
       return; // Đã xử lý trong initState
     }
 
-    final result = await ApiService.checkMyAssignment(widget.caseId, volunteerId);
+    final result = await ApiService.checkMyAssignment(
+      widget.caseId,
+      volunteerId,
+    );
     if (result == null || !mounted) return;
 
     final isAssigned = result['isAssigned'] == true;
@@ -227,7 +259,9 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
 
     if (isAssigned && caseStatus == 'responding') {
       // TNV đã nhận ca này trước đó → khôi phục trạng thái qua Manager
-      debugPrint('[ActiveMission] Restored accepted state for case ${widget.caseId}');
+      debugPrint(
+        '[ActiveMission] Restored accepted state for case ${widget.caseId}',
+      );
       setState(() => _accepted = true);
       _sseSub?.cancel();
       _startGpsTracking();
@@ -247,6 +281,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
   void dispose() {
     _localGpsTimer?.cancel();
     _sseSub?.cancel();
+    _sheetController.dispose();
     _manager.removeListener(_onManagerChanged);
     // KHÔNG dispose _manager.wsGpsService ở đây!
     // GPS chạy ngầm ngay cả khi screen bị pop (giống Grab)
@@ -278,7 +313,9 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
   Future<void> _getMyLocation() async {
     try {
       final pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
       );
       if (mounted) {
         setState(() {
@@ -294,7 +331,10 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
 
   Future<void> _handleAcceptCase() async {
     // Pre-check: kiểm tra trạng thái ca VÀ assignment
-    final assignment = await ApiService.checkMyAssignment(widget.caseId, _volunteerId);
+    final assignment = await ApiService.checkMyAssignment(
+      widget.caseId,
+      _volunteerId,
+    );
     if (assignment != null) {
       final caseStatus = assignment['caseStatus'] as String? ?? '';
       final isAssigned = assignment['isAssigned'] == true;
@@ -360,7 +400,9 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
       } else if (mounted) {
         // Lưu SĐT nạn nhân từ response
         final phone = result?['victimPhone'] as String?;
-        debugPrint('[ActiveMission] acceptCase response victimPhone="$phone", full=$result');
+        debugPrint(
+          '[ActiveMission] acceptCase response victimPhone="$phone", full=$result',
+        );
         setState(() => _victimPhone = phone);
         // Accept succeeded — start GPS tracking via WebSocket
         _startGpsTracking();
@@ -421,9 +463,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
         actions: [
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, false),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
             child: const Text(
               'Tiếp tục nhiệm vụ',
               style: TextStyle(color: Colors.white),
@@ -491,7 +531,8 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 36.w, height: 36.w,
+              width: 36.w,
+              height: 36.w,
               decoration: BoxDecoration(
                 color: AppColors.alertRed,
                 shape: BoxShape.circle,
@@ -515,7 +556,11 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
               ),
               child: Text(
                 'NẠN NHÂN',
-                style: TextStyle(color: Colors.white, fontSize: 8.sp, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 8.sp,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],
@@ -534,7 +579,8 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 36.w, height: 36.w,
+                width: 36.w,
+                height: 36.w,
                 decoration: BoxDecoration(
                   color: AppColors.primary,
                   shape: BoxShape.circle,
@@ -547,7 +593,11 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                     ),
                   ],
                 ),
-                child: Icon(Icons.person_pin_circle, color: Colors.white, size: 20.r),
+                child: Icon(
+                  Icons.person_pin_circle,
+                  color: Colors.white,
+                  size: 20.r,
+                ),
               ),
               SizedBox(height: 4.h),
               Container(
@@ -558,7 +608,11 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                 ),
                 child: Text(
                   'BẠN',
-                  style: TextStyle(color: Colors.white, fontSize: 8.sp, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 8.sp,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
@@ -582,28 +636,103 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
             _buildRecordingStatusBar(),
             _buildHeader(),
             Expanded(
-              child: Stack(
-                children: [
-                  // ── Map (full area with padding) ──
-                  Padding(
-                    padding: EdgeInsets.only(bottom: _accepted ? 320.h : 250.h),
-                    child: FloodAidMap(
-                      mapController: _mapController,
-                      initialCenter: LatLng(_victimLat, _victimLon),
-                      initialZoom: 14.0,
-                      markers: _buildMarkers(),
-                      onMyLocationTap: _centerOnMe,
-                    ),
-                  ),
-                  // ── SOS Legend ──
-                  Positioned(
-                    left: 16.w,
-                    top: 16.h,
-                    child: const SosLegendWidget(),
-                  ),
-                  // ── Draggable Bottom Mission Board ──
-                  _buildDraggableMissionBoard(),
-                ],
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final double initSheet = _initSheet;
+                  double sheetSize = initSheet;
+                  if (_sheetController.isAttached) {
+                    sheetSize = _sheetController.size;
+                  }
+                  final bool isExpanded = sheetSize > initSheet + 0.02;
+
+                  return Stack(
+                    children: [
+                      // ── Map (full-bleed, nằm sau sheet — kéo sheet xuống lộ map, không còn khoảng trắng) ──
+                      FloodAidMap(
+                        mapController: _mapController,
+                        initialCenter: LatLng(_victimLat, _victimLon),
+                        initialZoom: 14.0,
+                        markers: _buildMarkers(),
+                        onMyLocationTap: _centerOnMe,
+                      ),
+
+                      // ── Dim overlay khi kéo sheet cao hơn mức nghỉ (chuẩn Google Maps) ──
+                      IgnorePointer(
+                        ignoring: sheetSize <= initSheet,
+                        child: GestureDetector(
+                          onTap: () => _sheetController.animateTo(
+                            initSheet,
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeOut,
+                          ),
+                          child: Container(
+                            color: Colors.black.withValues(
+                              alpha:
+                                  ((sheetSize - initSheet) /
+                                          (_maxSheet - initSheet) *
+                                          0.5)
+                                      .clamp(0.0, 0.5),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // ── SOS Legend ──
+                      Positioned(
+                        left: 16.w,
+                        top: 16.h,
+                        child: const SosLegendWidget(),
+                      ),
+
+                      // ── Nút thu gọn / mở rộng sheet, bám mép trên của sheet ──
+                      Positioned(
+                        right: 16.w,
+                        bottom: constraints.maxHeight * sheetSize + 16.h,
+                        child: AnimatedOpacity(
+                          opacity: sheetSize < 0.7 ? 1.0 : 0.0,
+                          duration: const Duration(milliseconds: 150),
+                          child: IgnorePointer(
+                            ignoring: sheetSize >= 0.7,
+                            child: GestureDetector(
+                              onTap: () => _sheetController.animateTo(
+                                isExpanded ? _minSheet : _maxSheet,
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeInOut,
+                              ),
+                              child: Container(
+                                width: 44.w,
+                                height: 44.w,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(
+                                        alpha: 0.15,
+                                      ),
+                                      blurRadius: 8.r,
+                                      offset: Offset(0, 2.h),
+                                    ),
+                                  ],
+                                ),
+                                child: Icon(
+                                  isExpanded
+                                      ? Icons.keyboard_arrow_down
+                                      : Icons.keyboard_arrow_up,
+                                  color: AppColors.alertRed,
+                                  size: 28.r,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // ── Draggable Bottom Mission Board ──
+                      _buildDraggableMissionBoard(),
+                    ],
+                  );
+                },
               ),
             ),
           ],
@@ -633,7 +762,8 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
           SizedBox(width: 12.w),
           if (isTracking)
             Container(
-              width: 8.w, height: 8.w,
+              width: 8.w,
+              height: 8.w,
               decoration: const BoxDecoration(
                 shape: BoxShape.circle,
                 color: Colors.white,
@@ -643,7 +773,11 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
           Expanded(
             child: Text(
               statusText,
-              style: TextStyle(color: Colors.white, fontSize: 12.sp, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 12.sp,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],
@@ -676,11 +810,19 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
     final distKm = _distanceKm;
 
     return DraggableScrollableSheet(
-      initialChildSize: _accepted ? 0.45 : 0.4,
-      minChildSize: 0.1,
-      maxChildSize: 0.8,
+      controller: _sheetController,
+      initialChildSize: _initSheet,
+      minChildSize: _minSheet,
+      maxChildSize: _maxSheet,
       snap: true,
+      snapSizes: [_minSheet, _initSheet, _maxSheet],
       builder: (context, scrollController) {
+        // Đọc size realtime để ẩn footer khi thu về mức peek (tránh footer cao hơn sheet)
+        final double size = _sheetController.isAttached
+            ? _sheetController.size
+            : _initSheet;
+        final bool footerVisible = size >= 0.2;
+
         return Container(
           decoration: BoxDecoration(
             color: Colors.white,
@@ -693,252 +835,310 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
               ),
             ],
           ),
-          child: ListView(
-            controller: scrollController,
-            padding: EdgeInsets.fromLTRB(24.w, 12.h, 24.w, 24.h),
+          child: Stack(
             children: [
-              // Drag handle
-              Center(
-                child: Container(
-                  width: 40.w,
-                  height: 4.h,
-                  margin: EdgeInsets.only(bottom: 16.h),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceBorder,
-                    borderRadius: BorderRadius.circular(2.r),
-                  ),
+              // ── Vùng thông tin CUỘN (không chứa nút CTA) ──
+              ListView(
+                controller: scrollController,
+                // chừa đáy cho footer ghim để item cuối không bị che
+                padding: EdgeInsets.fromLTRB(
+                  24.w,
+                  12.h,
+                  24.w,
+                  footerVisible ? (_accepted ? 150.h : 104.h) : 24.h,
                 ),
-              ),
-
-              // ── Header Row (Status) ──
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-                  decoration: BoxDecoration(
-                    color: urgencyColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(100.r),
-                    border: Border.all(color: urgencyColor.withValues(alpha: 0.2)),
+                children: [
+                  // Drag handle
+                  Center(
+                    child: Container(
+                      width: 40.w,
+                      height: 4.h,
+                      margin: EdgeInsets.only(bottom: 16.h),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceBorder,
+                        borderRadius: BorderRadius.circular(2.r),
+                      ),
+                    ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 8.w, height: 8.w,
+
+                  // ── Header Row (Status) ──
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12.w,
+                        vertical: 6.h,
+                      ),
+                      decoration: BoxDecoration(
+                        color: urgencyColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(100.r),
+                        border: Border.all(
+                          color: urgencyColor.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 8.w,
+                            height: 8.w,
+                            decoration: BoxDecoration(
+                              color: urgencyColor,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          SizedBox(width: 8.w),
+                          Text(
+                            'MỨC ĐỘ KHẨN CẤP: $urgency',
+                            style: AppTypography.labelMedium.copyWith(
+                              color: urgencyColor,
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 16.h),
+
+                  // Title / Summary
+                  Text(
+                    widget.summary ?? 'Yêu cầu cứu hộ khẩn cấp',
+                    style: AppTypography.headingMedium.copyWith(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20.sp,
+                      color: AppColors.textPrimary,
+                      height: 1.3,
+                    ),
+                  ),
+
+                  // Địa chỉ nạn nhân (reverse-geocode / user nhập)
+                  if (widget.address != null &&
+                      widget.address!.trim().isNotEmpty)
+                    Padding(
+                      padding: EdgeInsets.only(top: 12.h),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.location_on,
+                            size: 18.r,
+                            color: AppColors.alertRed,
+                          ),
+                          SizedBox(width: 6.w),
+                          Expanded(
+                            child: Text(
+                              widget.address!,
+                              style: AppTypography.bodyMedium.copyWith(
+                                color: AppColors.textPrimary,
+                                fontWeight: FontWeight.w600,
+                                height: 1.4,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  // Full Description (nếu có và khác summary)
+                  if (widget.description != null &&
+                      widget.description!.isNotEmpty &&
+                      widget.description != widget.summary)
+                    Padding(
+                      padding: EdgeInsets.only(top: 12.h),
+                      child: Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(12.w),
                         decoration: BoxDecoration(
-                          color: urgencyColor,
-                          shape: BoxShape.circle,
+                          color: AppColors.surfaceElevated,
+                          borderRadius: BorderRadius.circular(12.r),
+                          border: Border.all(color: AppColors.surfaceBorder),
                         ),
-                      ),
-                      SizedBox(width: 8.w),
-                      Text(
-                        'MỨC ĐỘ KHẨN CẤP: $urgency',
-                        style: AppTypography.labelMedium.copyWith(
-                          color: urgencyColor,
-                          fontSize: 10.sp,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              SizedBox(height: 16.h),
-
-              // Title / Summary
-              Text(
-                widget.summary ?? 'Yêu cầu cứu hộ khẩn cấp',
-                style: AppTypography.headingMedium.copyWith(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 20.sp,
-                  color: AppColors.textPrimary,
-                  height: 1.3,
-                ),
-              ),
-              
-              // Địa chỉ nạn nhân (reverse-geocode / user nhập)
-              if (widget.address != null && widget.address!.trim().isNotEmpty)
-                Padding(
-                  padding: EdgeInsets.only(top: 12.h),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(Icons.location_on, size: 18.r, color: AppColors.alertRed),
-                      SizedBox(width: 6.w),
-                      Expanded(
                         child: Text(
-                          widget.address!,
+                          '"${widget.description}"',
                           style: AppTypography.bodyMedium.copyWith(
-                            color: AppColors.textPrimary,
-                            fontWeight: FontWeight.w600,
-                            height: 1.4,
+                            fontStyle: FontStyle.italic,
+                            color: AppColors.textSecondary,
+                            height: 1.5,
                           ),
                         ),
                       ),
-                    ],
-                  ),
-                ),
-
-              // Full Description (nếu có và khác summary)
-              if (widget.description != null && widget.description!.isNotEmpty && widget.description != widget.summary)
-                Padding(
-                  padding: EdgeInsets.only(top: 12.h),
-                  child: Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.all(12.w),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceElevated,
-                      borderRadius: BorderRadius.circular(12.r),
-                      border: Border.all(color: AppColors.surfaceBorder),
                     ),
-                    child: Text(
-                      '"${widget.description}"',
-                      style: AppTypography.bodyMedium.copyWith(
-                        fontStyle: FontStyle.italic,
-                        color: AppColors.textSecondary,
-                        height: 1.5,
-                      ),
+
+                  SizedBox(height: 20.h),
+
+                  // Hero Metrics (Luôn hiển thị để TNV ước lượng) — ưu tiên quãng đường/ETA thật
+                  if (_displayDistanceText(distKm) != null)
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildMetricBox(
+                            'Khoảng cách',
+                            _displayDistanceText(distKm)!,
+                            Colors.blue.shade700,
+                          ),
+                        ),
+                        SizedBox(width: 12.w),
+                        Expanded(
+                          child: _buildMetricBox(
+                            'Dự kiến tới',
+                            _displayEtaText(distKm) ?? '—',
+                            Colors.orange.shade700,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ),
 
-              SizedBox(height: 20.h),
+                  SizedBox(height: 20.h),
 
-              // Hero Metrics (Luôn hiển thị để TNV ước lượng) — ưu tiên quãng đường/ETA thật
-              if (_displayDistanceText(distKm) != null)
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildMetricBox(
-                        'Khoảng cách',
-                        _displayDistanceText(distKm)!,
-                        Colors.blue.shade700,
-                      ),
-                    ),
-                    SizedBox(width: 12.w),
-                    Expanded(
-                      child: _buildMetricBox(
-                        'Dự kiến tới',
-                        _displayEtaText(distKm) ?? '—',
-                        Colors.orange.shade700,
-                      ),
-                    ),
-                  ],
-                ),
-
-              SizedBox(height: 20.h),
-
-              // ── Các nút liên lạc (CHỈ HIỂN THỊ KHI ĐÃ NHẬN CA) ──
-              if (_accepted) ...[
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Nút Gọi điện
-                    _buildCircleButton(
-                      icon: Icons.phone_in_talk,
-                      color: Colors.green.shade600,
-                      iconColor: Colors.white,
-                      tooltip: 'Gọi nạn nhân',
-                      onTap: () async {
-                        final raw = _victimPhone ?? widget.victimPhone ?? '';
-                        debugPrint('[ActiveMission] Gọi điện: phone="$raw"');
-                        if (raw.isEmpty) {
-                          if (mounted) {
-                            ToastService.show(
-                              context: context,
-                              type: ToastType.warning,
-                              message: 'Chưa có số điện thoại nạn nhân.',
+                  // ── Các nút liên lạc (CHỈ HIỂN THỊ KHI ĐÃ NHẬN CA) ──
+                  if (_accepted) ...[
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Nút Gọi điện
+                        _buildCircleButton(
+                          icon: Icons.phone_in_talk,
+                          color: Colors.green.shade600,
+                          iconColor: Colors.white,
+                          tooltip: 'Gọi nạn nhân',
+                          onTap: () async {
+                            final raw =
+                                _victimPhone ?? widget.victimPhone ?? '';
+                            debugPrint(
+                              '[ActiveMission] Gọi điện: phone="$raw"',
                             );
-                          }
-                          return;
-                        }
-                        final phone = _normalizePhone(raw);
-                        final uri = Uri.parse('tel:$phone');
-                        try {
-                          await launchUrl(uri);
-                        } catch (e) {
-                          debugPrint('[ActiveMission] launchUrl error: $e');
-                        }
-                      },
-                    ),
-                    SizedBox(width: 20.w),
-                    // Nút Chat
-                    _buildCircleButton(
-                      icon: Icons.chat_bubble_outline_rounded,
-                      color: AppColors.primary,
-                      iconColor: Colors.white,
-                      tooltip: 'Chat',
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ChatScreen(
-                            caseId: widget.caseId,
-                            myRole: 'volunteer',
-                            myId: _volunteerId,
-                            peerPhone: _victimPhone ?? widget.victimPhone,
+                            if (raw.isEmpty) {
+                              if (mounted) {
+                                ToastService.show(
+                                  context: context,
+                                  type: ToastType.warning,
+                                  message: 'Chưa có số điện thoại nạn nhân.',
+                                );
+                              }
+                              return;
+                            }
+                            final phone = _normalizePhone(raw);
+                            final uri = Uri.parse('tel:$phone');
+                            try {
+                              await launchUrl(uri);
+                            } catch (e) {
+                              debugPrint('[ActiveMission] launchUrl error: $e');
+                            }
+                          },
+                        ),
+                        SizedBox(width: 20.w),
+                        // Nút Chat
+                        _buildCircleButton(
+                          icon: Icons.chat_bubble_outline_rounded,
+                          color: AppColors.primary,
+                          iconColor: Colors.white,
+                          tooltip: 'Chat',
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ChatScreen(
+                                caseId: widget.caseId,
+                                myRole: 'volunteer',
+                                myId: _volunteerId,
+                                peerPhone: _victimPhone ?? widget.victimPhone,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
+                        SizedBox(width: 20.w),
+                        // Nút Chỉ đường
+                        _buildCircleButton(
+                          icon: Icons.directions,
+                          color: Colors.amber.shade300,
+                          iconColor: Colors.black87,
+                          tooltip: 'Chỉ đường',
+                          onTap: () async {
+                            final Uri url = Uri.parse(
+                              'https://www.google.com/maps/dir/?api=1&destination=$_victimLat,$_victimLon',
+                            );
+                            if (await canLaunchUrl(url)) {
+                              await launchUrl(
+                                url,
+                                mode: LaunchMode.externalApplication,
+                              );
+                            }
+                          },
+                        ),
+                      ],
                     ),
-                    SizedBox(width: 20.w),
-                    // Nút Chỉ đường
-                    _buildCircleButton(
-                      icon: Icons.directions,
-                      color: Colors.amber.shade300,
-                      iconColor: Colors.black87,
-                      tooltip: 'Chỉ đường',
-                      onTap: () async {
-                        final Uri url = Uri.parse(
-                          'https://www.google.com/maps/dir/?api=1&destination=$_victimLat,$_victimLon',
-                        );
-                        if (await canLaunchUrl(url)) {
-                          await launchUrl(url, mode: LaunchMode.externalApplication);
-                        }
-                      },
-                    ),
+                    const SizedBox(height: 12),
                   ],
-                ),
-                const SizedBox(height: 12),
-              ],
 
-              const SizedBox(height: 16),
+                  SizedBox(height: 8.h),
+                ],
+              ),
 
-              // ── Action Slider ──
-              if (!_accepted)
-                SlideToConfirm(
-                  key: const ValueKey('slider_accept'),
-                  text: 'TRƯỢT ĐỂ NHẬN CA',
-                  isLoading: _accepted,
-                  onConfirm: _handleAcceptCase,
-                ),
-
-              if (_accepted)
-                SlideToConfirm(
-                  key: const ValueKey('slider_resolve'),
-                  text: 'TRƯỢT ĐỂ ĐÓNG CA',
-                  isLoading: _isResolving,
-                  onConfirm: () async {
-                    await _handleResolve();
-                  },
-                ),
-
-              // ── Nút Hủy phụ khi đã nhận ca ──
-              if (_accepted) ...[
-                SizedBox(height: 16.h),
-                Center(
-                  child: TextButton(
-                    onPressed: _isRevoking ? null : _handleRevokeMission,
-                    child: Text(
-                      _isRevoking ? 'Đang hủy...' : 'Tôi không thể tiếp tục, hủy nhiệm vụ',
-                      style: TextStyle(
-                        color: AppColors.textMuted,
-                        fontSize: 12.sp,
-                        decoration: TextDecoration.underline,
+              // ── Footer GHIM: nút trượt luôn hiển thị, không bị cuộn khuất ──
+              // Ẩn khi sheet thu về mức peek để không cao hơn cả sheet.
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: AnimatedOpacity(
+                  opacity: footerVisible ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 150),
+                  child: IgnorePointer(
+                    ignoring: !footerVisible,
+                    child: Container(
+                      padding: EdgeInsets.fromLTRB(24.w, 12.h, 24.w, 20.h),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        border: Border(
+                          top: BorderSide(color: AppColors.surfaceBorder),
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (!_accepted)
+                            SlideToConfirm(
+                              key: const ValueKey('slider_accept'),
+                              text: 'TRƯỢT ĐỂ NHẬN CA',
+                              isLoading: _accepted,
+                              onConfirm: _handleAcceptCase,
+                            ),
+                          if (_accepted)
+                            SlideToConfirm(
+                              key: const ValueKey('slider_resolve'),
+                              text: 'TRƯỢT ĐỂ ĐÓNG CA',
+                              isLoading: _isResolving,
+                              onConfirm: () async {
+                                await _handleResolve();
+                              },
+                            ),
+                          if (_accepted) ...[
+                            SizedBox(height: 12.h),
+                            Center(
+                              child: TextButton(
+                                onPressed: _isRevoking
+                                    ? null
+                                    : _handleRevokeMission,
+                                child: Text(
+                                  _isRevoking
+                                      ? 'Đang hủy...'
+                                      : 'Tôi không thể tiếp tục, hủy nhiệm vụ',
+                                  style: TextStyle(
+                                    color: AppColors.textMuted,
+                                    fontSize: 12.sp,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                   ),
                 ),
-              ],
+              ),
             ],
           ),
         );
