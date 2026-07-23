@@ -51,10 +51,6 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
   final MapController _mapController = MapController();
   final ActiveMissionManager _manager = ActiveMissionManager();
 
-  // Điều khiển bottom sheet (đọc size realtime để dim overlay + nút nổi bám mép)
-  final DraggableScrollableController _sheetController =
-      DraggableScrollableController();
-
   // Chiều cao nghỉ của sheet — đặt cao để lộ sẵn nút trượt (nhận/đóng ca) ngay khi mở.
   double get _initSheet => _accepted ? 0.6 : 0.62;
   static const double _minSheet = 0.12;
@@ -67,6 +63,10 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
   // Quãng đường + ETA THẬT theo đường đi (Route v4), đọc từ cache backend qua getCaseById.
   int? _routeDistanceM;
   int? _etaSec;
+
+  // Hình học tuyến đường (Route v4) để vẽ polyline; throttle gọi lại tối đa 1 lần/20s.
+  List<LatLng> _routePoints = [];
+  DateTime? _lastRouteFetchAt;
 
   // Victim location
   late double _victimLat;
@@ -97,11 +97,6 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
     _victimLat = widget.victimLat ?? 16.0544;
     _victimLon = widget.victimLon ?? 108.2022;
 
-    // Rebuild theo vị trí sheet để dim overlay + nút nổi phản ứng mượt
-    _sheetController.addListener(() {
-      if (mounted) setState(() {});
-    });
-
     // Kiểm tra Manager xem đã có mission đang chạy cho ca này chưa
     if (_manager.hasActiveMission && _manager.activeCaseId == widget.caseId) {
       // Re-entry: TNV quay lại từ HomeScreen → khôi phục state
@@ -128,8 +123,33 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
     _localGpsTimer = Timer.periodic(const Duration(seconds: 10), (_) {
       _getMyLocation();
       _fetchRouteCache();
+      _fetchRouteLine();
     });
     _fetchRouteCache();
+    _fetchRouteLine();
+  }
+
+  /// Lấy hình học tuyến đường (Route v4) từ vị trí TNV → nạn nhân để vẽ polyline.
+  /// Throttle tối đa 1 lần/20s để không tốn nhiều transaction.
+  Future<void> _fetchRouteLine() async {
+    if (_myLat == null || _myLon == null) return;
+    final now = DateTime.now();
+    if (_lastRouteFetchAt != null && now.difference(_lastRouteFetchAt!).inSeconds < 20) return;
+    _lastRouteFetchAt = now;
+    final data = await ApiService.geoRoute(
+      fromLat: _myLat!,
+      fromLon: _myLon!,
+      toLat: _victimLat,
+      toLon: _victimLon,
+    );
+    if (!mounted || data == null) return;
+    final raw = data['points'] as List?;
+    if (raw == null || raw.isEmpty) return;
+    setState(() {
+      _routePoints = raw
+          .map((p) => LatLng((p[0] as num).toDouble(), (p[1] as num).toDouble()))
+          .toList();
+    });
   }
 
   /// Đọc quãng đường + ETA THẬT (Route v4) từ cache backend.
@@ -279,7 +299,6 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
   void dispose() {
     _localGpsTimer?.cancel();
     _sseSub?.cancel();
-    _sheetController.dispose();
     _manager.removeListener(_onManagerChanged);
     // KHÔNG dispose _manager.wsGpsService ở đây!
     // GPS chạy ngầm ngay cả khi screen bị pop (giống Grab)
@@ -634,103 +653,34 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
             _buildRecordingStatusBar(),
             _buildHeader(),
             Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final double initSheet = _initSheet;
-                  double sheetSize = initSheet;
-                  if (_sheetController.isAttached) {
-                    sheetSize = _sheetController.size;
-                  }
-                  final bool isExpanded = sheetSize > initSheet + 0.02;
-
-                  return Stack(
-                    children: [
-                      // ── Map (full-bleed, nằm sau sheet — kéo sheet xuống lộ map, không còn khoảng trắng) ──
-                      FloodAidMap(
-                        mapController: _mapController,
-                        initialCenter: LatLng(_victimLat, _victimLon),
-                        initialZoom: 14.0,
-                        markers: _buildMarkers(),
-                        onMyLocationTap: _centerOnMe,
-                      ),
-
-                      // ── Dim overlay khi kéo sheet cao hơn mức nghỉ (chuẩn Google Maps) ──
-                      IgnorePointer(
-                        ignoring: sheetSize <= initSheet,
-                        child: GestureDetector(
-                          onTap: () => _sheetController.animateTo(
-                            initSheet,
-                            duration: const Duration(milliseconds: 300),
-                            curve: Curves.easeOut,
-                          ),
-                          child: Container(
-                            color: Colors.black.withValues(
-                              alpha:
-                                  ((sheetSize - initSheet) /
-                                          (_maxSheet - initSheet) *
-                                          0.5)
-                                      .clamp(0.0, 0.5),
+              child: Stack(
+                children: [
+                  // ── Map full-bleed (nằm sau sheet — kéo sheet xuống lộ map, hết khoảng trắng) ──
+                  FloodAidMap(
+                    mapController: _mapController,
+                    initialCenter: LatLng(_victimLat, _victimLon),
+                    initialZoom: 14.0,
+                    markers: _buildMarkers(),
+                    polylines: _routePoints.length >= 2
+                        ? [
+                            Polyline(
+                              points: _routePoints,
+                              color: AppColors.primary,
+                              strokeWidth: 4.0,
                             ),
-                          ),
-                        ),
-                      ),
-
-                      // ── SOS Legend ──
-                      Positioned(
-                        left: 16.w,
-                        top: 16.h,
-                        child: const SosLegendWidget(),
-                      ),
-
-                      // ── Nút thu gọn / mở rộng sheet, bám mép trên của sheet ──
-                      Positioned(
-                        right: 16.w,
-                        bottom: constraints.maxHeight * sheetSize + 16.h,
-                        child: AnimatedOpacity(
-                          opacity: sheetSize < 0.7 ? 1.0 : 0.0,
-                          duration: const Duration(milliseconds: 150),
-                          child: IgnorePointer(
-                            ignoring: sheetSize >= 0.7,
-                            child: GestureDetector(
-                              onTap: () => _sheetController.animateTo(
-                                isExpanded ? _minSheet : _maxSheet,
-                                duration: const Duration(milliseconds: 300),
-                                curve: Curves.easeInOut,
-                              ),
-                              child: Container(
-                                width: 44.w,
-                                height: 44.w,
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(
-                                        alpha: 0.15,
-                                      ),
-                                      blurRadius: 8.r,
-                                      offset: Offset(0, 2.h),
-                                    ),
-                                  ],
-                                ),
-                                child: Icon(
-                                  isExpanded
-                                      ? Icons.keyboard_arrow_down
-                                      : Icons.keyboard_arrow_up,
-                                  color: AppColors.alertRed,
-                                  size: 28.r,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      // ── Draggable Bottom Mission Board ──
-                      _buildDraggableMissionBoard(),
-                    ],
-                  );
-                },
+                          ]
+                        : null,
+                    onMyLocationTap: _centerOnMe,
+                  ),
+                  // ── SOS Legend ──
+                  Positioned(
+                    left: 16.w,
+                    top: 16.h,
+                    child: const SosLegendWidget(),
+                  ),
+                  // ── Draggable Bottom Mission Board ──
+                  _buildDraggableMissionBoard(),
+                ],
               ),
             ),
           ],
@@ -808,7 +758,6 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
     final distKm = _distanceKm;
 
     return DraggableScrollableSheet(
-      controller: _sheetController,
       initialChildSize: _initSheet,
       minChildSize: _minSheet,
       maxChildSize: _maxSheet,

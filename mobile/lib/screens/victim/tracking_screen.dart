@@ -41,6 +41,8 @@ class _TrackingScreenState extends State<TrackingScreen> {
   int? _distanceM;            // đường chim bay (mét) — fallback
   int? _routeDistanceM;       // quãng đường thật theo đường đi (Route v4)
   int? _etaSec;               // thời gian tới thật (giây) từ Route v4
+  List<LatLng> _routePoints = []; // hình học tuyến TNV→nạn nhân để vẽ polyline
+  DateTime? _lastRouteFetchAt;    // throttle gọi Route (tối đa 1 lần/20s)
   double? _tnvLat;
   double? _tnvLon;
   bool _hasVolunteer = false;
@@ -113,6 +115,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
           }
         }
       });
+      if (_hasVolunteer) _fetchRouteLine(); // vẽ tuyến ngay nếu đã có TNV
     } else {
       debugPrint('[Tracking] getTnvLocation trả null hoặc không mounted');
     }
@@ -143,6 +146,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
           }
           _hasVolunteer = true;
         });
+        _fetchRouteLine(); // cập nhật vệt tuyến khi TNV di chuyển (có throttle)
       },
       onConnectionChanged: (connected) {
         debugPrint('[TrackingScreen] WS GPS ${connected ? 'connected' : 'disconnected'}');
@@ -153,6 +157,29 @@ class _TrackingScreenState extends State<TrackingScreen> {
       caseId: widget.caseId,
       role: 'victim',
     );
+  }
+
+  /// Lấy hình học tuyến đường (Route v4) từ vị trí TNV → nạn nhân để vẽ polyline.
+  /// Throttle tối đa 1 lần/20s để không tốn nhiều transaction.
+  Future<void> _fetchRouteLine() async {
+    if (_tnvLat == null || _tnvLon == null) return;
+    final now = DateTime.now();
+    if (_lastRouteFetchAt != null && now.difference(_lastRouteFetchAt!).inSeconds < 20) return;
+    _lastRouteFetchAt = now;
+    final data = await ApiService.geoRoute(
+      fromLat: _tnvLat!,
+      fromLon: _tnvLon!,
+      toLat: _victimLat,
+      toLon: _victimLon,
+    );
+    if (!mounted || data == null) return;
+    final raw = data['points'] as List?;
+    if (raw == null || raw.isEmpty) return;
+    setState(() {
+      _routePoints = raw
+          .map((p) => LatLng((p[0] as num).toDouble(), (p[1] as num).toDouble()))
+          .toList();
+    });
   }
 
   /// SSE listener for case status events (case:accepted, case:resolved, etc.)
@@ -675,6 +702,15 @@ class _TrackingScreenState extends State<TrackingScreen> {
                     initialCenter: LatLng(_victimLat, _victimLon),
                     initialZoom: 15.0,
                     markers: _buildMarkers(),
+                    polylines: _routePoints.length >= 2
+                        ? [
+                            Polyline(
+                              points: _routePoints,
+                              color: AppColors.primary,
+                              strokeWidth: 4.0,
+                            ),
+                          ]
+                        : null,
                     onMyLocationTap: _centerOnVictim,
                   ),
                   // ── SOS Legend ──

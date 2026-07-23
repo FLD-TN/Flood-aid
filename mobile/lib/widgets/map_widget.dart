@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:latlong2/latlong.dart';
 import '../theme/app_theme.dart';
+import '../config/vietmap_config.dart';
 
 /// Enum for available map tile styles
 enum MapTileStyle {
@@ -56,14 +57,17 @@ class _FloodAidMapState extends State<FloodAidMap>
     _currentStyle = widget.initialStyle;
   }
 
+  // Tile VietMap dày dữ liệu VN (tên đường/hẻm/POI tiếng Việt). @2x = retina cho nét.
+  // Ảnh đường phố/tối lấy từ VietMap; địa hình giữ OpenTopoMap (VietMap không có).
   String get _tileUrl {
+    final key = VietmapConfig.mapApiKey;
     switch (_currentStyle) {
       case MapTileStyle.standard:
-        return 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+        return 'https://maps.vietmap.vn/maps/tiles/tm/{z}/{x}/{y}@2x.png?apikey=$key';
       case MapTileStyle.satellite:
-        return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+        return 'https://maps.vietmap.vn/maps/tiles/st/{z}/{x}/{y}.png?apikey=$key';
       case MapTileStyle.dark:
-        return 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+        return 'https://maps.vietmap.vn/maps/tiles/dm/{z}/{x}/{y}@2x.png?apikey=$key';
       case MapTileStyle.terrain:
         return 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png';
     }
@@ -71,11 +75,11 @@ class _FloodAidMapState extends State<FloodAidMap>
 
   List<String> get _subdomains {
     switch (_currentStyle) {
+      // VietMap không dùng subdomain {s}
       case MapTileStyle.standard:
       case MapTileStyle.satellite:
-        return [];
       case MapTileStyle.dark:
-        return ['a', 'b', 'c', 'd'];
+        return [];
       case MapTileStyle.terrain:
         return ['a', 'b', 'c'];
     }
@@ -84,11 +88,9 @@ class _FloodAidMapState extends State<FloodAidMap>
   String get _attribution {
     switch (_currentStyle) {
       case MapTileStyle.standard:
-        return '© OpenStreetMap';
       case MapTileStyle.satellite:
-        return '© Esri';
       case MapTileStyle.dark:
-        return '© CARTO';
+        return '© VietMap';
       case MapTileStyle.terrain:
         return '© OpenTopoMap';
     }
