@@ -538,8 +538,10 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
   }
 
   List<Marker> _buildMarkers() {
+    // Màu ping nạn nhân theo mức khẩn cấp (đồng bộ với màn danh sách), không cố định đỏ
+    final victimColor = getUrgencyColor(widget.urgencyLevel ?? 3);
     final markers = <Marker>[
-      // Victim marker (red)
+      // Victim marker (màu theo mức SOS)
       Marker(
         point: LatLng(_victimLat, _victimLon),
         width: 90.w,
@@ -551,12 +553,12 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
               width: 36.w,
               height: 36.w,
               decoration: BoxDecoration(
-                color: AppColors.alertRed,
+                color: victimColor,
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.white, width: 3.w),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.alertRed.withValues(alpha: 0.5),
+                    color: victimColor.withValues(alpha: 0.5),
                     blurRadius: 14.r,
                     spreadRadius: 3.r,
                   ),
@@ -568,7 +570,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
             Container(
               padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
               decoration: BoxDecoration(
-                color: AppColors.alertRed,
+                color: victimColor,
                 borderRadius: BorderRadius.circular(10.r),
               ),
               child: Text(
