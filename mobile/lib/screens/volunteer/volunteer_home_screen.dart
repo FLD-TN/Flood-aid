@@ -185,17 +185,27 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
   bool _isFetching = false;
 
   /// Lấy GPS trước (có timeout), sau đó gọi API.
-  /// Nếu GPS chậm → dùng tọa độ cached để gọi API trước.
+  /// Lần ĐẦU phải CHỜ GPS thật rồi mới query — nếu không sẽ dùng nhầm toạ độ
+  /// mặc định Đà Nẵng, cho ra khoảng cách sai (vd 599km cho ca ở HCM).
   Future<void> _updateGpsThenFetch() async {
-    // Cập nhật GPS (non-blocking)
-    _updateGps();
-    // Gọi API ngay với tọa độ hiện có (có thể là cached)
+    if (_isFirstFetch) {
+      await _updateGps(); // chờ có toạ độ thật
+    } else {
+      _updateGps(); // các lần poll sau: non-blocking
+    }
     await _fetchCasesOnly();
   }
 
   /// Cập nhật GPS + đồng bộ vị trí lên Backend (để geoDispatch tìm thấy TNV)
   Future<void> _updateGps() async {
     try {
+      // Vị trí cache (tức thì) — có toạ độ thật ngay, tránh default Đà Nẵng lúc GPS chưa sẵn sàng
+      final last = await Geolocator.getLastKnownPosition();
+      if (last != null) {
+        _currentLat = last.latitude;
+        _currentLon = last.longitude;
+      }
+
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (serviceEnabled) {
         LocationPermission permission = await Geolocator.checkPermission();
@@ -206,7 +216,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
           Position position = await Geolocator.getCurrentPosition(
             locationSettings: const LocationSettings(
               accuracy: LocationAccuracy.medium,
-              timeLimit: Duration(seconds: 3),
+              timeLimit: Duration(seconds: 5),
             ),
           );
           _currentLat = position.latitude;
