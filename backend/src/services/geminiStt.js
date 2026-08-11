@@ -59,16 +59,25 @@ async function transcribeAudio(base64, mimeType) {
     model: 'gemini-2.5-flash',
     generationConfig: {
       temperature: 0.1,
-      thinkingConfig: { thinkingBudget: 0 },
+      // Bật suy luận nội tại để phân biệt các từ ngắn dễ nhầm (mi/mì, nác/nát...).
+      // STT không nằm dưới ngưỡng chờ 3s như phân loại nên chấp nhận trễ thêm ~1-2s.
+      thinkingConfig: { thinkingBudget: 512 },
     },
   });
 
-  const prompt = `Đây là một đoạn ghi âm tiếng Việt, giọng miền Trung (Quảng Nam).
-Nhiệm vụ của bạn: chép lại CHÍNH XÁC lời người nói trong đoạn âm thanh.
-- Giữ nguyên từ địa phương đúng như phát âm (có thể gặp: ${HINT_WORDS.join(', ')}), KHÔNG tự đổi sang từ phổ thông.
-- Nếu KHÔNG nghe thấy lời nói rõ ràng nào, chỉ trả về một dòng TRỐNG (không viết gì).
-- Trả về trên MỘT dòng duy nhất, KHÔNG xuống dòng.
-- Chỉ trả về đúng nội dung đã chép; TUYỆT ĐỐI không lặp lại hướng dẫn này, không giải thích, không dấu ngoặc.`;
+  const prompt = `Bạn nghe một đoạn ghi âm giọng QUẢNG NAM (miền Trung), người dân báo tin trong tình huống LŨ LỤT khẩn cấp.
+Hãy chép lại lời nói, GIỮ dạng phương ngữ, nhưng DÙNG NGỮ CẢNH cứu hộ để chọn đúng ở các cặp DỄ NHẦM:
+- "mi" (=mày/bạn) KHÔNG phải "mì"
+- "nác" (=nóc nhà) KHÔNG phải "nát"
+- "moà" (=mà) KHÔNG phải "mò"
+- "hén" (=nó) KHÔNG phải "hán/háng/hắn"
+- "tau" (=tao) KHÔNG phải "tàu"
+- "trơ" (con trơ/thằng trơ) KHÔNG phải "trê/ghế"
+- "chừ" (=giờ) KHÔNG phải "trừ"
+- Từ địa phương khác cứ giữ nguyên: ${HINT_WORDS.join(', ')}.
+Ưu tiên cách hiểu HỢP LÝ trong bối cảnh nhà/nước/nóc/cứu/kẹt.
+- Nếu KHÔNG nghe rõ lời nào, trả về một dòng TRỐNG.
+- Chỉ trả về đúng nội dung đã chép trên MỘT dòng, KHÔNG lặp lại hướng dẫn, không giải thích, không dấu ngoặc.`;
 
   // Chuẩn hóa định dạng: webm/ogg (thường từ web) → mp3 để Gemini đọc chắc chắn.
   let mime = mimeType || 'audio/mp4';
