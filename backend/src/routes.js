@@ -17,6 +17,7 @@ const kycController = require('./controllers/kycController');
 const chatController = require('./controllers/chatController');
 const dialectController = require('./controllers/dialectController');
 const geoController = require('./controllers/geoController');
+const sttController = require('./controllers/sttController');
 const { authMiddleware } = require('./middleware/authMiddleware');
 const { adminAuthMiddleware } = require('./middleware/adminAuthMiddleware');
 
@@ -45,6 +46,9 @@ router.post('/case/:id/resolve', sosController.resolveCase);
 router.post('/case/:id/revoke', sosController.revokeCase);
 router.get('/case/:id/messages', chatController.getMessages);
 router.post('/case/:id/messages', chatController.sendMessage);
+
+// ====== Speech-to-Text (Gemini, giữ phương ngữ) ======
+router.post('/stt', authMiddleware, sttController.transcribe);
 
 // ====== Từ điển phương ngữ (override, không DB) ======
 router.get('/dialect-dict', dialectController.getDict);            // app tải về để merge
