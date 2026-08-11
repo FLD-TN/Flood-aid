@@ -16,6 +16,8 @@ async function transcribe(req, res) {
     if (!audio || typeof audio !== 'string') {
       return res.status(400).json({ error: 'Thiếu dữ liệu audio (base64)' });
     }
+    const bytes = Buffer.from(audio, 'base64').length;
+    console.log(`[sttController] nhận ${bytes} bytes, mime=${mimeType || 'audio/mp4'}`);
     const text = await transcribeAudio(audio, mimeType || 'audio/mp4');
     return res.json({ text });
   } catch (err) {

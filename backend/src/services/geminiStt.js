@@ -7,7 +7,36 @@
  * chuẩn hóa (dict) chuyển sang tiếng Việt phổ thông.
  */
 
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const { execFile } = require('child_process');
+const ffmpegPath = require('ffmpeg-static');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+
+/**
+ * Chuyển audio sang mp3 bằng ffmpeg. Chrome (web) ghi webm/opus nhưng thường THIẾU
+ * header duration → Gemini không giải mã được (trả rỗng). Đưa qua ffmpeg vừa sửa
+ * header vừa đổi sang mp3 — định dạng Gemini chắc chắn nhận.
+ */
+function _transcodeToMp3(inputBuffer, inExt) {
+  return new Promise((resolve, reject) => {
+    const base = path.join(
+      os.tmpdir(), `stt_${Date.now()}_${Math.random().toString(36).slice(2)}`);
+    const inFile = `${base}.${inExt}`;
+    const outFile = `${base}.mp3`;
+    fs.writeFileSync(inFile, inputBuffer);
+    execFile(ffmpegPath, ['-y', '-i', inFile, '-f', 'mp3', outFile], (err) => {
+      try { fs.unlinkSync(inFile); } catch (_) {}
+      if (err) return reject(err);
+      fs.readFile(outFile, (e, data) => {
+        try { fs.unlinkSync(outFile); } catch (_) {}
+        if (e) return reject(e);
+        resolve(data);
+      });
+    });
+  });
+}
 
 // Danh sách "mồi" — các từ địa phương phổ biến, giúp Gemini không tự sửa về chuẩn.
 const HINT_WORDS = [
@@ -41,8 +70,21 @@ Nhiệm vụ của bạn: chép lại CHÍNH XÁC lời người nói trong đo�
 - Trả về trên MỘT dòng duy nhất, KHÔNG xuống dòng.
 - Chỉ trả về đúng nội dung đã chép; TUYỆT ĐỐI không lặp lại hướng dẫn này, không giải thích, không dấu ngoặc.`;
 
+  // Chuẩn hóa định dạng: webm/ogg (thường từ web) → mp3 để Gemini đọc chắc chắn.
+  let mime = mimeType || 'audio/mp4';
+  let data = base64;
+  if (mime.includes('webm') || mime.includes('ogg')) {
+    try {
+      const mp3 = await _transcodeToMp3(Buffer.from(base64, 'base64'), 'webm');
+      data = mp3.toString('base64');
+      mime = 'audio/mp3';
+    } catch (e) {
+      console.warn('[geminiStt] Transcode webm→mp3 lỗi, gửi nguyên bản:', e.message);
+    }
+  }
+
   const result = await model.generateContent([
-    { inlineData: { mimeType, data: base64 } },
+    { inlineData: { mimeType: mime, data } },
     { text: prompt },
   ]);
 
