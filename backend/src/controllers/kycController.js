@@ -6,9 +6,14 @@
 
 const https = require('https');
 const http = require('http');
+const { db } = require('../db');
+const { encryptPhone } = require('../utils/crypto');
 
 const FPT_API_KEY = process.env.FPT_EKYC_API_KEY || process.env.FPT_AI_API_KEY;
 const FPT_ENDPOINT = 'https://api.fpt.ai/vision/idr/vnm';
+
+// Ngưỡng khớp mặt tối thiểu để coi là eKYC đạt (server ép, không tin client).
+const FACE_MATCH_THRESHOLD = 80;
 
 /**
  * POST /api/kyc/recognize-id
@@ -112,6 +117,21 @@ async function recognizeId(req, res) {
     };
 
     console.log(`[kycController] CCCD recognized: ${result.cccdNumber ? '****' + result.cccdNumber.slice(-4) : 'N/A'}`);
+
+    // Chốt số CCCD do SERVER bóc vào phiên eKYC. register sẽ CHỈ tin giá trị này,
+    // không tin cccdNumber client tự gửi → chống giả mạo.
+    const uid = req.user?.uid;
+    if (uid && result.cccdNumber) {
+      await db.query(
+        `INSERT INTO ekyc_sessions (uid, cccd_number_encrypted, cccd_at)
+         VALUES ($1, $2, NOW())
+         ON CONFLICT (uid) DO UPDATE SET
+           cccd_number_encrypted = EXCLUDED.cccd_number_encrypted,
+           cccd_at = NOW()`,
+        [uid, encryptPhone(result.cccdNumber)]
+      );
+    }
+
     res.status(200).json(result);
   } catch (err) {
     console.error('[kycController][recognizeId]', err.message);
@@ -244,7 +264,28 @@ async function checkFace(req, res) {
       isBothImgIDCard: fptResponse.data?.isBothImgIDCard || false,
     };
 
-    console.log(`[kycController] FaceMatch: isMatch=${result.isMatch}, similarity=${result.similarity.toFixed(1)}%`);
+    // eKYC ĐẠT khi: khớp mặt, similarity >= ngưỡng, VÀ ảnh 2 KHÔNG phải thẻ CCCD nữa
+    // (chống việc nộp 2 ảnh CCCD/ảnh chụp lại thẻ). Server tự quyết, không tin client.
+    const passed =
+      result.isMatch === true &&
+      Number(result.similarity) >= FACE_MATCH_THRESHOLD &&
+      result.isBothImgIDCard === false;
+
+    const uid = req.user?.uid;
+    if (uid) {
+      await db.query(
+        `INSERT INTO ekyc_sessions (uid, face_verified, similarity, face_at)
+         VALUES ($1, $2, $3, NOW())
+         ON CONFLICT (uid) DO UPDATE SET
+           face_verified = EXCLUDED.face_verified,
+           similarity = EXCLUDED.similarity,
+           face_at = NOW()`,
+        [uid, passed, Number(result.similarity) || 0]
+      );
+    }
+    result.passed = passed;
+
+    console.log(`[kycController] FaceMatch: isMatch=${result.isMatch}, similarity=${result.similarity.toFixed(1)}%, passed=${passed}`);
     res.status(200).json(result);
   } catch (err) {
     console.error('[kycController][checkFace]', err.message);

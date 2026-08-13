@@ -341,6 +341,21 @@ ALTER TABLE cases ADD COLUMN IF NOT EXISTS route_updated_at TIMESTAMPTZ; -- lầ
 ALTER TABLE cases ADD COLUMN IF NOT EXISTS route_anchor GEOMETRY(POINT, 4326);
 `;
 
+const migration018 = `
+-- eKYC session: CHỐT kết quả xác minh phía SERVER, keyed theo Firebase uid.
+--  - recognize-id ghi số CCCD do SERVER bóc (mã hoá) + thời điểm.
+--  - check-face ghi cờ đã khớp mặt (đạt ngưỡng) + similarity + thời điểm.
+-- register chỉ tin bảng này (KHÔNG tin cccdNumber client gửi) → chống giả mạo eKYC.
+CREATE TABLE IF NOT EXISTS ekyc_sessions (
+  uid TEXT PRIMARY KEY,
+  cccd_number_encrypted TEXT,
+  cccd_at TIMESTAMPTZ,
+  face_verified BOOLEAN NOT NULL DEFAULT false,
+  similarity REAL,
+  face_at TIMESTAMPTZ
+);
+`;
+
 async function runMigrations() {
   const client = await pool.connect();
   try {
@@ -411,6 +426,10 @@ async function runMigrations() {
     console.log('[Migration] Running migration 017: cases route distance/ETA columns (VietMap)...');
     await client.query(migration017);
     console.log('[Migration] ✓ Migration 017 complete');
+
+    console.log('[Migration] Running migration 018: eKYC sessions (server-verified)...');
+    await client.query(migration018);
+    console.log('[Migration] ✓ Migration 018 complete');
 
     console.log('[Migration] All migrations completed successfully!');
   } catch (err) {

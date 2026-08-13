@@ -20,7 +20,7 @@ function hashPhone(phone) {
  */
 async function registerVolunteer(req, res) {
   try {
-    const { fullName, cccdNumber } = req.body;
+    const { fullName } = req.body;
     const phone = req.user?.phone_number || req.body.phone;
     const firebaseUid = req.user?.uid;
 
@@ -55,6 +55,25 @@ async function registerVolunteer(req, res) {
       });
     }
 
+    // ── P0 fix: CHỈ tin kết quả eKYC do SERVER chốt (bảng ekyc_sessions), keyed theo uid.
+    // Bỏ qua hoàn toàn cccdNumber client gửi → không thể tự set cccd_verified = true.
+    const EKYC_WINDOW_MS = 30 * 60 * 1000; // vé eKYC hết hạn sau 30 phút
+    let cccdVerified = false;
+    let cccdEncrypted = null;
+    if (firebaseUid) {
+      const sess = await db.query(
+        `SELECT cccd_number_encrypted, face_verified, cccd_at, face_at
+         FROM ekyc_sessions WHERE uid = $1`,
+        [firebaseUid]
+      );
+      const s = sess.rows[0];
+      const fresh = (t) => t && (Date.now() - new Date(t).getTime()) < EKYC_WINDOW_MS;
+      if (s && s.face_verified && s.cccd_number_encrypted && fresh(s.cccd_at) && fresh(s.face_at)) {
+        cccdVerified = true;
+        cccdEncrypted = s.cccd_number_encrypted; // số CCCD do SERVER bóc, đã mã hoá
+      }
+    }
+
     const result = await db.query(
       `INSERT INTO volunteers (phone_hash, firebase_uid, full_name, is_available, admin_approved, cccd_verified, phone_encrypted, cccd_number_encrypted)
        VALUES ($1, $2, $3, false, false, $4, $5, $6)
@@ -63,13 +82,18 @@ async function registerVolunteer(req, res) {
         phoneHash,
         firebaseUid || null,
         fullName.trim(),
-        !!cccdNumber,
+        cccdVerified,
         encryptPhone(phone),
-        cccdNumber ? encryptPhone(cccdNumber) : null,
+        cccdEncrypted,
       ]
     );
 
-    console.log(`[volunteerController][register] New volunteer registered: ${result.rows[0].id} (pending approval)`);
+    // Vé eKYC dùng 1 lần: xoá phiên sau khi đăng ký (chống dùng lại).
+    if (firebaseUid) {
+      await db.query('DELETE FROM ekyc_sessions WHERE uid = $1', [firebaseUid]);
+    }
+
+    console.log(`[volunteerController][register] New volunteer registered: ${result.rows[0].id} (cccd_verified=${cccdVerified}, pending approval)`);
     res.status(201).json({
       status: 'REGISTERED',
       volunteerId: result.rows[0].id,
