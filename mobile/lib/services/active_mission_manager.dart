@@ -49,6 +49,9 @@ class ActiveMissionManager extends ChangeNotifier {
   // Screen đang hiện sẽ listen cái này để pop ra
   VoidCallback? onMissionEndedExternally;
 
+  // Callback khi nhận cảnh báo đứng im (stale_warning) từ WebSocket
+  VoidCallback? onStaleWarningReceived;
+
   /// Gọi khi TNV accept ca thành công.
   /// Khởi tạo GPS tracking global.
   void startMission({
@@ -87,6 +90,10 @@ class ActiveMissionManager extends ChangeNotifier {
         debugPrint('[ActiveMissionManager] Case resolved externally');
         onMissionEndedExternally?.call();
         endMission();
+      },
+      onStaleWarning: (data) {
+        debugPrint('[ActiveMissionManager] Stale warning received');
+        onStaleWarningReceived?.call();
       },
     );
 
@@ -172,5 +179,6 @@ class ActiveMissionManager extends ChangeNotifier {
     _urgencyLevel = null;
     _victimPhone = null;
     onMissionEndedExternally = null;
+    onStaleWarningReceived = null;
   }
 }

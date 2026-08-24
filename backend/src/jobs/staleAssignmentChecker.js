@@ -7,6 +7,7 @@
 const cron = require('node-cron');
 const { db } = require('../db');
 const { sendFcmToVolunteer } = require('../services/fcmService');
+const { broadcastToRoom } = require('../services/wsServer');
 
 cron.schedule('*/2 * * * *', async () => {
   try {
@@ -34,13 +35,24 @@ cron.schedule('*/2 * * * *', async () => {
     `);
 
     for (const row of staleAssignments.rows) {
-      // Gửi FCM hỏi TNV
+      // Gửi FCM cảnh báo đứng im cho TNV (type = STALE_WARNING)
       if (row.fcm_token) {
         await sendFcmToVolunteer(row.fcm_token, {
           id: row.case_id,
           urgency_level: 2,
-          summary_1line: '❓ Bạn có còn đang trên đường không? Nhấn để xác nhận.',
+          summary_1line: '⚠️ Bạn có còn đang trên đường không? Nhấn để xác nhận.',
+        }, 'STALE_WARNING');
+      }
+
+      // Phát sự kiện WebSocket để app hiện hộp thoại đếm ngược tức thì
+      try {
+        broadcastToRoom(row.case_id, {
+          type: 'stale_warning',
+          caseId: row.case_id,
+          volunteerId: row.volunteer_id,
         });
+      } catch (wsErr) {
+        console.warn('[staleAssignment] WebSocket broadcast error:', wsErr.message);
       }
 
       // Mark đã cảnh báo

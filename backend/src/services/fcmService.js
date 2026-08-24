@@ -12,9 +12,12 @@ function initFirebaseAdmin() {
 }
 
 /**
- * Gửi FCM notification cho TNV khi có ca SOS mới
+ * Gửi FCM notification cho TNV khi có ca SOS mới hoặc cảnh báo hệ thống
+ * @param {string} fcmToken
+ * @param {object} sosCase - { id, urgency_level, summary_1line }
+ * @param {string} [type='NEW_SOS'] - Loại thông báo: 'NEW_SOS', 'STALE_WARNING', ...
  */
-async function sendFcmToVolunteer(fcmToken, sosCase) {
+async function sendFcmToVolunteer(fcmToken, sosCase, type = 'NEW_SOS') {
   if (!fcmToken) return;
 
   const emoji = URGENCY_EMOJI[sosCase.urgency_level] || '🔴';
@@ -26,7 +29,7 @@ async function sendFcmToVolunteer(fcmToken, sosCase) {
     data: {
       caseId: String(sosCase.id),
       urgencyLevel: String(sosCase.urgency_level),
-      type: 'NEW_SOS',
+      type: type,
     },
     android: {
       priority: sosCase.urgency_level >= 4 ? 'high' : 'normal',

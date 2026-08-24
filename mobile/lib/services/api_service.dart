@@ -70,6 +70,35 @@ class ApiService {
 
   /// GET /api/geo/autocomplete — gợi ý địa chỉ khi gõ (proxy VietMap).
   /// [lat]/[lon] là toạ độ hiện tại để ưu tiên địa điểm gần.
+  /// Gửi audio (bytes) lên máy chủ để Gemini chép lời, GIỮ NGUYÊN phương ngữ.
+  /// Trả câu chép thô (chưa chuẩn hóa), hoặc null nếu lỗi/không nghe rõ.
+  /// Người gọi tự chuẩn hóa bằng dict và tự xử lý fallback.
+  static Future<String?> sttTranscribe(List<int> audioBytes,
+      {String mimeType = 'audio/mp4'}) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http
+          .post(
+            Uri.parse('$_baseUrl/api/stt'),
+            headers: headers,
+            body: jsonEncode({
+              'audio': base64Encode(audioBytes),
+              'mimeType': mimeType,
+            }),
+          )
+          .timeout(const Duration(seconds: 20));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final text = data['text'];
+        return text is String ? text : null;
+      }
+      return null;
+    } catch (e) {
+      if (kDebugMode) print('[ApiService] sttTranscribe lỗi: $e');
+      return null;
+    }
+  }
+
   static Future<List<Map<String, dynamic>>> geoAutocomplete(
     String text, {
     double? lat,
@@ -537,10 +566,10 @@ class ApiService {
   static Future<List<Map<String, dynamic>>> getNearbyCases({
     required double lat,
     required double lon,
-    double maxDistance = 10,
+    double maxDistance = -1, // -1 = toàn quốc, không lọc bán kính
     List<int>? urgencyLevels,
     List<String>? tags,
-    String sortBy = 'distance_asc',
+    String sortBy = 'newest', // mặc định: ca mới nhất lên đầu
   }) async {
     try {
       final queryParams = <String, String>{
@@ -653,6 +682,22 @@ class ApiService {
     } catch (e) {
       print('[ApiService] getActiveMission error: $e');
       return null;
+    }
+  }
+
+  /// POST /api/case/:id/confirm-route — TNV xác nhận vẫn đang trên đường (phản hồi cảnh báo đứng im)
+  static Future<bool> confirmRoute(String caseId, String volunteerId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/case/$caseId/confirm-route'),
+        headers: headers,
+        body: json.encode({'volunteerId': volunteerId}),
+      ).timeout(const Duration(seconds: 5));
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('[ApiService] confirmRoute error: $e');
+      return false;
     }
   }
 }

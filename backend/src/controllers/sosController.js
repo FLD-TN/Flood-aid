@@ -496,16 +496,8 @@ async function getNearbyCases(req, res) {
       }
     }
 
-    // Determine ORDER BY
-    // Lưu ý: trong PostgreSQL, bí danh cột (distance_m) chỉ dùng được khi đứng một mình,
-    // không dùng được bên trong biểu thức — nên phải lặp lại biểu thức khoảng cách.
-    const distExpr = `ST_Distance(c.coords::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography)`;
-
-    // Mặc định: gom ca theo vành đai 500m, trong cùng vành đai thì ca khẩn cấp hơn đứng trước.
-    // Không xếp thuần theo distance_m: vì khoảng cách là mét nguyên nên hai ca gần như không
-    // bao giờ bằng nhau, khiến urgency_level trở thành tiêu chí chết và một ca mức 2 cách 100m
-    // luôn đứng trên một ca mức 5 cách 500m.
-    let orderClause = `(${distExpr} / 500)::int ASC, c.urgency_level DESC, ${distExpr} ASC`;
+    // Determine ORDER BY. Mặc định: ca mới nhất lên đầu (ổn định qua các lần poll).
+    let orderClause = 'c.created_at DESC';
     switch (sortBy) {
       case 'distance_asc':
         orderClause = 'distance_m ASC';   // TNV chủ động chọn "gần nhất trước"
@@ -1025,4 +1017,37 @@ async function getActiveAssignment(req, res) {
   }
 }
 
-module.exports = { createSos, getCaseById, getTnvLocation, acceptCase, resolveCase, revokeCase, getActiveByPhone, getNearbyCases, checkMyAssignment, getHistoryByPhone, cancelCase, getVolunteerHistory, getActiveAssignment };
+/**
+ * POST /api/case/:id/confirm-route
+ * TNV xác nhận vẫn đang trên đường cứu trợ (phản hồi cảnh báo đứng im).
+ * Reset cờ confirmed_en_route = true, xóa warned_at để cronjob không hủy ca.
+ */
+async function confirmRoute(req, res) {
+  try {
+    const caseId = req.params.id;
+    const { volunteerId } = req.body;
+
+    if (!caseId || !volunteerId) {
+      return res.status(400).json({ error: 'Missing caseId or volunteerId' });
+    }
+
+    const result = await db.query(
+      `UPDATE case_assignments 
+       SET confirmed_en_route = true, warned_at = NULL 
+       WHERE case_id = $1 AND volunteer_id = $2 AND revoked_at IS NULL`,
+      [caseId, volunteerId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Assignment not found or already revoked' });
+    }
+
+    console.log(`[sosController][confirmRoute] TNV ${volunteerId} confirmed en route for case ${caseId}`);
+    res.json({ success: true, message: 'Xác nhận hành trình thành công' });
+  } catch (err) {
+    console.error('[sosController][confirmRoute]', err.message);
+    res.status(500).json({ error: 'Internal error' });
+  }
+}
+
+module.exports = { createSos, getCaseById, getTnvLocation, acceptCase, resolveCase, revokeCase, getActiveByPhone, getNearbyCases, checkMyAssignment, getHistoryByPhone, cancelCase, getVolunteerHistory, getActiveAssignment, confirmRoute };

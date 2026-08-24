@@ -84,12 +84,16 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
   bool _isRevoking = false;
   bool _wsConnected = false;
   bool _caseResolved = false; // ca đã bị đóng từ bên ngoài (SSE)
+  bool _hasStaleWarning = false; // cờ hiển thị hộp thoại cảnh báo đứng im
 
   // SSE subscription (lắng nghe trước khi accept)
   StreamSubscription? _sseSub;
 
   // GPS timer — chỉ dùng để cập nhật _myLat/_myLon cho UI bản đồ
   Timer? _localGpsTimer;
+
+  // Timer đếm ngược cảnh báo đứng im (5 phút)
+  Timer? _staleCountdownTimer;
 
   @override
   void initState() {
@@ -104,8 +108,8 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
       _volunteerId = _manager.volunteerId ?? '';
       _victimPhone = _manager.victimPhone;
       _wsConnected = _manager.wsConnected;
-      // Đăng ký callback khi ca bị đóng từ bên ngoài
       _manager.onMissionEndedExternally = _onMissionEndedExternally;
+      _manager.onStaleWarningReceived = _onStaleWarning;
       // Listen manager changes cho WS status
       _manager.addListener(_onManagerChanged);
     } else {
@@ -134,7 +138,9 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
   Future<void> _fetchRouteLine() async {
     if (_myLat == null || _myLon == null) return;
     final now = DateTime.now();
-    if (_lastRouteFetchAt != null && now.difference(_lastRouteFetchAt!).inSeconds < 20) return;
+    if (_lastRouteFetchAt != null &&
+        now.difference(_lastRouteFetchAt!).inSeconds < 20)
+      return;
     _lastRouteFetchAt = now;
     final data = await ApiService.geoRoute(
       fromLat: _myLat!,
@@ -147,7 +153,9 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
     if (raw == null || raw.isEmpty) return;
     setState(() {
       _routePoints = raw
-          .map((p) => LatLng((p[0] as num).toDouble(), (p[1] as num).toDouble()))
+          .map(
+            (p) => LatLng((p[0] as num).toDouble(), (p[1] as num).toDouble()),
+          )
           .toList();
     });
   }
@@ -194,6 +202,318 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
       );
       Navigator.pop(context);
     }
+  }
+
+  /// Callback khi nhận cảnh báo đứng im từ WebSocket
+  void _onStaleWarning() {
+    if (!mounted || _hasStaleWarning) return;
+    setState(() => _hasStaleWarning = true);
+    _showStaleWarningDialog();
+  }
+
+  /// Hiển thị hộp thoại đếm ngược 5 phút cảnh báo đứng im.
+  /// Nền mờ đen xám (Colors.black54), không cho chạm ra ngoài để đóng.
+  void _showStaleWarningDialog() {
+    int remainingSeconds = 300; // 5 phút
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black54,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            // Khởi tạo timer một lần duy nhất
+            _staleCountdownTimer ??= Timer.periodic(
+              const Duration(seconds: 1),
+              (_) {
+                if (!mounted) {
+                  _staleCountdownTimer?.cancel();
+                  _staleCountdownTimer = null;
+                  return;
+                }
+                remainingSeconds--;
+                if (remainingSeconds <= 0) {
+                  // Hết giờ — tự động hủy ca
+                  _staleCountdownTimer?.cancel();
+                  _staleCountdownTimer = null;
+                  Navigator.of(dialogContext).pop();
+                  _onStaleTimeout();
+                } else {
+                  setDialogState(() {});
+                }
+              },
+            );
+
+            final minutes = remainingSeconds ~/ 60;
+            final seconds = remainingSeconds % 60;
+            final timeStr =
+                '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+            final progress = remainingSeconds / 300;
+
+            return WillPopScope(
+              onWillPop: () async => false, // Chặn nút Back
+              child: Dialog(
+                backgroundColor: Colors.transparent,
+                insetPadding: EdgeInsets.symmetric(horizontal: 24.w),
+                child: Container(
+                  padding: EdgeInsets.all(24.w),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1A1A2E),
+                    borderRadius: BorderRadius.circular(24.r),
+                    border: Border.all(
+                      color: AppColors.alertRed.withValues(alpha: 0.5),
+                      width: 2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.alertRed.withValues(alpha: 0.3),
+                        blurRadius: 30.r,
+                        spreadRadius: 5.r,
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Icon cảnh báo
+                      Container(
+                        width: 64.w,
+                        height: 64.w,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.alertRed.withValues(alpha: 0.15),
+                        ),
+                        child: Icon(
+                          Icons.warning_amber_rounded,
+                          color: AppColors.alertRed,
+                          size: 36.r,
+                        ),
+                      ),
+                      SizedBox(height: 16.h),
+
+                      // Tiêu đề
+                      Text(
+                        'CẢNH BÁO ĐỨNG IM',
+                        style: TextStyle(
+                          color: AppColors.alertRed,
+                          fontSize: 18.sp,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      SizedBox(height: 8.h),
+
+                      // Mô tả
+                      Text(
+                        'Hệ thống phát hiện bạn không di chuyển trong 10 phút.\n'
+                        'Nếu không xác nhận, nhiệm vụ sẽ tự động bị hủy.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 13.sp,
+                          height: 1.5,
+                        ),
+                      ),
+                      SizedBox(height: 24.h),
+
+                      // Đồng hồ đếm ngược dạng vòng tròn
+                      SizedBox(
+                        width: 120.w,
+                        height: 120.w,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            // Vòng tròn nền
+                            SizedBox(
+                              width: 120.w,
+                              height: 120.w,
+                              child: CircularProgressIndicator(
+                                value: 1.0,
+                                strokeWidth: 6.w,
+                                color: Colors.white12,
+                              ),
+                            ),
+                            // Vòng tròn đếm ngược
+                            SizedBox(
+                              width: 120.w,
+                              height: 120.w,
+                              child: CircularProgressIndicator(
+                                value: progress,
+                                strokeWidth: 6.w,
+                                color: remainingSeconds <= 60
+                                    ? AppColors.alertRed
+                                    : const Color(0xFFFFA726),
+                                strokeCap: StrokeCap.round,
+                              ),
+                            ),
+                            // Số đếm ngược
+                            Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  timeStr,
+                                  style: TextStyle(
+                                    color: remainingSeconds <= 60
+                                        ? AppColors.alertRed
+                                        : Colors.white,
+                                    fontSize: 32.sp,
+                                    fontWeight: FontWeight.bold,
+                                    fontFamily: 'monospace',
+                                  ),
+                                ),
+                                Text(
+                                  'còn lại',
+                                  style: TextStyle(
+                                    color: Colors.white38,
+                                    fontSize: 11.sp,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 24.h),
+
+                      // Nút xác nhận
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50.h,
+                        child: ElevatedButton.icon(
+                          onPressed: () async {
+                            _staleCountdownTimer?.cancel();
+                            _staleCountdownTimer = null;
+                            Navigator.of(dialogContext).pop();
+                            setState(() => _hasStaleWarning = false);
+
+                            // Gọi API xác nhận hành trình
+                            final success = await ApiService.confirmRoute(
+                              widget.caseId,
+                              _volunteerId,
+                            );
+                            if (mounted) {
+                              ToastService.show(
+                                context: context,
+                                type: success
+                                    ? ToastType.success
+                                    : ToastType.error,
+                                message: success
+                                    ? 'Đã xác nhận — Tiếp tục hành trình cứu hộ!'
+                                    : 'Lỗi xác nhận. Thử lại sau.',
+                              );
+                            }
+                          },
+                          icon: const Icon(
+                            Icons.directions_run,
+                            color: Colors.white,
+                          ),
+                          label: Text(
+                            'Tôi vẫn đang di chuyển.',
+                            style: TextStyle(
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF2E7D32),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14.r),
+                            ),
+                            elevation: 2,
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 12.h),
+
+                      // Nút hủy nhiệm vụ khẩn cấp (nếu TNV thực sự không thể đi tiếp)
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48.h,
+                        child: OutlinedButton.icon(
+                          onPressed: () async {
+                            _staleCountdownTimer?.cancel();
+                            _staleCountdownTimer = null;
+                            Navigator.of(dialogContext).pop();
+                            setState(() => _hasStaleWarning = false);
+
+                            // Tiến hành hủy nhiệm vụ
+                            if (mounted) {
+                              ToastService.show(
+                                context: context,
+                                type: ToastType.info,
+                                message: 'Đang hủy nhiệm vụ cứu hộ...',
+                              );
+                            }
+
+                            final success = await _manager.revokeMission();
+                            if (mounted) {
+                              if (success) {
+                                ToastService.show(
+                                  context: context,
+                                  type: ToastType.warning,
+                                  message:
+                                      'Đã hủy nhiệm vụ. Ca đã được trả về bản đồ.',
+                                );
+                                Navigator.pop(context); // Quay về Home
+                              } else {
+                                ToastService.show(
+                                  context: context,
+                                  type: ToastType.error,
+                                  message: 'Hủy thất bại. Vui lòng thử lại.',
+                                );
+                              }
+                            }
+                          },
+                          icon: Icon(
+                            Icons.cancel_outlined,
+                            color: AppColors.alertRed,
+                            size: 20.r,
+                          ),
+                          label: Text(
+                            'Huỷ nhiệm vụ cứu hộ.',
+                            style: TextStyle(
+                              fontSize: 13.sp,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.alertRed,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(
+                              color: AppColors.alertRed.withValues(alpha: 0.5),
+                              width: 1.5,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14.r),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// Xử lý khi hết 5 phút đếm ngược mà TNV không xác nhận
+  void _onStaleTimeout() {
+    if (!mounted) return;
+    setState(() => _hasStaleWarning = false);
+    _stopGpsTracking();
+    ToastService.show(
+      context: context,
+      type: ToastType.error,
+      message: 'Nhiệm vụ đã bị hủy do không phản hồi cảnh báo đứng im.',
+    );
+    Navigator.pop(context);
   }
 
   /// Connect SSE cho case này để phát hiện ca bị đóng trước khi accept
@@ -298,6 +618,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
   @override
   void dispose() {
     _localGpsTimer?.cancel();
+    _staleCountdownTimer?.cancel();
     _sseSub?.cancel();
     _manager.removeListener(_onManagerChanged);
     // KHÔNG dispose _manager.wsGpsService ở đây!
@@ -319,6 +640,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
       victimPhone: _victimPhone ?? widget.victimPhone,
     );
     _manager.onMissionEndedExternally = _onMissionEndedExternally;
+    _manager.onStaleWarningReceived = _onStaleWarning;
     _manager.addListener(_onManagerChanged);
   }
 

@@ -44,6 +44,7 @@ router.post('/case/:id/accept', sosController.acceptCase);
 router.get('/case/:id/my-assignment', sosController.checkMyAssignment);
 router.post('/case/:id/resolve', sosController.resolveCase);
 router.post('/case/:id/revoke', sosController.revokeCase);
+router.post('/case/:id/confirm-route', sosController.confirmRoute);
 router.get('/case/:id/messages', chatController.getMessages);
 router.post('/case/:id/messages', chatController.sendMessage);
 
