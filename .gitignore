@@ -27,3 +27,11 @@ dist-ssr
 .gitignore
 firebase-service-account.json
 claude.exe
+
+# Ignore root-level reports and docs
+/*.md
+/*.docx
+/*.xlsx
+/*.html
+/noi_dung_slide.txt
+/vietmap-agent-docs/
