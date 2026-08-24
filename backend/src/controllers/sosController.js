@@ -853,7 +853,7 @@ async function cancelCase(req, res) {
     // Broadcast SSE event để TNV biết ca đã bị huỷ
     try {
       emitCaseEvent(caseId, 'case:cancelled', { reason: reason || 'Nạn nhân đã hủy ca' });
-      broadcastToRoom(`case:${caseId}`, { type: 'case:cancelled', caseId, reason: reason || 'Nạn nhân đã hủy ca' });
+      broadcastToRoom(caseId, { type: 'case:cancelled', caseId, reason: reason || 'Nạn nhân đã hủy ca' });
     } catch (broadcastErr) {
       console.warn('[sosController][cancelCase] broadcast error:', broadcastErr.message);
     }

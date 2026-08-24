@@ -37,9 +37,16 @@ class WsGpsService {
   final void Function(Map<String, dynamic>)? onGpsReceived;
   final void Function(bool)? onConnectionChanged;
   final void Function(Map<String, dynamic>)? onCaseResolved;
+  final void Function(Map<String, dynamic>)? onCaseCancelled;
   final void Function(Map<String, dynamic>)? onStaleWarning;
 
-  WsGpsService({this.onGpsReceived, this.onConnectionChanged, this.onCaseResolved, this.onStaleWarning});
+  WsGpsService({
+    this.onGpsReceived,
+    this.onConnectionChanged,
+    this.onCaseResolved,
+    this.onCaseCancelled,
+    this.onStaleWarning,
+  });
 
   bool get isConnected => _isConnected;
 
@@ -130,6 +137,10 @@ class WsGpsService {
       case 'case:resolved':
         debugPrint('[WsGps] Case resolved by ${msg['resolvedBy']}');
         onCaseResolved?.call(msg);
+        break;
+      case 'case:cancelled':
+        debugPrint('[WsGps] Case cancelled by victim: ${msg['reason']}');
+        onCaseCancelled?.call(msg);
         break;
       case 'stale_warning':
         debugPrint('[WsGps] Stale warning received for case ${msg['caseId']}');

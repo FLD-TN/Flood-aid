@@ -200,14 +200,16 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
     }
   }
 
-  void _onMissionEndedExternally() {
+  void _onMissionEndedExternally(String message) {
     if (mounted) {
       ToastService.show(
         context: context,
         type: ToastType.success,
-        message: 'Nạn nhân đã xác nhận được giúp đỡ. Ca đã đóng!',
+        message: message,
       );
-      Navigator.pop(context);
+      if (Navigator.of(context).canPop()) {
+        Navigator.pop(context);
+      }
     }
   }
 

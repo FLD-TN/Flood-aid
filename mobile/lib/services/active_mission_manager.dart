@@ -47,7 +47,7 @@ class ActiveMissionManager extends ChangeNotifier {
 
   // Callback khi ca bị đóng từ bên ngoài (victim resolve / admin cancel)
   // Screen đang hiện sẽ listen cái này để pop ra
-  VoidCallback? onMissionEndedExternally;
+  void Function(String)? onMissionEndedExternally;
 
   // Callback khi nhận cảnh báo đứng im (stale_warning) từ WebSocket
   VoidCallback? onStaleWarningReceived;
@@ -88,7 +88,12 @@ class ActiveMissionManager extends ChangeNotifier {
       },
       onCaseResolved: (data) {
         debugPrint('[ActiveMissionManager] Case resolved externally');
-        onMissionEndedExternally?.call();
+        onMissionEndedExternally?.call('Nạn nhân đã xác nhận được giúp đỡ. Ca đã đóng!');
+        endMission();
+      },
+      onCaseCancelled: (data) {
+        debugPrint('[ActiveMissionManager] Case cancelled externally by victim');
+        onMissionEndedExternally?.call('Nạn nhân đã hủy ca SOS.');
         endMission();
       },
       onStaleWarning: (data) {
