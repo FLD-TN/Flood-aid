@@ -28,7 +28,7 @@ cron.schedule('*/2 * * * *', async () => {
       JOIN volunteers vol ON vol.id = ca.volunteer_id
       JOIN cases c ON c.id = ca.case_id
       WHERE c.status = 'responding'
-        AND ca.assigned_at < NOW() - INTERVAL '10 minutes'
+        AND ca.assigned_at < NOW() - INTERVAL '1 minutes'
         AND ca.completed_at IS NULL
         AND ca.revoked_at IS NULL
         AND ca.warned_at IS NULL
