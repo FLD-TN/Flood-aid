@@ -751,6 +751,16 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
   }
 
   Future<void> _handleAcceptCase() async {
+    // Không cho nhận ca mới nếu đang dở ca khác
+    if (_manager.hasActiveMission && _manager.activeCaseId != widget.caseId) {
+      ToastService.show(
+        context: context,
+        type: ToastType.error,
+        message: 'Bạn đang có 1 ca SOS khác chưa hoàn tất. Vui lòng hoàn thành hoặc hủy ca cũ trước.',
+      );
+      return;
+    }
+
     // Pre-check: kiểm tra trạng thái ca VÀ assignment
     final assignment = await ApiService.checkMyAssignment(
       widget.caseId,

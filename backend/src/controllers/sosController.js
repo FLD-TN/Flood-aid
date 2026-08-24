@@ -197,6 +197,22 @@ async function acceptCase(req, res) {
       return res.status(400).json({ error: 'Missing volunteerId' });
     }
 
+    // Kiểm tra TNV có đang bận ca khác không
+    const busyCheck = await db.query(
+      `SELECT case_id FROM case_assignments 
+       WHERE volunteer_id = $1 AND revoked_at IS NULL AND completed_at IS NULL`,
+      [volunteerId]
+    );
+    if (busyCheck.rows.length > 0) {
+      const activeCaseId = busyCheck.rows[0].case_id;
+      if (activeCaseId !== id) {
+        return res.status(403).json({ 
+          error: 'Volunteer is currently busy with another case', 
+          activeCaseId 
+        });
+      }
+    }
+
     // Kiểm tra ca còn active + lấy phone_hash để lookup victim
     const caseRow = await db.query(
       `SELECT id, coords, status, phone_hash FROM cases WHERE id = $1`,
