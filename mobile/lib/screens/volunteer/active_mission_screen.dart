@@ -94,6 +94,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
 
   // Timer đếm ngược cảnh báo đứng im (5 phút)
   Timer? _staleCountdownTimer;
+  int _staleRemainingSeconds = 300; // Lưu vào state để không bị reset khi rebuild
 
   @override
   void initState() {
@@ -110,8 +111,13 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
       _wsConnected = _manager.wsConnected;
       _manager.onMissionEndedExternally = _onMissionEndedExternally;
       _manager.onStaleWarningReceived = _onStaleWarning;
-      // Listen manager changes cho WS status
       _manager.addListener(_onManagerChanged);
+
+      // Bug #7 fix: Kiểm tra xem có đang trong cảnh báo đứng im chưa xác nhận không
+      // (trường hợp TNV mở lại app từ FCM notification khi WS đã bị ngắt)
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _checkPendingStaleWarning();
+      });
     } else {
       // Lần đầu vào — chưa accept
       _connectCaseSSE();
@@ -207,14 +213,88 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
   /// Callback khi nhận cảnh báo đứng im từ WebSocket
   void _onStaleWarning() {
     if (!mounted || _hasStaleWarning) return;
-    setState(() => _hasStaleWarning = true);
-    _showStaleWarningDialog();
+    setState(() {
+      _hasStaleWarning = true;
+      _staleRemainingSeconds = 300; // Reset mỗi lần nhận cảnh báo mới
+    });
+    // Dùng addPostFrameCallback để đảm bảo context đã sẵn sàng
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _showStaleWarningDialog();
+    });
+  }
+
+  /// Bug #7 fix: Kiểm tra xem có cảnh báo đứng im đang chờ xác nhận không
+  /// khi TNV quay lại màn hình (re-entry sau khi nhận FCM, khóa màn hình, v.v.)
+  Future<void> _checkPendingStaleWarning() async {
+    if (_volunteerId.isEmpty || _hasStaleWarning) return;
+    try {
+      final data = await ApiService.checkMyAssignment(widget.caseId, _volunteerId);
+      if (data == null || !mounted) return;
+
+      final warnedAt = data['warnedAt'];
+      final confirmed = data['confirmedEnRoute'];
+
+      // Chỉ kích hoạt nếu đang trong trạng thái chờ xác nhận
+      if (warnedAt != null && confirmed == false) {
+        final warnedTime = DateTime.tryParse(warnedAt.toString());
+        if (warnedTime == null) return;
+
+        final elapsed = DateTime.now().toUtc().difference(warnedTime.toUtc()).inSeconds;
+        final remaining = 300 - elapsed;
+
+        if (remaining <= 0) {
+          // Thời gian đã hết trong khi WS bị ngắt → hủy luôn phía client
+          debugPrint('[ActiveMission] Re-entry: stale timeout already passed, revoking');
+          _stopGpsTracking();
+          if (mounted && Navigator.of(context).canPop()) Navigator.pop(context);
+          return;
+        }
+
+        // Còn thời gian → hiện dialog với đồng hồ đúng thời gian còn lại
+        debugPrint('[ActiveMission] Re-entry: pending stale warning, ${remaining}s remaining');
+        setState(() {
+          _hasStaleWarning = true;
+          _staleRemainingSeconds = remaining;
+        });
+        if (mounted) _showStaleWarningDialog();
+      }
+    } catch (e) {
+      debugPrint('[ActiveMission] _checkPendingStaleWarning error: $e');
+    }
   }
 
   /// Hiển thị hộp thoại đếm ngược 5 phút cảnh báo đứng im.
   /// Nền mờ đen xám (Colors.black54), không cho chạm ra ngoài để đóng.
   void _showStaleWarningDialog() {
-    int remainingSeconds = 300; // 5 phút
+    // Fix #2: Khởi tạo timer NGOÀI builder để tránh tạo nhiều timer khi rebuild
+    // Fix #1 & #3: Dùng _staleRemainingSeconds từ state thay vì biến local
+    _staleCountdownTimer?.cancel();
+    _staleCountdownTimer = null;
+
+    // Dùng một setter để cập nhật cả dialog lẫn screen state
+    void Function(void Function())? _setDialogState;
+
+    _staleCountdownTimer = Timer.periodic(
+      const Duration(seconds: 1),
+      (_) {
+        if (!mounted) {
+          _staleCountdownTimer?.cancel();
+          _staleCountdownTimer = null;
+          return;
+        }
+        setState(() => _staleRemainingSeconds--);
+        _setDialogState?.call(() {});
+        if (_staleRemainingSeconds <= 0) {
+          _staleCountdownTimer?.cancel();
+          _staleCountdownTimer = null;
+          // Fix #3: Kiểm tra context còn hợp lệ trước khi pop dialog
+          if (mounted && Navigator.of(context).canPop()) {
+            Navigator.of(context, rootNavigator: false).pop();
+          }
+          _onStaleTimeout();
+        }
+      },
+    );
 
     showDialog(
       context: context,
@@ -223,33 +303,14 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (ctx, setDialogState) {
-            // Khởi tạo timer một lần duy nhất
-            _staleCountdownTimer ??= Timer.periodic(
-              const Duration(seconds: 1),
-              (_) {
-                if (!mounted) {
-                  _staleCountdownTimer?.cancel();
-                  _staleCountdownTimer = null;
-                  return;
-                }
-                remainingSeconds--;
-                if (remainingSeconds <= 0) {
-                  // Hết giờ — tự động hủy ca
-                  _staleCountdownTimer?.cancel();
-                  _staleCountdownTimer = null;
-                  Navigator.of(dialogContext).pop();
-                  _onStaleTimeout();
-                } else {
-                  setDialogState(() {});
-                }
-              },
-            );
+            // Fix #2: Gán setter để timer bên ngoài có thể trigger rebuild dialog
+            _setDialogState = setDialogState;
 
-            final minutes = remainingSeconds ~/ 60;
-            final seconds = remainingSeconds % 60;
+            final minutes = _staleRemainingSeconds ~/ 60;
+            final seconds = _staleRemainingSeconds % 60;
             final timeStr =
                 '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-            final progress = remainingSeconds / 300;
+            final progress = (_staleRemainingSeconds / 300).clamp(0.0, 1.0);
 
             return WillPopScope(
               onWillPop: () async => false, // Chặn nút Back
@@ -341,7 +402,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                               child: CircularProgressIndicator(
                                 value: progress,
                                 strokeWidth: 6.w,
-                                color: remainingSeconds <= 60
+                                color: _staleRemainingSeconds <= 60
                                     ? AppColors.alertRed
                                     : const Color(0xFFFFA726),
                                 strokeCap: StrokeCap.round,
@@ -354,7 +415,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                                 Text(
                                   timeStr,
                                   style: TextStyle(
-                                    color: remainingSeconds <= 60
+                                    color: _staleRemainingSeconds <= 60
                                         ? AppColors.alertRed
                                         : Colors.white,
                                     fontSize: 32.sp,
@@ -458,7 +519,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                                       'Đã hủy nhiệm vụ. Ca đã được trả về bản đồ.',
                                 );
                                 Navigator.pop(context); // Quay về Home
-                              } else {
+                              } else if (mounted) {
                                 ToastService.show(
                                   context: context,
                                   type: ToastType.error,
@@ -506,14 +567,21 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
   /// Xử lý khi hết 5 phút đếm ngược mà TNV không xác nhận
   void _onStaleTimeout() {
     if (!mounted) return;
-    setState(() => _hasStaleWarning = false);
+    setState(() {
+      _hasStaleWarning = false;
+      _staleRemainingSeconds = 300; // reset cho lần sau
+    });
     _stopGpsTracking();
     ToastService.show(
       context: context,
       type: ToastType.error,
       message: 'Nhiệm vụ đã bị hủy do không phản hồi cảnh báo đứng im.',
     );
-    Navigator.pop(context);
+    // Fix #5: Kiểm tra route còn tồn tại trước khi pop — tránh crash
+    // nếu screen đã bị pop bởi sự kiện khác (nạn nhân hủy ca...)
+    if (Navigator.of(context).canPop()) {
+      Navigator.pop(context);
+    }
   }
 
   /// Connect SSE cho case này để phát hiện ca bị đóng trước khi accept

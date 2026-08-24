@@ -1,7 +1,10 @@
 /**
  * Stale Assignment Checker — Module 4
  * Cron: chạy mỗi 2 phút
- * Phát hiện TNV nhận ca nhưng không di chuyển > 10 phút
+ *
+ * Scan 1: Phát hiện TNV nhận ca nhưng không di chuyển > 10 phút → gửi cảnh báo
+ * Scan 2: Phát hiện TNV đã cảnh báo nhưng không xác nhận trong 5 phút → hủy ca
+ *         (dùng SQL thay vì setTimeout để không mất trạng thái khi server restart)
  */
 
 const cron = require('node-cron');
@@ -11,7 +14,7 @@ const { broadcastToRoom } = require('../services/wsServer');
 
 cron.schedule('*/2 * * * *', async () => {
   try {
-    // TNV nhận ca > 10 phút mà GPS không di chuyển về phía nạn nhân
+    // ── Scan 1: Gửi cảnh báo đứng im ────────────────────────────────────────
     const staleAssignments = await db.query(`
       SELECT 
         ca.volunteer_id,
@@ -62,43 +65,47 @@ cron.schedule('*/2 * * * *', async () => {
       );
 
       console.log(`[staleAssignment] TNV ${row.volunteer_id} warned for case ${row.case_id}`);
-
-      // Sau 5 phút không phản hồi → hủy assignment
-      setTimeout(async () => {
-        try {
-          const stillPending = await db.query(
-            `SELECT 1 FROM case_assignments 
-             WHERE case_id = $1 AND volunteer_id = $2 AND confirmed_en_route = false AND revoked_at IS NULL`,
-            [row.case_id, row.volunteer_id]
-          );
-
-          if (stillPending.rows.length > 0) {
-            // Hủy assignment
-            await db.query(
-              `UPDATE case_assignments SET revoked_at = NOW() 
-               WHERE case_id = $1 AND volunteer_id = $2`,
-              [row.case_id, row.volunteer_id]
-            );
-
-            // Mở lại ca
-            await db.query(
-              `UPDATE cases SET status = 'pending' 
-               WHERE id = $1 AND status = 'responding'`,
-              [row.case_id]
-            );
-
-            console.warn(`[staleAssignment] ⚠️ TNV ${row.volunteer_id} revoked from case ${row.case_id} due to inactivity`);
-
-            // Re-dispatch
-            setImmediate(() => {
-              require('../services/geoDispatch').dispatchToNearbyVolunteers(row.case_id);
-            });
-          }
-        } catch (err) {
-          console.error('[staleAssignment] Revoke error:', err.message);
-        }
-      }, 5 * 60 * 1000);
     }
+
+    // ── Scan 2: Hủy ca nếu TNV không phản hồi sau 5 phút kể từ warned_at ───
+    // Bug fix: Dùng SQL query thay vì setTimeout trong RAM
+    // → Không mất trạng thái khi Render.com restart server
+    const timedOutAssignments = await db.query(`
+      SELECT ca.volunteer_id, ca.case_id, vol.fcm_token
+      FROM case_assignments ca
+      JOIN volunteers vol ON vol.id = ca.volunteer_id
+      JOIN cases c ON c.id = ca.case_id
+      WHERE ca.warned_at IS NOT NULL
+        AND ca.warned_at < NOW() - INTERVAL '5 minutes'
+        AND ca.confirmed_en_route = false
+        AND ca.revoked_at IS NULL
+        AND ca.completed_at IS NULL
+        AND c.status = 'responding'
+    `);
+
+    for (const row of timedOutAssignments.rows) {
+      // Hủy assignment
+      await db.query(
+        `UPDATE case_assignments SET revoked_at = NOW()
+         WHERE case_id = $1 AND volunteer_id = $2`,
+        [row.case_id, row.volunteer_id]
+      );
+
+      // Mở lại ca về pending
+      await db.query(
+        `UPDATE cases SET status = 'pending'
+         WHERE id = $1 AND status = 'responding'`,
+        [row.case_id]
+      );
+
+      console.warn(`[staleAssignment] ⚠️ TNV ${row.volunteer_id} auto-revoked from case ${row.case_id} (no response in 5 min)`);
+
+      // Re-dispatch
+      setImmediate(() => {
+        require('../services/geoDispatch').dispatchToNearbyVolunteers(row.case_id);
+      });
+    }
+
   } catch (err) {
     console.error('[staleAssignment] cron error:', err.message);
   }

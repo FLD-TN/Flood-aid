@@ -700,4 +700,23 @@ class ApiService {
       return false;
     }
   }
+
+  /// GET /api/case/:id/my-assignment?volunteerId=xxx
+  /// Dùng khi re-entry: kiểm tra xem có đang trong cảnh báo đứng im chưa xác nhận không
+  static Future<Map<String, dynamic>?> checkMyAssignment(String caseId, String volunteerId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$_baseUrl/api/case/$caseId/my-assignment?volunteerId=$volunteerId'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 5));
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      }
+      return null;
+    } catch (e) {
+      debugPrint('[ApiService] checkMyAssignment error: $e');
+      return null;
+    }
+  }
 }

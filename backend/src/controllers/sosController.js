@@ -597,7 +597,7 @@ async function checkMyAssignment(req, res) {
     }
 
     const result = await db.query(
-      `SELECT ca.id, ca.assigned_at, c.status
+      `SELECT ca.id, ca.assigned_at, ca.warned_at, ca.confirmed_en_route, c.status
        FROM case_assignments ca
        JOIN cases c ON c.id = ca.case_id
        WHERE ca.case_id = $1 AND ca.volunteer_id = $2 AND ca.revoked_at IS NULL
@@ -610,6 +610,8 @@ async function checkMyAssignment(req, res) {
         isAssigned: true,
         caseStatus: result.rows[0].status,
         assignedAt: result.rows[0].assigned_at,
+        warnedAt: result.rows[0].warned_at,         // null nếu chưa cảnh báo
+        confirmedEnRoute: result.rows[0].confirmed_en_route, // false nếu đang chờ xác nhận
       });
     }
 
