@@ -91,14 +91,42 @@ cron.schedule('*/2 * * * *', async () => {
         [row.case_id, row.volunteer_id]
       );
 
-      // Mở lại ca về pending
+      // Giải phóng TNV (đánh dấu available lại)
       await db.query(
-        `UPDATE cases SET status = 'pending'
-         WHERE id = $1 AND status = 'responding'`,
-        [row.case_id]
+        `UPDATE volunteers SET is_available = true WHERE id = $1`,
+        [row.volunteer_id]
       );
 
-      console.warn(`[staleAssignment] ⚠️ TNV ${row.volunteer_id} auto-revoked from case ${row.case_id} (no response in 5 min)`);
+      // Đếm xem còn TNV nào đang active cho ca này không
+      const remaining = await db.query(
+        `SELECT COUNT(*) AS cnt FROM case_assignments
+         WHERE case_id = $1 AND revoked_at IS NULL AND completed_at IS NULL`,
+        [row.case_id]
+      );
+      const remainingCount = parseInt(remaining.rows[0].cnt, 10);
+
+      if (remainingCount === 0) {
+        // Mở lại ca về pending vì không còn ai
+        await db.query(
+          `UPDATE cases SET status = 'pending'
+           WHERE id = $1 AND status = 'responding'`,
+          [row.case_id]
+        );
+      }
+
+      console.warn(`[staleAssignment] ⚠️ TNV ${row.volunteer_id} auto-revoked from case ${row.case_id} (no response in 5 min). Remaining: ${remainingCount}`);
+
+      // Broadcast qua WebSocket để Nạn nhân biết TNV đã bị hủy (ĐỒNG BỘ MÀN HÌNH NẠN NHÂN)
+      try {
+        broadcastToRoom(row.case_id, {
+          type: 'case:revoked',
+          volunteerId: row.volunteer_id,
+          remainingCount,
+          caseId: row.case_id,
+        });
+      } catch (wsErr) {
+        console.warn('[staleAssignment] WebSocket case:revoked broadcast error:', wsErr.message);
+      }
 
       // Re-dispatch
       setImmediate(() => {
