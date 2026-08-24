@@ -66,7 +66,7 @@ Giao tiếp:
 
 ---
 
-## 4. NĂM MODULE HỆ THỐNG
+## 4. SÁU MODULE HỆ THỐNG
 
 ### Module 1: Tiếp nhận & Xử lý AI (Core Ingestion & AI Pipeline)
 
@@ -193,7 +193,7 @@ Components: TopBar, Sidebar, StatsPanel, LiveCommandMap (Leaflet), CaseList, Cas
 `id` (UUID PK), `case_id` (FK→cases), `volunteer_id` (FK→volunteers), `initial_distance_m` (INT), `assigned_at`, `warned_at`, `confirmed_en_route` (BOOLEAN), `arrived_at`, `completed_at`, `revoked_at`, `notif_sent_300m` (BOOLEAN), `notif_sent_100m` (BOOLEAN), UNIQUE(case_id, volunteer_id)
 
 **admins:**
-`id` (UUID PK), `email` (UNIQUE), `firebase_uid` (UNIQUE), `full_name`, `created_at`
+`id` (UUID PK), `email` (UNIQUE), `firebase_uid` (UNIQUE), `full_name`, `password_hash` (TEXT), `created_at`
 
 **chat_messages:** *(Bảng mới)*
 `id` (UUID PK, DEFAULT uuid_generate_v4()), `case_id` (UUID, FK→cases.id ON DELETE CASCADE), `sender_role` (VARCHAR 10, CHECK IN ('volunteer','victim')), `sender_id` (UUID, nullable — volunteerId hoặc null nếu là nạn nhân), `content` (TEXT NOT NULL), `created_at` (TIMESTAMPTZ DEFAULT NOW())
@@ -251,6 +251,7 @@ Components: TopBar, Sidebar, StatsPanel, LiveCommandMap (Leaflet), CaseList, Cas
 - GET /api/volunteers/:id/active-mission → Nhiệm vụ đang thực hiện
 
 ### Admin
+- POST /api/admin/login → Đăng nhập Admin bằng email + password (bcrypt verify `password_hash`)
 - GET /api/admin/cases → Tất cả ca SOS
 - GET /api/admin/stats → Thống kê dashboard
 - GET /api/admin/case-clusters → Cụm ca SOS
@@ -315,7 +316,7 @@ KLTN/
 │       ├── services/         # aiPipeline, geoDispatch, fcmService, firebaseAdmin, wsServer
 │       │                     # wsServer xử lý cả GPS lẫn chat trong cùng WebSocket room
 │       ├── jobs/             # autoResolve, distanceTracker, staleAssignmentChecker
-│       ├── db/               # Database connection + migrations (12 migrations)
+│       ├── db/               # Database connection + migrations (13 migrations)
 │       ├── middleware/       # Auth middleware (Firebase token verify)
 │       ├── utils/            # crypto.js — AES-256-GCM encrypt/decrypt SĐT (dùng chung)
 │       └── routes.js         # All API routes
@@ -387,7 +388,7 @@ Nạn nhân/TNV/Admin đóng ca → Server: xóa `chat_messages` của ca đó �
 
 7. **Geo-Dispatch đơn giản nhưng đủ dùng:** Chỉ 2 phase (Phút 0 broadcast, Phút 15 orphan alert) thay vì hệ thống phức tạp nhiều phase. Lý do: sau khi loại bỏ cột `skills`, không còn cơ sở để phân loại TNV theo kỹ năng; broadcast phẳng đến toàn bộ TNV khả dụng là đủ nhanh và đơn giản hơn để vận hành thực tế trong thiên tai.
 
-8. **Migration idempotent (12 migrations):** Toàn bộ chạy lại an toàn mỗi lần server khởi động. Các view dùng `DROP VIEW IF EXISTS` + `CREATE VIEW` (không dùng `CREATE OR REPLACE`) do PostgreSQL không cho phép xóa cột khỏi view qua `CREATE OR REPLACE`. Mỗi migration phản ánh trạng thái schema cuối cùng — không tham chiếu cột đã bị migration sau xóa. Migration 012 thêm cột `fcm_token` vào bảng `victims`.
+8. **Migration idempotent (13 migrations):** Toàn bộ chạy lại an toàn mỗi lần server khởi động. Các view dùng `DROP VIEW IF EXISTS` + `CREATE VIEW` (không dùng `CREATE OR REPLACE`) do PostgreSQL không cho phép xóa cột khỏi view qua `CREATE OR REPLACE`. Mỗi migration phản ánh trạng thái schema cuối cùng — không tham chiếu cột đã bị migration sau xóa. Migration 012 thêm cột `fcm_token` vào bảng `victims`. Migration 013 thêm cột `password_hash` vào bảng `admins` để hỗ trợ đăng nhập Admin bằng email/password (thay vì chỉ Firebase).
 
 9. **Mã hóa SĐT (AES-256-GCM):** Cả volunteers và victims đều có `phone_encrypted`. Utility `crypto.js` dùng chung tránh duplicate code. SĐT chỉ được giải mã tại thời điểm cần giao cho đúng người đúng ca — không expose trong danh sách, không lưu trong log.
 

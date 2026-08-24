@@ -1,0 +1,51 @@
+@startuml UC09_XemLichSuTNV
+
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 14
+skinparam ArrowColor Black
+skinparam SequenceArrowThickness 1
+skinparam ParticipantBorderColor Black
+skinparam ParticipantBackgroundColor White
+skinparam ParticipantFontColor Black
+skinparam ParticipantFontSize 15
+skinparam ParticipantBorderThickness 1
+skinparam LifeLineBorderColor Black
+skinparam LifeLineBorderThickness 1
+skinparam SequenceGroupBorderColor Black
+skinparam SequenceGroupBackgroundColor White
+skinparam SequenceGroupBodyBackgroundColor White
+skinparam SequenceGroupFontSize 14
+skinparam SequenceDividerBorderColor Black
+skinparam SequenceDividerBackgroundColor White
+skinparam SequenceDividerFontSize 14
+skinparam SequenceDividerFontStyle bold
+skinparam SequenceActivationBorderColor Black
+skinparam SequenceActivationBackgroundColor White
+skinparam NoteBackgroundColor White
+skinparam NoteBorderColor Black
+hide footbox
+
+participant "Tình nguyện viên" as TNV
+participant "Ứng dụng" as App
+participant "Máy chủ" as Server
+participant "Cơ sở dữ liệu" as DB
+
+TNV -> App : Chọn mục "Lịch sử cứu hộ"
+App -> Server : Tải dữ liệu thống kê và 100 ca gần nhất
+Server -> DB : Truy vấn thống kê tổng hợp và danh sách ca
+
+alt 1a : Chưa có lịch sử cứu hộ
+    Server --> App : Không có dữ liệu
+    App --> TNV : Thống kê toàn bộ bằng 0 và danh sách trống
+
+else Có lịch sử cứu hộ
+    Server --> App : Thống kê và danh sách ca
+    App --> TNV : Hiển thị thống kê tổng hợp:\ntổng ca, hoàn thành / từ bỏ, tổng km, thời gian phản hồi TB\n\nHiển thị 100 ca gần nhất:\nthời gian, mô tả ngắn, kết quả, khoảng cách ban đầu
+
+    TNV -> App : Nhấn vào một ca để xem chi tiết
+    App --> TNV : Chi tiết ca — thời gian nhận ca và thời gian hoàn thành
+end
+
+@enduml

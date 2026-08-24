@@ -1,0 +1,223 @@
+
+
+SLIDE 1 — BÌA
+
+Nghiên cứu và Xây dựng Nền tảng Hỗ trợ Điều phối Cứu trợ Lũ lụt tại Miền Trung dựa trên AI NLP
+
+- SVTH: Trần Anh Duy — 23DH110527
+- GVHD: ThS. Lê Thị Minh Nguyện
+
+
+SLIDE 2 — MỤC LỤC
+
+1. Đặt vấn đề và Lý do chọn đề tài
+2. Cơ sở lý thuyết và Phương pháp nghiên cứu
+3. Kiến trúc và Các cơ chế lõi của hệ thống
+4. Demo thực tế
+5. Hạn chế, Hướng phát triển và Kết luận
+
+
+(Slide chuyển phần 01 tức là 1 slide thông báo chuyển sang chương kế tiếp ) 
+
+ĐẶT VẤN ĐỀ VÀ LÝ DO CHỌN ĐỀ TÀI 
+
+
+SLIDE 3 — ĐẶT VẤN ĐỀ (THỰC TRẠNG)
+
+- Khốc liệt và lặp lại: Lũ lụt miền Trung lặp lại hằng năm. Đợt lũ 2020 làm 249 người chết, thiệt hại 36.000 tỷ đồng; lũ 2025 tiếp tục cướp đi 219 sinh mạng.
+- Điều phối thủ công: Việc kêu cứu hiện nay chủ yếu qua các nền tảng mạng xã hội như Zalo, Facebook hoặc gọi điện thoại tự phát, thiếu hệ thống chuyên nghiệp.
+- Hệ quả: Thông tin bị phân tán, trùng lặp. Thiếu cơ chế phân loại mức độ nguy cấp dẫn đến việc không thể tối ưu hóa và ưu tiên các nỗ lực cứu hộ.
+
+
+SLIDE 4 — LÝ DO VÀ MỤC TIÊU
+
+- Nhu cầu thực tiễn: Hiện chưa có một nền tảng chuyên biệt nào dành riêng cho việc điều phối cứu trợ khẩn cấp tại hiện trường trong bão lũ.
+- Cơ hội công nghệ: Sự phát triển nhanh chóng của công nghệ Xử lý ngôn ngữ tự nhiên (NLP), LLM và Hệ thống thông tin địa lý (GIS).
+- Mục tiêu: Xây dựng nền tảng tự động phân loại mức độ khẩn cấp bằng AI và điều phối tình nguyện viên qua bản đồ thời gian thực.
+
+
+(Slide chuyển phần 02 ) CƠ SỞ LÝ THUYẾT VÀ PHƯƠNG PHÁP NGHIÊN CỨU
+
+
+SLIDE 5 — CƠ SỞ LÝ THUYẾT VÀ PHƯƠNG PHÁP
+
+Thẻ 1 — Cơ sở lý thuyết (ứng dụng):
+- NLP: Thuật toán Rule-based kết hợp với sức mạnh của LLM Gemini 2.5 Flash.
+- ASR: Sử dụng SpeechRecognizer (On-device) kết hợp với mô hình hóa luật biến âm phương ngữ.
+- GIS: PostGIS (xử lý truy vấn không gian ST_DWithin, ST_Distance) và bản đồ VietMap.
+
+Thẻ 2 — Phương pháp và Điểm mới:
+- Bộ dữ liệu: Dùng corpus Viet74K, áp luật sinh tự động từ điển phương ngữ (khoảng 26.000 mục).
+- Điểm mới 1: Sinh từ điển bằng luật tự động thay vì nhập thủ công.
+- Điểm mới 2: Áp dụng cơ chế phân loại lai (Hybrid).
+
+
+(Slide chuyển phần 03 —  ) KIẾN TRÚC VÀ CÁC CƠ CHẾ LÕI CỦA HỆ THỐNG
+
+
+SLIDE 6 — KIẾN TRÚC TỔNG THỂ
+
+(Ảnh sơ đồ kiến trúc: tôi có gửi trong zalo)
+
+
+SLIDE 7 — PIPELINE 3 CƠ CHẾ LÕI
+
+Chuỗi: 1. Chuẩn hóa → 2. Phân loại → 3. Điều phối
+
+- Chuẩn hóa phương ngữ: Nhận dạng giọng nói → dạng phương ngữ → chuẩn hóa → tiếng Việt chuẩn. Hoạt động offline hoàn toàn.
+- Phân loại khẩn cấp: Đưa văn bản chuẩn vào đánh giá lai (từ khóa offline và Gemini API) → hợp nhất lấy mức khẩn cấp lớn nhất (MAX) làm sàn an toàn.
+- Điều phối cứu trợ: Phát sóng SOS tới tình nguyện viên khả dụng. Theo sát quá trình tiếp cận, tự động thu hồi ca nếu không có tiến triển để tái điều phối.
+
+
+SLIDE 8 — CƠ CHẾ 1: CHUẨN HÓA PHƯƠNG NGỮ (VẤN ĐỀ)
+
+- Bối cảnh: Người dân vùng lũ nói giọng địa phương; hệ thống tiếp nhận SOS bằng cả giọng nói (STT) lẫn gõ chữ.
+- Vấn đề: STT chép lại đúng cái âm địa phương (nói "nhà" ra "nhoà", "làm" ra "lồm") — nhưng các bước sau (phân loại, dò từ khóa) chỉ hiểu tiếng phổ thông chuẩn.
+- Hệ quả: Không chuẩn hóa thì câu phương ngữ bị bỏ sót từ khóa quan trọng, dẫn đến đánh giá sai mức khẩn cấp.
+- Hai loại phương ngữ cần xử lý: (1) Biến âm — cùng một từ nhưng đọc chệch; (2) Từ vựng riêng — từ khác hẳn tiếng phổ thông.
+
+
+SLIDE 9 — LOẠI 1: BIẾN ÂM
+
+Cùng một từ nhưng phát âm chệch theo vùng. Biến đổi có quy luật nên sinh tự động bằng luật, không cần liệt kê tay.
+
+Ví dụ (phương ngữ → chuẩn, kèm quy luật):
+- nhoà → nhà (à → oà)
+- goà → gà (à → oà)
+- coá → cá (á → oá)
+- lồm → làm (àm → ồm)
+- chẹn → chặn (ặn → ẹn)
+
+Vì có quy luật, chỉ cần áp luật lên bộ từ chuẩn là sinh ra hàng chục nghìn mục, không phải gõ tay từng từ.
+
+
+SLIDE 10 — LOẠI 2: TỪ VỰNG RIÊNG
+
+Từ hoàn toàn khác tiếng phổ thông, không suy ra được bằng quy luật, nên phải liệt kê thủ công trong từ điển.
+
+Ví dụ (phương ngữ → chuẩn):
+- răng / ren → sao
+- mô → đâu
+- rứa → thế
+- chừ → giờ
+- mi → mày
+- tau → tao
+- nỏ → không
+- chi → gì
+
+
+SLIDE 11 — GIẢI PHÁP CHUẨN HÓA
+
+- Sinh từ điển: Áp luật biến âm lên Viet74K (bộ khoảng 74.000 từ tiếng Việt chuẩn) để tự động sinh khoảng 26.000 mục; cộng thêm phần từ vựng riêng liệt kê tay.
+- Khớp cụm dài trước (3 → 2 → 1 từ): Giữ trọn nghĩa cụm. Ví dụ: "mớ nhoà" khớp nguyên cụm thành "mái nhà"; nếu tách lẻ sẽ sai thành "mớ nhà".
+- Giữ nguyên từ lạ và viết hoa: Từ không có trong từ điển (ví dụ "tui") giữ nguyên, không phá câu.
+- Chạy offline trên thiết bị: Không cần mạng, hoạt động ngay cả khi lũ làm mất sóng.
+
+
+SLIDE 12 — KHỚP CỤM DÀI TRƯỚC HOẠT ĐỘNG THẾ NÀO?
+
+Quét câu từ trái sang phải. Mỗi vị trí thử cụm dài trước (3 từ → 2 từ → 1 từ); khớp được thì lấy rồi nhảy qua cả cụm.
+
+Câu vào: "Nhoà tui ngập tới mớ nhoà rồi"
+
+Diễn tiến từng bước:
+- Bước 1, tại "Nhoà": thử "Nhoà tui ngập" (không) → "Nhoà tui" (không) → "Nhoà" (khớp, biến âm) → ra "Nhà". Câu dịch tới hiện tại: Nhà
+- Bước 2, tại "tui": thử "tui ngập tới" → "tui ngập" → "tui" (không có trong từ điển) → giữ nguyên "tui". Câu dịch: Nhà tui
+- Bước 3, tại "ngập": thử "ngập tới mớ" → "ngập tới" → "ngập" (không, vì đã là từ chuẩn) → giữ "ngập". Câu dịch: Nhà tui ngập
+- Bước 4, tại "tới": thử "tới mớ nhoà" → "tới mớ" → "tới" (không) → giữ "tới". Câu dịch: Nhà tui ngập tới
+- Bước 5, tại "mớ": thử "mớ nhoà rồi" (không) → "mớ nhoà" (khớp, cụm 2 từ) → ra "mái nhà", nhảy 2 từ. Câu dịch: Nhà tui ngập tới mái nhà
+- Bước 6, tại "rồi": không có trong từ điển → giữ "rồi". Câu dịch: Nhà tui ngập tới mái nhà rồi
+
+Kết quả: "Nhà tui ngập tới mái nhà rồi". Ở bước 5, nhờ thử "mớ nhoà" (2 từ) trước nên ra "mái nhà"; nếu vào thẳng từ lẻ "nhoà" sẽ thành "mớ nhà" (sai).
+
+
+SLIDE 13 — MINH HỌA: CHUẨN HÓA CÂU SOS THỰC TẾ
+
+- "Nhoà tui ngập tới mớ nhoà rồi" → "Nhà tui ngập tới mái nhà rồi"
+  (Biến âm; khớp cụm dài mớ nhoà → mái nhà; giữ từ lạ "tui")
+- "Chừ ren rồi, nước lên tới mô?" → "Giờ sao rồi, nước lên tới đâu?"
+  (Từ vựng riêng: chừ → giờ, ren → sao, mô → đâu)
+- "Nhà tui ngập rồi, phở lồm răng chừ?" → "Nhà tui ngập rồi, phải làm sao giờ?"
+  (Từ vựng riêng: phở → phải, răng → sao, chừ → giờ; biến âm: lồm → làm)
+- "Nước chẹn hết đường, tau nỏ ra được" → "Nước chặn hết đường, tao không ra được"
+  (Biến âm: chẹn → chặn; từ vựng riêng: tau → tao, nỏ → không)
+
+Câu thật thường trộn cả hai loại phương ngữ; hệ thống xử lý đồng thời, khớp cụm dài trước để không dịch lẻ sai.
+
+
+SLIDE 14 — CƠ CHẾ 2: PHÂN LOẠI MỨC KHẨN CẤP
+
+- Thiết kế lai (Hybrid):
+  - Nhánh từ khóa: Chạy offline, tốc độ cao, xử lý từ phủ định ("không thở").
+  - Nhánh Gemini 2.5 Flash: Gọi API để hiểu ngữ cảnh phức tạp.
+- Sàn an toàn (hợp nhất): Luôn lấy mức độ khẩn cấp (1 đến 5) cao hơn giữa 2 nhánh.
+- Triết lý: Trong cứu hộ, thà đánh giá nguy hiểm cao hơn thực tế còn hơn bỏ sót dấu hiệu nguy kịch do rớt mạng.
+
+
+SLIDE 15 — CƠ SỞ PHÂN LOẠI: THANG MỨC VÀ TỪ KHÓA
+
+- Mức 5 — Cực kỳ nguy hiểm (đe dọa tính mạng): máu, bất tỉnh, không thở, chết, chìm, đuối nước.
+- Mức 4 — Khẩn cấp cao (trẻ em/người già, bị thương, ngập nóc): trẻ em, em bé, người già, ngập nóc, mái nhà, bị thương, gãy, cấp cứu.
+- Mức 3 — Khẩn cấp trung bình (mắc kẹt, nước dâng, cô lập): ngập sâu, nước dâng, kẹt, không thoát được, mắc kẹt, cô lập.
+- Mức 2 — Khẩn cấp thấp (ngập nhẹ, cần di dời): ngập, cần xuồng, cần giúp, nước lên, cần hỗ trợ.
+- Mức 1 — Ít khẩn cấp (lương thực, nước uống): mặc định, không khớp từ khóa nào.
+
+Nhánh offline tra đúng bảng này. Nhánh Gemini nhận nguyên thang 1 đến 5 này trong prompt rồi tự suy luận theo ngữ cảnh. Nhãn lấy từ tập cố định: y_te, tre_em, nguoi_gia, ngap_noc, phuong_tien.
+
+
+SLIDE 16 — MINH HỌA: PHÂN LOẠI MỨC KHẨN CẤP
+
+- "Có người bị chìm, không thở": nhánh từ khóa bắt "chìm", "không thở" → Mức 5, nhãn y_te. Gemini Mức 5. Kết quả hợp nhất: Mức 5, nhãn y_te.
+- "Nhà ngập nóc, người già mắc kẹt": nhánh từ khóa bắt "ngập nóc" (mức 4), "mắc kẹt" (mức 3) → Mức 4, nhãn ngap_noc và nguoi_gia. Gemini Mức 4. Kết quả: Mức 4.
+- "Con tui đuối nước rồi": nhánh từ khóa bắt "đuối nước" → Mức 5. Giả sử Gemini nhầm Mức 2. Hợp nhất lấy MAX(5, 2) = Mức 5 — sàn an toàn giữ mức cao.
+- "May quá không ai bị thương": "bị thương" bị "không" phủ định → Mức 1, bỏ nhãn y_te (tránh báo động giả). Gemini Mức 1. Kết quả: Mức 1.
+
+Hai nhánh chạy độc lập, hợp nhất bằng MAX (lấy mức cao hơn) làm sàn an toàn; dò từ khóa theo biên từ kết hợp phủ định trong cửa sổ 2 từ.
+
+
+SLIDE 17 — CƠ CHẾ 3: ĐIỀU PHỐI CỨU TRỢ
+
+- Phát sóng: Đẩy thông báo ngay lập tức tới mọi tình nguyện viên đang sẵn sàng (đã qua eKYC).
+- Tự động thu hồi: Nếu tình nguyện viên nhận ca nhưng 10 phút sau khoảng cách không giảm bớt (vẫn còn từ 90% trở lên), hệ thống tự nhắn hỏi và thu hồi để phát cho người khác.
+- Cảnh báo mốc: Phát thông báo chính xác khi cách nạn nhân 300m và 100m.
+- Ca mồ côi: Cron job quét định kỳ để cảnh báo Admin nếu có ca bị bỏ ngỏ.
+
+
+(Slide chuyển phần 04 —  ) DEMO THỰC TẾ
+
+SLIDE DEMO — DEMO TRỰC TIẾP (chữ đỏ lớn giữa màn hình)
+
+
+(Slide chuyển phần 05 —  ) HẠN CHẾ, HƯỚNG PHÁT TRIỂN VÀ KẾT LUẬN
+
+
+SLIDE 18 — HẠN CHẾ CỦA HỆ THỐNG
+
+- Hạ tầng thiết bị: Vẫn phụ thuộc vào sóng 4G/Wifi và nguồn pin — yếu tố rất khan hiếm trong bão lũ.
+- Dịch vụ bên ngoài: Nhánh AI ngữ cảnh vẫn phụ thuộc vào API Gemini.
+- Phạm vi từ vựng: Tập luật biến âm tự biên soạn chưa phủ hết 100% các biến thể tiếng lóng địa phương.
+- Kiểm chứng LLM: Chưa kiểm chứng được khả năng Gemini tự hiểu phương ngữ đến mức nào nếu không có bộ chuẩn hóa hỗ trợ.
+
+
+SLIDE 19 — HƯỚNG PHÁT TRIỂN TƯƠNG LAI
+
+- Dự phòng kết nối: Tích hợp luồng gửi SOS qua tin nhắn truyền thống (SMS/USSD) khi rớt mạng Internet.
+- Đa phương thức: Cho phép nạn nhân gửi ảnh/video và dùng Computer Vision để AI tự động ước tính độ sâu ngập nước.
+- Mở rộng nền tảng: Phát triển phiên bản iOS và Web hiển thị bản đồ ngập lụt theo thời gian thực.
+- Phân tích dữ liệu: Xây dựng bản đồ nhiệt (Heatmap) từ lịch sử các ca cứu hộ để hỗ trợ chính quyền quy hoạch.
+
+
+SLIDE 20 — KẾT LUẬN
+
+- Đã xây dựng FloodAid — nền tảng hoàn chỉnh gồm App nạn nhân, App tình nguyện viên và Web quản trị, số hóa toàn bộ chuỗi tiếp nhận và điều phối cứu trợ, đạt các mục tiêu đề ra.
+- Ba cơ chế lõi giải đúng ba đặc thù của bài toán:
+  - Chuẩn hóa phương ngữ (luật sinh khoảng 26.000 mục, chạy offline): hiểu đúng tiếng nói người dân vùng lũ.
+  - Phân loại lai có sàn an toàn: ưu tiên đúng ca nguy cấp, không bỏ sót khi mạng chập chờn.
+  - Điều phối tự giám sát và thu hồi: bảo đảm tình nguyện viên thực sự tiếp cận nạn nhân.
+
+Số hóa và tự động hóa toàn chuỗi: Tiếp nhận → Chuẩn hóa → Phân loại → Điều phối.
+
+
+SLIDE 21 — CẢM ƠN ( )
+
+Xin trân trọng cảm ơn quý Thầy Cô Hội đồng.

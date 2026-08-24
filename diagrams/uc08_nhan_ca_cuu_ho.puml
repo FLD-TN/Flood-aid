@@ -1,0 +1,56 @@
+@startuml UC08_NhanCaCuuHo
+
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 14
+skinparam ArrowColor Black
+skinparam SequenceArrowThickness 1
+skinparam ParticipantBorderColor Black
+skinparam ParticipantBackgroundColor White
+skinparam ParticipantFontColor Black
+skinparam ParticipantFontSize 15
+skinparam ParticipantBorderThickness 1
+skinparam LifeLineBorderColor Black
+skinparam LifeLineBorderThickness 1
+skinparam SequenceGroupBorderColor Black
+skinparam SequenceGroupBackgroundColor White
+skinparam SequenceGroupBodyBackgroundColor White
+skinparam SequenceGroupFontSize 14
+skinparam SequenceDividerBorderColor Black
+skinparam SequenceDividerBackgroundColor White
+skinparam SequenceDividerFontSize 14
+skinparam SequenceDividerFontStyle bold
+skinparam SequenceActivationBorderColor Black
+skinparam SequenceActivationBackgroundColor White
+skinparam NoteBackgroundColor White
+skinparam NoteBorderColor Black
+hide footbox
+
+participant "Tình nguyện viên" as TNV
+participant "Ứng dụng" as Screen
+participant "Máy chủ" as AssignCtrl
+participant "Cơ sở dữ liệu" as SOSCase
+
+note over TNV, Screen : Đang xem chi tiết ca SOS (từ UC07)
+
+TNV -> Screen : Nhấn "Tôi sẽ đi cứu"
+Screen -> AssignCtrl : Gửi yêu cầu nhận ca
+AssignCtrl -> SOSCase : Kiểm tra TNV còn rảnh và ca vẫn đang chờ
+
+alt 3b : TNV đang có nhiệm vụ chưa kết thúc
+    AssignCtrl --> Screen : Từ chối
+    Screen --> TNV : "Bạn đang có nhiệm vụ chưa kết thúc."
+
+else 3a : Ca SOS đã được TNV khác nhận trước
+    AssignCtrl --> Screen : Từ chối
+    Screen --> TNV : "Ca này đã có người nhận. Vui lòng chọn ca khác."
+
+else Có thể nhận ca
+    AssignCtrl -> SOSCase : Ghi nhận phân công, lưu khoảng cách ban đầu\nCập nhật ca sang "Đang cứu hộ", TNV sang "Đang thực hiện nhiệm vụ"
+    AssignCtrl -> SOSCase : Gửi số điện thoại hai bên cho nhau\nThông báo nạn nhân: "Đã có TNV đang đến"
+    AssignCtrl --> Screen : Nhận ca thành công
+    Screen --> TNV : Chuyển sang màn hình theo dõi hành trình cứu hộ
+end
+
+@enduml

@@ -71,15 +71,6 @@ Trong quá trình đăng ký, TNV có thể khai báo kỹ năng chuyên môn (k
 - *Lớp 3 — `getLastKnownLocation()` làm placeholder:* Android luôn cache vị trí từ lần dùng trước. Gửi tọa độ cache đi ngay khi bấm SOS làm tọa độ tạm thời, sau đó overwrite bằng tọa độ GPS fresh khi về. TNV nhận tín hiệu ngay lập tức, tọa độ chính xác cập nhật sau vài giây.
 - *Lưới an toàn:* Tùy chọn kéo thả ghim thủ công luôn có sẵn như phương án cuối cùng.
 
-**Kiến trúc Dự phòng Mạng (2 Lớp):**
-
-- **Lớp 1 — Tách gói tin (Split Payload):** Khi mạng yếu, hệ thống tự động tách payload thành 2 gói riêng biệt:
-  - *Gói Khẩn cấp (Critical Payload, < 150 bytes):* Chỉ chứa `phone_hash` + tọa độ GPS + mức độ ưu tiên + timestamp. Gửi ngay lập tức — đây là thứ quan trọng nhất để TNV biết **ở đâu** và **mức độ nguy hiểm**.
-  - *Gói Bổ sung (Enrichment Payload):* Chứa nội dung text đầy đủ, địa chỉ thủ công, tags AI. Gửi sau khi gói khẩn cấp thành công, hoặc lưu vào SQLite chờ mạng ổn định hơn.
-  - Mục đích: Dù mạng chỉ đủ truyền 1 gói nhỏ, TNV vẫn nhận được tín hiệu SOS với tọa độ và mức độ nguy hiểm.
-
-- **Lớp 2 — Hàng đợi Ngoại tuyến (Offline Queue):** Khi mất mạng 100%, lưu toàn bộ payload vào SQLite nội bộ. App sử dụng Android `WorkManager` + `ConnectivityManager` để lắng nghe sự kiện mạng trở lại và tự động đồng bộ ngay khi thiết bị có kết nối. App thông báo trấn an: *"Tín hiệu đã lưu an toàn, sẽ tự động gửi khi có sóng"* — tuyệt đối không hiển thị lỗi "Gửi thất bại".
-
 **Xử lý AI — Tóm tắt & Phân loại Song song (Parallel Race Pipeline):**
 
 Thay vì gọi tuần tự (tổng timeout lên đến 5+ giây), hệ thống gọi **song song đồng thời** AI và Rule-based, lấy kết quả nào về trước:
@@ -91,7 +82,7 @@ Thay vì gọi tuần tự (tổng timeout lên đến 5+ giây), hệ thống g
 
 **Chống spam SOS:** Mỗi SĐT đã xác thực OTP chỉ được có **1 ca SOS active** tại một thời điểm. Nếu cố tạo ca thứ 2 trong khi ca cũ chưa đóng, app hiển thị: *"Bạn đang có 1 ca đang được xử lý"* và dẫn về màn hình theo dõi ca hiện tại.
 
-**Công nghệ:** Flutter (Android, SQLite, speech_to_text, connectivity_plus, WorkManager), Node.js, Gemini API.
+**Công nghệ:** Flutter (Android, speech_to_text), Node.js, Gemini API.
 
 ---
 
@@ -213,10 +204,7 @@ Nạn nhân mở App — session OTP đã lưu từ trước, không cần đăn
   
 Khi bấm nút tạo SOS, App mở ra một form nhập liệu và hiển thị vị trí (đồng thời chộp tọa độ GPS hiện tại - xem phần GPS Cold Start). Nạn nhân có thể chọn tọa độ thủ công trên bản đồ nếu muốn. Sau đó nhập text thủ công hoặc nhấn giữ nút mic → Android `SpeechRecognizer` chuyển giọng nói thành text ngay trên thiết bị → text hiện ra trong ô ghi chú → nạn nhân xem và sửa nếu cần → bấm Gửi. **Chỉ text và siêu dữ liệu được gửi lên server.**
 
-App kiểm tra chất lượng mạng ngay lập tức để quyết định chiến lược gửi:
-- Mạng ổn: gửi full payload (text + GPS + metadata).
-- Mạng yếu: tách và gửi Gói Khẩn cấp trước, Gói Bổ sung sau.
-- Mất mạng: lưu SQLite, WorkManager tự đồng bộ khi có sóng.
+App gửi toàn bộ dữ liệu (text + GPS + metadata) lên server. Nếu gửi thất bại do lỗi mạng, ứng dụng sẽ hiển thị thông báo lỗi và yêu cầu nạn nhân thử lại.
 
 Backend nhận payload và khởi chạy **Parallel Race Pipeline**:
 - Gọi Gemini API, đồng thời chạy Rule-based Regex làm baseline ngay lập tức.
@@ -229,14 +217,11 @@ Sau khi gửi SOS thành công, Nạn nhân được chuyển đến màn hình 
 
 **2. Lưu ý / Lỗ hổng:**
 
-- *Lỗ hổng 1 — Viễn thông:* Mạng 4G/5G có nguy cơ sập hoặc chập chờn trong bão.
-- *Lỗ hổng 2 — API:* Gemini API có thể timeout hoặc sập.
-- *Lỗ hổng 3 — GPS trôi:* Bão lớn, trạm BTS sập làm GPS lệch 500m-1km.
+- *Lỗ hổng 1 — API:* Gemini API có thể timeout hoặc sập.
+- *Lỗ hổng 2 — GPS trôi:* Bão lớn, trạm BTS sập làm GPS lệch 500m-1km.
 
 **3. Giải pháp / Cách khắc phục:**
 
-- **Mạng yếu:** Kiến trúc Split Payload đảm bảo tọa độ + mức độ nguy hiểm được gửi trước trong gói < 150 bytes, bất kể mạng tệ đến đâu.
-- **Mất mạng:** Android WorkManager + SQLite offline queue, tự động sync khi có sóng. Không bao giờ hiển thị lỗi "Gửi thất bại" với nạn nhân.
 - **API sập:** Parallel Race Pipeline đảm bảo Rule-based Regex luôn là lưới an toàn cuối cùng, phản hồi trong 0.1 giây.
 - **GPS trôi:** Giao diện bắt buộc có tùy chọn "Kéo thả ghim trên bản đồ" hoặc ô nhập địa chỉ thủ công (VD: *"Ngã 3 cây xăng X, cuối hẻm 47"*).
 

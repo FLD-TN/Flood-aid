@@ -1,56 +1,140 @@
-export default function TopBar({ onMenuClick, adminInfo, onLogout }) {
+import { useEffect, useRef, useState } from 'react';
+import Icon from './ui/Icon';
+import ThemeToggle from './ThemeToggle';
+
+/**
+ * Thanh trên cùng.
+ *
+ * Nằm trong luồng flex (không `fixed`) nên không còn đè lên hàng số liệu như
+ * bản cũ — đó là lý do các thẻ metric bị cắt mất nửa trên.
+ */
+export default function TopBar({
+  title,
+  onMenuClick,
+  adminInfo,
+  onLogout,
+  onRefresh,
+  refreshing = false,
+  searchValue = '',
+  onSearchChange,
+  searchPlaceholder = 'Tìm ca SOS, toạ độ, tình nguyện viên...',
+  showSearch = true,
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  // Đóng menu tài khoản khi bấm ra ngoài hoặc nhấn Esc
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onClick = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
+    };
+    const onKey = (e) => e.key === 'Escape' && setMenuOpen(false);
+    document.addEventListener('mousedown', onClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [menuOpen]);
+
+  const initials = (adminInfo?.fullName || 'Admin')
+    .split(' ')
+    .filter(Boolean)
+    .slice(-2)
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase();
+
   return (
-    <header className="fixed top-0 right-0 left-0 md:left-20 z-40 bg-surface/80 backdrop-blur-md border-b border-outline-variant flex justify-between items-center h-16 px-md md:px-gutter w-full md:w-[calc(100%-5rem)] transition-all duration-300">
-      <div className="flex items-center gap-sm md:gap-xl">
-        {/* Mobile Hamburger Menu */}
-        <button
-          className="md:hidden p-2 text-on-surface-variant hover:bg-surface-bright rounded-lg transition-colors"
-          onClick={onMenuClick}
-        >
-          <span className="material-symbols-outlined" data-icon="menu">menu</span>
-        </button>
+    <header className="z-30 flex h-16 shrink-0 items-center gap-sm border-b border-outline-variant bg-surface px-md shadow-panel md:px-lg">
+      {/* Trái */}
+      <button className="icon-btn h-10 w-10 md:hidden" onClick={onMenuClick} aria-label="Mở menu">
+        <Icon name="menu" size={22} />
+      </button>
 
-        <h2 className="font-h1 text-xl md:text-2xl text-on-surface">RescueCore Admin</h2>
+      <h2 className="min-w-0 shrink-0 truncate font-h1 text-base font-semibold text-on-surface md:text-lg">
+        {title}
+      </h2>
 
-        <div className="relative hidden lg:block w-96">
-          <span className="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-on-surface-variant" data-icon="search">search</span>
+      {/* Ô tìm kiếm — co giãn, ẩn trên màn nhỏ */}
+      {showSearch ? (
+        <div className="relative ml-md hidden min-w-0 max-w-md flex-1 lg:block">
+          <Icon
+            name="search"
+            size={18}
+            className="pointer-events-none absolute left-sm top-1/2 -translate-y-1/2 text-on-surface-variant"
+          />
           <input
-            className="bg-surface-container-low border-outline-variant text-on-surface w-full pl-xl py-2 rounded-lg focus:ring-primary focus:border-primary font-body-md text-sm outline-none"
-            placeholder="Search coordinates, teams, or alerts..."
-            type="text"
+            className="field py-2 pl-9"
+            placeholder={searchPlaceholder}
+            type="search"
+            value={searchValue}
+            onChange={(e) => onSearchChange?.(e.target.value)}
           />
         </div>
-      </div>
+      ) : (
+        <div className="flex-1" />
+      )}
 
-      <div className="flex items-center gap-sm md:gap-lg">
-        <div className="flex items-center gap-xs md:gap-md">
-          <button className="p-2 text-on-surface-variant hover:bg-surface-bright rounded-full transition-all duration-200">
-            <span className="material-symbols-outlined" data-icon="notifications_active">notifications_active</span>
-          </button>
-          <button className="p-2 text-on-surface-variant hover:bg-surface-bright rounded-full transition-all duration-200">
-            <span className="material-symbols-outlined" data-icon="sensors">sensors</span>
-          </button>
-        </div>
-        <div className="h-8 w-px bg-outline-variant hidden sm:block"></div>
-
-        {/* Admin info + Logout */}
-        <div className="flex items-center gap-sm">
-          <div className="flex items-center gap-sm p-1 sm:pr-3 rounded-full">
-            <div className="h-8 w-8 rounded-full border border-primary bg-primary/20 flex items-center justify-center">
-              <span className="material-symbols-outlined text-primary text-[18px]" data-icon="admin_panel_settings">admin_panel_settings</span>
-            </div>
-            <div className="hidden md:block">
-              <p className="font-label-sm text-on-surface text-sm leading-tight">{adminInfo?.fullName || 'Admin'}</p>
-              <p className="text-on-surface-variant text-[10px] leading-tight">{adminInfo?.email || ''}</p>
-            </div>
-          </div>
+      {/* Phải */}
+      <div className={`flex items-center gap-xs ${showSearch ? 'ml-auto' : ''}`}>
+        {onRefresh && (
           <button
-            onClick={onLogout}
-            className="p-2 text-on-surface-variant hover:bg-error/10 hover:text-error rounded-full transition-all duration-200"
-            title="Đăng xuất"
+            className="icon-btn h-9 w-9"
+            onClick={onRefresh}
+            title="Làm mới dữ liệu"
+            aria-label="Làm mới dữ liệu"
           >
-            <span className="material-symbols-outlined text-[20px]" data-icon="logout">logout</span>
+            <Icon name="refresh" size={20} className={refreshing ? 'animate-spin' : ''} />
           </button>
+        )}
+
+        <ThemeToggle />
+
+        <span className="mx-xs hidden h-6 w-px bg-outline-variant sm:block" />
+
+        {/* Tài khoản */}
+        <div className="relative" ref={menuRef}>
+          <button
+            onClick={() => setMenuOpen((v) => !v)}
+            className="flex items-center gap-sm rounded-full py-1 pl-1 pr-1 transition-colors hover:bg-surface-bright sm:pr-sm"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+          >
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-primary/50 bg-primary/15 font-label-sm text-[11px] font-bold text-primary">
+              {initials || 'AD'}
+            </span>
+            <span className="hidden min-w-0 text-left md:block">
+              <span className="block truncate font-label-sm text-xs leading-tight text-on-surface">
+                {adminInfo?.fullName || 'Admin'}
+              </span>
+              <span className="block max-w-[160px] truncate text-[10px] leading-tight text-on-surface-variant">
+                {adminInfo?.email || ''}
+              </span>
+            </span>
+            <Icon name="expand_more" size={18} className="hidden text-on-surface-variant md:block" />
+          </button>
+
+          {menuOpen && (
+            <div
+              role="menu"
+              className="panel absolute right-0 top-full z-50 mt-xs w-56 animate-fade-in overflow-hidden p-0"
+            >
+              <div className="border-b border-outline-variant/60 px-md py-sm md:hidden">
+                <p className="truncate font-label-sm text-xs text-on-surface">{adminInfo?.fullName || 'Admin'}</p>
+                <p className="truncate text-[10px] text-on-surface-variant">{adminInfo?.email || ''}</p>
+              </div>
+              <button
+                role="menuitem"
+                onClick={onLogout}
+                className="flex w-full items-center gap-sm px-md py-sm text-left font-body-md text-sm text-on-surface transition-colors hover:bg-error/10 hover:text-error"
+              >
+                <Icon name="logout" size={20} />
+                Đăng xuất
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </header>

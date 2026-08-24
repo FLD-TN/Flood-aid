@@ -1,206 +1,191 @@
+import { useState } from 'react';
 import { resolveCase } from '../api';
+import Icon from './ui/Icon';
+import {
+  TAG_LABELS,
+  formatWaiting,
+  isOrphanCase,
+  shortId,
+  statusMeta,
+  urgencyMeta,
+} from '../lib/caseMeta';
 
-const URGENCY_COLORS = {
-  5: 'var(--urgency-5)', 4: 'var(--urgency-4)',
-  3: 'var(--urgency-3)', 2: 'var(--urgency-2)', 1: 'var(--urgency-1)',
-};
+/**
+ * Panel chi tiết ca SOS.
+ *
+ * Bản cũ style bằng các biến CSS (--bg-elevated, --font-mono…) chưa từng được
+ * định nghĩa nên hiện ra không có định dạng; giờ dùng token của design system.
+ */
+export default function CaseDetailPanel({ caseData, onClose, onResolved }) {
+  const [closing, setClosing] = useState(false);
+  const [error, setError] = useState('');
 
-const STATUS_LABELS = {
-  pending:    { label: 'CHỜ CỨU HỘ',   color: 'var(--status-pending)' },
-  responding: { label: 'CÓ TNV ĐI ĐẾN', color: 'var(--status-responding)' },
-  on_scene:   { label: 'TNV TẠI CHỖ',  color: 'var(--status-on-scene)' },
-  resolved:   { label: 'ĐÃ ĐÓNG',      color: 'var(--status-resolved)' },
-};
+  if (!caseData) return null;
 
-const TAG_MAP = {
-  y_te: '🩹 Y tế', tre_em: '👶 Trẻ em',
-  nguoi_gia: '👴 Người già', can_xuong: '🚣 Xuồng', ngap_nha: '🏠 Ngập',
-};
-
-export default function CaseDetailPanel({ caseData, onClose }) {
   const c = caseData;
-  const urgColor = URGENCY_COLORS[c.urgency_level] || 'var(--urgency-3)';
-  const statusCfg = STATUS_LABELS[c.status] || STATUS_LABELS.pending;
-  const isOrphan = c.minutes_waiting > 15 && (c.responding_count ?? 0) === 0
-    && c.status === 'pending';
+  const urgency = urgencyMeta(c.urgency_level);
+  const status = statusMeta(c.status);
+  const orphan = isOrphanCase(c);
+  const volunteers = c.volunteers || [];
 
   async function handleCloseCase() {
-    if (!window.confirm(`Đóng ca SOS #${c.id?.slice(0,8).toUpperCase()}?`)) return;
-    await resolveCase(c.id, 'admin');
-    onClose();
+    if (!window.confirm(`Đóng ca SOS #${shortId(c.id)}?`)) return;
+    setClosing(true);
+    setError('');
+    try {
+      await resolveCase(c.id, 'admin');
+      onResolved?.(c.id);
+      onClose?.();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Không đóng được ca. Thử lại sau.');
+    } finally {
+      setClosing(false);
+    }
   }
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Header */}
-      <div className="side-panel-header">
-        <div>
-          <div style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: 11,
-            color: 'var(--text-muted)',
-            letterSpacing: '0.1em',
-            marginBottom: 2,
-          }}>
-            CA #{c.id?.slice(0,8).toUpperCase() || '--------'}
-          </div>
-          <div style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: 16,
-            fontWeight: 600,
-            letterSpacing: '0.06em',
-            textTransform: 'uppercase',
-            color: statusCfg.color,
-          }}>
-            {statusCfg.label}
-          </div>
-        </div>
-        <button
-          onClick={onClose}
-          style={{
-            background: 'none', border: 'none',
-            color: 'var(--text-muted)', cursor: 'pointer', fontSize: 18,
-            width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            borderRadius: 4, transition: 'color 0.15s',
-          }}
-          title="Đóng panel"
-        >
-          ✕
-        </button>
-      </div>
+  const stats = [
+    { label: 'Thời gian chờ', value: formatWaiting(c.minutes_waiting), icon: 'schedule' },
+    { label: 'TNV đang đến', value: c.responding_count ?? 0, icon: 'directions_run' },
+  ];
 
-      {/* Orphan alert */}
-      {isOrphan && (
-        <div style={{
-          padding: '8px 16px',
-          background: 'rgba(239,68,68,0.08)',
-          borderLeft: '3px solid var(--urgency-5)',
-          fontFamily: 'var(--font-mono)',
-          fontSize: 11,
-          color: 'var(--urgency-5)',
-          letterSpacing: '0.1em',
-          animation: 'orphanPulse 2s infinite',
-        }}>
-          ⚠ CA MỒ CÔI — CHƯA CÓ TNV SAU {Math.round(c.minutes_waiting)}P
+  return (
+    <div className="flex h-full min-h-0 w-full min-w-0 flex-col bg-surface">
+      {/* Đầu panel */}
+      <header className="flex shrink-0 items-start justify-between gap-sm border-b border-outline-variant/60 bg-surface-container/60 px-md py-sm">
+        <div className="min-w-0">
+          <p className="font-label-sm text-[10px] tracking-widest text-on-surface-variant">
+            CA #{shortId(c.id)}
+          </p>
+          <p
+            className="truncate font-h1 text-base font-semibold uppercase tracking-wide"
+            style={{ color: `rgb(var(--${status.token}))` }}
+          >
+            {status.label}
+          </p>
+        </div>
+        <button onClick={onClose} className="icon-btn h-8 w-8 shrink-0" aria-label="Đóng panel chi tiết">
+          <Icon name="close" size={20} />
+        </button>
+      </header>
+
+      {orphan && (
+        <div className="flex shrink-0 items-center gap-xs border-l-4 border-error bg-error/10 px-md py-sm font-label-sm text-[11px] tracking-wider text-error">
+          <Icon name="warning" size={16} />
+          CA MỒ CÔI — CHƯA CÓ TNV SAU {Math.round(c.minutes_waiting ?? 0)} PHÚT
         </div>
       )}
 
-      {/* Detail content */}
-      <div className="detail-panel">
-        {/* Urgency + Tags */}
-        <div>
-          <div className="detail-section-label">Mức độ & Phân loại</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
-            <span style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: 12,
-              padding: '3px 8px',
-              borderRadius: 4,
-              background: `color-mix(in srgb, ${urgColor} 15%, transparent)`,
-              color: urgColor,
-              fontWeight: 500,
-              letterSpacing: '0.08em',
-            }}>
-              MỨC {c.urgency_level}
+      {/* Nội dung cuộn */}
+      <div className="min-h-0 flex-1 space-y-lg overflow-y-auto p-md">
+        {/* Mức độ & phân loại */}
+        <section>
+          <h4 className="section-label mb-sm">Mức độ &amp; phân loại</h4>
+          <div className="flex flex-wrap items-center gap-xs">
+            <span
+              className="chip font-bold"
+              style={{
+                background: `rgb(var(--${urgency.token}) / 0.15)`,
+                color: `rgb(var(--${urgency.token}))`,
+              }}
+            >
+              Mức {c.urgency_level} · {urgency.label}
             </span>
-            {(c.tags || []).map(tag => (
-              <span key={tag} className="tag-chip">
-                {TAG_MAP[tag] || tag}
+            {(c.tags || []).map((tag) => (
+              <span key={tag} className="chip bg-surface-bright text-on-surface-variant">
+                {TAG_LABELS[tag] || tag}
               </span>
             ))}
           </div>
-        </div>
+        </section>
 
-        {/* SOS Text */}
-        <div>
-          <div className="detail-section-label">Mô tả SOS</div>
-          <div className="detail-sos-text">
+        {/* Mô tả */}
+        <section>
+          <h4 className="section-label mb-sm">Mô tả SOS</h4>
+          <p className="rounded-lg border border-outline-variant/50 bg-surface-container-low p-md font-body-md text-sm leading-relaxed text-on-surface">
             {c.summary_1line || c.sos_text || '(Không có mô tả)'}
-          </div>
-        </div>
+          </p>
+        </section>
 
-        {/* Stats */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: 8,
-        }}>
-          {[
-            { label: 'CHỜ ĐỢI', value: `${Math.round(c.minutes_waiting ?? 0)}p` },
-            { label: 'TNV ĐI ĐẾN', value: c.responding_count ?? 0 },
-          ].map(({ label, value }) => (
-            <div key={label} style={{
-              padding: '10px 12px',
-              background: 'var(--bg-elevated)',
-              border: '1px solid var(--border-subtle)',
-              borderRadius: 6,
-            }}>
-              <div style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: 'var(--text-2xl)',
-                fontWeight: 500,
-                color: 'var(--text-primary)',
-                lineHeight: 1,
-              }}>
-                {value}
-              </div>
-              <div className="detail-section-label" style={{ marginBottom: 0, marginTop: 4 }}>
-                {label}
-              </div>
+        {/* Vị trí */}
+        {c.lat != null && c.lon != null && (
+          <section>
+            <h4 className="section-label mb-sm">Vị trí</h4>
+            <div className="flex items-center justify-between gap-sm rounded-lg border border-outline-variant/50 bg-surface-container-low p-md">
+              <span className="font-label-sm text-xs text-on-surface">
+                {c.lat.toFixed(5)}, {c.lon.toFixed(5)}
+              </span>
+              <a
+                href={`https://www.google.com/maps?q=${c.lat},${c.lon}`}
+                target="_blank"
+                rel="noreferrer"
+                className="btn-ghost px-sm py-xs no-underline"
+              >
+                <Icon name="open_in_new" size={16} />
+                Mở bản đồ
+              </a>
             </div>
-          ))}
-        </div>
-
-        {/* Volunteers assigned */}
-        {(c.volunteers || []).length > 0 && (
-          <div>
-            <div className="detail-section-label">TNV Được Cử</div>
-            {c.volunteers.map(vol => (
-              <div key={vol.id} style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '8px 10px',
-                background: 'var(--bg-elevated)',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 6,
-                marginBottom: 6,
-              }}>
-                <div>
-                  <div style={{
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: 12,
-                    color: 'var(--text-primary)',
-                  }}>
-                    TNV #{vol.id?.slice(0,8).toUpperCase()}
-                  </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                    {vol.distance_m != null ? `${vol.distance_m}m` : '–'} · {vol.minutes_since_update ?? 0}p trước
-                  </div>
-                </div>
-                {vol.phone && (
-                  <a
-                    href={`tel:${vol.phone}`}
-                    className="detail-action-btn call"
-                    style={{ width: 'auto', textDecoration: 'none', fontSize: 12, padding: '5px 10px' }}
-                  >
-                    📞 GSM
-                  </a>
-                )}
-              </div>
-            ))}
-          </div>
+          </section>
         )}
 
-        {/* Actions */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {c.status !== 'resolved' && (
-            <button className="detail-action-btn close-case" onClick={handleCloseCase}>
-              ✅ Đóng ca SOS này
-            </button>
-          )}
-        </div>
+        {/* Số liệu */}
+        <section className="grid grid-cols-2 gap-sm">
+          {stats.map((s) => (
+            <div key={s.label} className="rounded-lg border border-outline-variant/50 bg-surface-container-low p-md">
+              <Icon name={s.icon} size={18} className="mb-xs text-on-surface-variant" />
+              <p className="font-h1 text-xl leading-none text-on-surface">{s.value}</p>
+              <p className="section-label mt-xs">{s.label}</p>
+            </div>
+          ))}
+        </section>
+
+        {/* TNV được cử */}
+        {volunteers.length > 0 && (
+          <section>
+            <h4 className="section-label mb-sm">TNV được cử ({volunteers.length})</h4>
+            <ul className="space-y-xs">
+              {volunteers.map((vol) => (
+                <li
+                  key={vol.id}
+                  className="flex items-center justify-between gap-sm rounded-lg border border-outline-variant/50 bg-surface-container-low p-sm"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-label-sm text-xs text-on-surface">
+                      {vol.full_name || `TNV #${shortId(vol.id)}`}
+                    </p>
+                    <p className="truncate text-[11px] text-on-surface-variant">
+                      {vol.distance_m != null ? `Cách ${vol.distance_m}m` : 'Chưa rõ khoảng cách'} ·{' '}
+                      {vol.minutes_since_update ?? 0} phút trước
+                    </p>
+                  </div>
+                  {vol.phone && (
+                    <a href={`tel:${vol.phone}`} className="btn-ghost shrink-0 px-sm py-xs no-underline">
+                      <Icon name="call" size={16} />
+                      Gọi
+                    </a>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {error && (
+          <p className="flex items-center gap-xs rounded-lg border border-error/40 bg-error/10 p-sm font-body-md text-xs text-error">
+            <Icon name="error" size={16} />
+            {error}
+          </p>
+        )}
       </div>
+
+      {/* Hành động — ghim đáy, không bị nội dung đẩy khuất */}
+      {c.status !== 'resolved' && (
+        <footer className="shrink-0 border-t border-outline-variant/60 bg-surface-container/60 p-md">
+          <button onClick={handleCloseCase} disabled={closing} className="btn-primary w-full py-sm">
+            <Icon name="check_circle" size={18} />
+            {closing ? 'Đang đóng...' : 'Đóng ca SOS này'}
+          </button>
+        </footer>
+      )}
     </div>
   );
 }

@@ -37,6 +37,8 @@ dependencies:
   # Local Notifications (System-level, giống Messenger/MBBank)
   flutter_local_notifications: ^19.0.0
   connectivity_plus: ^7.1.1
+  record: ^6.2.1
+  path_provider: ^2.1.5
   shimmer: ^3.0.0
   lucide_icons: ^0.257.0
   flutter_screenutil: ^5.9.3

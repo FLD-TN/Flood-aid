@@ -1,4 +1,9 @@
 /** @type {import('tailwindcss').Config} */
+
+// Mọi màu đọc từ CSS variable (định nghĩa ở src/App.css) theo format
+// "R G B" để Tailwind chèn được alpha: bg-primary/20 → rgb(var(--primary) / 0.2)
+const c = (name) => `rgb(var(--${name}) / <alpha-value>)`;
+
 export default {
   content: [
     "./index.html",
@@ -8,86 +13,122 @@ export default {
   theme: {
     extend: {
       colors: {
-        "surface-bright": "#2c3a4a",
-        "outline-variant": "#43474a",
-        "on-primary-fixed": "#151d20",
-        "primary": "#3CBAB2",
-        "on-primary": "#0B1A28",
-        "on-surface": "#E8F0F5",
-        "secondary": "#b3cada",
-        "on-tertiary-fixed-variant": "#00504c",
-        "on-background": "#E8F0F5",
-        "primary-container": "#1d3d3b",
-        "surface-container-highest": "#283645",
-        "on-primary-container": "#80f6ed",
-        "on-error-container": "#ffdad6",
-        "outline": "#8d9194",
-        "surface-container-low": "#0e1d2b",
-        "tertiary-container": "#80f6ed",
-        "inverse-on-surface": "#233241",
-        "error-container": "#93000a",
-        "surface-container-lowest": "#020f1d",
-        "on-secondary-container": "#a2b8c8",
-        "surface-container": "#12212f",
-        "primary-fixed-dim": "#c0c8cd",
-        "on-surface-variant": "#c4c7c9",
-        "error": "#ffb4ab",
-        "primary-fixed": "#dce4e9",
-        "on-tertiary-container": "#00716b",
-        "on-primary-fixed-variant": "#40484c",
-        "surface": "#142637",
-        "secondary-fixed": "#cfe6f7",
-        "on-tertiary": "#003734",
-        "secondary-container": "#344957",
-        "on-tertiary-fixed": "#00201e",
-        "tertiary-fixed": "#80f6ed",
-        "on-error": "#690005",
-        "surface-container-high": "#1d2b3a",
-        "on-secondary": "#1d3340",
-        "surface-dim": "#051422",
-        "inverse-surface": "#d5e4f8",
-        "tertiary-fixed-dim": "#61d9d0",
-        "secondary-fixed-dim": "#b3cada",
-        "inverse-primary": "#576064",
-        "tertiary": "#3CBAB2",
-        "surface-tint": "#c0c8cd",
-        "surface-variant": "#283645",
-        "on-secondary-fixed": "#061e2a",
-        "on-secondary-fixed-variant": "#344957",
-        "background": "#0B1A28"
+        "background": c("background"),
+        "on-background": c("on-background"),
+
+        "surface": c("surface"),
+        "on-surface": c("on-surface"),
+        "on-surface-variant": c("on-surface-variant"),
+        "surface-bright": c("surface-bright"),
+        "surface-dim": c("surface-dim"),
+        "surface-variant": c("surface-variant"),
+        "surface-container-lowest": c("surface-container-lowest"),
+        "surface-container-low": c("surface-container-low"),
+        "surface-container": c("surface-container"),
+        "surface-container-high": c("surface-container-high"),
+        "surface-container-highest": c("surface-container-highest"),
+
+        "primary": c("primary"),
+        "on-primary": c("on-primary"),
+        "primary-container": c("primary-container"),
+        "on-primary-container": c("on-primary-container"),
+
+        "secondary": c("secondary"),
+        "on-secondary": c("on-secondary"),
+        "secondary-container": c("secondary-container"),
+        "on-secondary-container": c("on-secondary-container"),
+
+        "tertiary": c("tertiary"),
+        "on-tertiary": c("on-tertiary"),
+        "tertiary-container": c("tertiary-container"),
+        "on-tertiary-container": c("on-tertiary-container"),
+
+        "outline": c("outline"),
+        "outline-variant": c("outline-variant"),
+
+        "error": c("error"),
+        "on-error": c("on-error"),
+        "error-container": c("error-container"),
+        "on-error-container": c("on-error-container"),
+
+        "success": c("success"),
+        "on-success": c("on-success"),
+        "success-container": c("success-container"),
+        "on-success-container": c("on-success-container"),
+
+        "warning": c("warning"),
+        "on-warning": c("on-warning"),
+        "warning-container": c("warning-container"),
+        "on-warning-container": c("on-warning-container"),
+
+        "inverse-surface": c("inverse-surface"),
+        "inverse-on-surface": c("inverse-on-surface"),
+
+        // Thang mức độ khẩn cấp 1..5 — dùng chung với marker bản đồ
+        "urgency-1": c("urgency-1"),
+        "urgency-2": c("urgency-2"),
+        "urgency-3": c("urgency-3"),
+        "urgency-4": c("urgency-4"),
+        "urgency-5": c("urgency-5"),
       },
       borderRadius: {
-        "DEFAULT": "0.25rem",
+        "DEFAULT": "0.375rem",
         "lg": "0.5rem",
         "xl": "0.75rem",
+        "2xl": "1rem",
         "full": "9999px"
       },
       spacing: {
+        "xs": "4px",
         "sm": "8px",
-        "lg": "32px",
         "md": "16px",
-        "xl": "64px",
+        "lg": "24px",
+        "xl": "40px",
+        "2xl": "64px",
         "container-margin": "24px",
         "gutter": "16px"
       },
       fontFamily: {
-        "h2": ["Inter", "sans-serif"],
-        "body-lg": ["Inter", "sans-serif"],
-        "display": ["Inter", "sans-serif"],
-        "body-md": ["Inter", "sans-serif"],
-        "label-sm": ["Roboto Mono", "monospace"],
-        "display-mobile": ["Inter", "sans-serif"],
-        "h1": ["Inter", "sans-serif"]
+        "h1": ["Inter", "system-ui", "sans-serif"],
+        "h2": ["Inter", "system-ui", "sans-serif"],
+        "display": ["Inter", "system-ui", "sans-serif"],
+        "display-mobile": ["Inter", "system-ui", "sans-serif"],
+        "body-lg": ["Inter", "system-ui", "sans-serif"],
+        "body-md": ["Inter", "system-ui", "sans-serif"],
+        "label-sm": ["Roboto Mono", "ui-monospace", "monospace"],
+        "mono": ["Roboto Mono", "ui-monospace", "monospace"]
       },
       fontSize: {
-        "h2": ["2rem", {"lineHeight": "1.3", "fontWeight": "400"}],
-        "body-lg": ["1.125rem", {"lineHeight": "1.6", "fontWeight": "400"}],
-        "display": ["4.5rem", {"lineHeight": "1.1", "letterSpacing": "-0.015em", "fontWeight": "400"}],
-        "body-md": ["1rem", {"lineHeight": "1.6", "fontWeight": "400"}],
-        "label-sm": ["0.75rem", {"lineHeight": "1", "letterSpacing": "0.04em", "fontWeight": "400"}],
-        "display-mobile": ["3rem", {"lineHeight": "1.1", "fontWeight": "400"}],
-        "h1": ["2.5rem", {"lineHeight": "1.2", "fontWeight": "400"}]
-      }
+        "h2": ["2rem", { "lineHeight": "1.3", "fontWeight": "600" }],
+        "body-lg": ["1.125rem", { "lineHeight": "1.6", "fontWeight": "400" }],
+        "display": ["4.5rem", { "lineHeight": "1.1", "letterSpacing": "-0.015em", "fontWeight": "600" }],
+        "body-md": ["1rem", { "lineHeight": "1.6", "fontWeight": "400" }],
+        "label-sm": ["0.75rem", { "lineHeight": "1", "letterSpacing": "0.04em", "fontWeight": "500" }],
+        "display-mobile": ["3rem", { "lineHeight": "1.1", "fontWeight": "600" }],
+        "h1": ["2.5rem", { "lineHeight": "1.2", "fontWeight": "600" }]
+      },
+      boxShadow: {
+        "panel": "var(--shadow-panel)",
+        "raised": "var(--shadow-raised)",
+        "float": "var(--shadow-float)",
+      },
+      transitionTimingFunction: {
+        "emphasized": "cubic-bezier(0.2, 0, 0, 1)",
+      },
+      keyframes: {
+        "slide-in-right": {
+          from: { transform: "translateX(16px)", opacity: "0" },
+          to: { transform: "translateX(0)", opacity: "1" },
+        },
+        "fade-in": {
+          from: { opacity: "0" },
+          to: { opacity: "1" },
+        },
+      },
+      animation: {
+        "slide-in-right": "slide-in-right 0.25s cubic-bezier(0.2, 0, 0, 1)",
+        "fade-in": "fade-in 0.2s ease-out",
+      },
     },
   },
   plugins: [],

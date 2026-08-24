@@ -56,6 +56,13 @@ void main() async {
       // Báo cho VolunteerHomeScreen refresh list ngay lập tức
       // thay vì chờ poll 15 giây
       EventBus.fire('new_sos', {'caseId': data['caseId'] ?? ''});
+    } else if (data['type'] == 'NEAR_100') {
+      LocalNotificationService.showNotification(
+        id: message.hashCode,
+        title: message.notification?.title ?? '🟢 Người cứu hộ đã đến!',
+        body: message.notification?.body ?? 'Đội cứu hộ đã đến khu vực của bạn!',
+        payload: 'near_100',
+      );
     }
   });
 

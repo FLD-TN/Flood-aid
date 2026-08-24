@@ -1,0 +1,48 @@
+@startuml UC05_XemLichSu
+
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 14
+skinparam ArrowColor Black
+skinparam SequenceArrowThickness 1
+skinparam ParticipantBorderColor Black
+skinparam ParticipantBackgroundColor White
+skinparam ParticipantFontColor Black
+skinparam ParticipantFontSize 15
+skinparam ParticipantBorderThickness 1
+skinparam LifeLineBorderColor Black
+skinparam LifeLineBorderThickness 1
+skinparam SequenceGroupBorderColor Black
+skinparam SequenceGroupBackgroundColor White
+skinparam SequenceGroupBodyBackgroundColor White
+skinparam SequenceGroupFontSize 14
+skinparam SequenceDividerBorderColor Black
+skinparam SequenceDividerBackgroundColor White
+skinparam SequenceDividerFontSize 14
+skinparam SequenceDividerFontStyle bold
+skinparam SequenceActivationBorderColor Black
+skinparam SequenceActivationBackgroundColor White
+skinparam NoteBackgroundColor White
+skinparam NoteBorderColor Black
+hide footbox
+
+participant "Nạn nhân" as Victim
+participant "Ứng dụng" as Screen
+participant "Máy chủ" as HistCtrl
+participant "Cơ sở dữ liệu" as SOSCase
+
+Victim -> Screen : Chọn mục "Lịch sử" trên menu
+Screen -> HistCtrl : Lấy danh sách lịch sử SOS
+HistCtrl -> SOSCase : Truy vấn ca SOS của tài khoản (mới nhất trước)
+
+alt 1a : Chưa có ca SOS nào
+    HistCtrl --> Screen : Danh sách rỗng
+    Screen --> Victim : "Bạn chưa gửi yêu cầu SOS nào"
+
+else Có ít nhất một ca SOS
+    HistCtrl --> Screen : Danh sách ca SOS
+    Screen --> Victim : Hiển thị danh sách — thời gian, mô tả tóm tắt,\ntrạng thái, mức độ khẩn cấp, nhãn phân loại\nvà tên TNV phụ trách (nếu có)
+end
+
+@enduml

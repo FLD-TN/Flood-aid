@@ -1,0 +1,64 @@
+@startuml Hinh4_2_TuDienHaiLop
+
+scale 0.95
+skinparam shadowing false
+skinparam backgroundColor #f0f0f0
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam linetype ortho
+skinparam nodesep 25
+skinparam ranksep 35
+
+skinparam rectangle {
+  BorderColor black
+  FontColor black
+  FontSize 13
+}
+skinparam ArrowColor black
+skinparam ArrowFontColor black
+skinparam ArrowFontSize 11
+skinparam NoteBackgroundColor #fdfdd0
+skinparam NoteBorderColor black
+
+skinparam DiagramBorderColor black
+skinparam DiagramBorderThickness 6
+
+<style>
+rectangle {
+  RoundCorner 8
+  LineThickness 1.2
+}
+</style>
+
+rectangle "Corpus tiếng Việt chuẩn\n(Viet74K)" as CORPUS #White
+rectangle "Tập luật biến âm\nmiền Trung" as RULES #White
+rectangle "**Từ điển gốc** (~26.000 mục)\nsinh một lần khi phát hành" as BASE #eeeeee
+
+rectangle "Quản trị viên\nthêm hoặc sửa từ" as ADMIN #White
+rectangle "**Máy chủ:** bảng từ bổ sung\nkèm số phiên bản" as DB #eeeeee
+
+rectangle "**Lớp 1** — từ điển gốc\nđóng gói sẵn trong ứng dụng" as L1 #White
+rectangle "**Lớp 2** — từ bổ sung\ntải về, lưu trên máy" as L2 #White
+rectangle "**TỪ ĐIỂN HỢP NHẤT**\nlớp 2 ghi đè lớp 1" as MERGED #d9e8f5
+
+CORPUS --> BASE : áp luật, sinh ngược
+RULES --> BASE
+ADMIN --> DB : cập nhật, tăng số phiên bản
+
+BASE --> L1 : đóng gói vào bản cài đặt
+DB --> L2 : hỏi số phiên bản,\nchỉ tải khi có bản mới
+
+L1 --> MERGED
+L2 --> MERGED
+
+note bottom of MERGED
+  Nhờ lớp 2, một từ phương ngữ mới có hiệu lực ngay
+  mà không cần biên dịch và phát hành lại ứng dụng.
+end note
+
+legend bottom
+  Ba khối nền xám và xanh là dữ liệu; các khối trắng là nguồn sinh ra chúng.
+  Lớp 1 cố định theo bản cài đặt, lớp 2 thay đổi được trong lúc hệ thống đang chạy.
+endlegend
+
+@enduml

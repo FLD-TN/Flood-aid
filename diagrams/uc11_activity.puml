@@ -1,0 +1,110 @@
+﻿@startuml UC11_Activity
+
+scale 0.88
+skinparam shadowing false
+skinparam backgroundColor #f0f0f0
+skinparam headerBackgroundColor #f0f0f0
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+
+skinparam ActivityBorderColor black
+skinparam ActivityBackgroundColor White
+skinparam ActivityFontColor black
+skinparam ActivityFontSize 13
+
+skinparam ActivityDiamondBorderColor black
+skinparam ActivityDiamondBackgroundColor White
+skinparam ActivityDiamondFontColor black
+skinparam ActivityDiamondFontSize 14
+
+skinparam ActivityArrowColor black
+skinparam ArrowFontColor black
+skinparam ArrowFontSize 12
+
+skinparam ActivityStartColor Black
+skinparam ActivityEndColor Black
+
+skinparam conditionStyle diamond
+
+skinparam DiagramBorderColor black
+skinparam DiagramBorderThickness 8
+skinparam PartitionBorderColor black
+skinparam PartitionBorderThickness 3
+
+<style>
+diamond {
+  RoundCorner 0
+  LineThickness 1.5
+  Padding 10
+}
+activity {
+  RoundCorner 8
+}
+swimlane {
+  BorderThickness 3
+  BorderColor black
+  TitleBorderThickness 4
+  TitleBorderColor black
+  TitleBackgroundColor #e8e8e8
+  TitleFontSize 24
+  BackgroundColor #ffffff
+  Padding 10
+}
+document {
+  Padding 10
+}
+</style>
+
+|#ffffff| Người dùng\n(TNV / Nạn nhân) |
+start
+:Nhấn nút "Nhắn tin"\ntrên màn hình theo dõi;
+
+|#ffffff| Ứng dụng |
+:Mở màn hình Chat;
+:Kết nối vào phòng chat\ncủa ca cứu hộ;
+:Gửi yêu cầu tải\nlịch sử tin nhắn;
+
+|#ffffff| Máy chủ |
+:Trả về tối đa 100 tin nhắn\ngần nhất theo thứ tự thời gian;
+
+|#ffffff| Ứng dụng |
+:Hiển thị lịch sử tin nhắn;
+
+|#ffffff| Người dùng\n(TNV / Nạn nhân) |
+:Nhập nội dung tin nhắn\nvà nhấn Gửi;
+
+|#ffffff| Ứng dụng |
+if (Mất kết nối\nthời gian thực?) then ([Có])
+  :**[*a]** Mất kết nối thời gian thực\nChuyển sang kênh dự phòng;
+  :Gửi tin qua kênh dự phòng\nTin vẫn được lưu và đến\nđối phương bình thường;
+  detach
+else ([Không])
+endif
+
+|#ffffff| Ứng dụng |
+:Gửi tin nhắn thời gian thực;
+
+|#ffffff| Máy chủ |
+:Lưu tin nhắn và gửi\nđến đối phương;
+
+|#ffffff| Ứng dụng |
+:Hiển thị tin nhắn đã gửi\nCả hai bên thấy tin nhắn mới;
+
+|#ffffff| Người dùng\n(TNV / Nạn nhân) |
+:Đóng màn hình Chat;
+
+|#ffffff| Ứng dụng |
+:Duy trì kết nối ở nền\nHiển thị badge số tin chưa đọc;
+
+|#ffffff| Người dùng\n(TNV / Nạn nhân) |
+if (Mở lại\nmàn hình Chat?) then ([Có])
+  :**[1a]** Mở lại Chat;
+  |#ffffff| Ứng dụng |
+  :Hiển thị màn hình Chat\nĐồng bộ tin nhắn mới;
+  stop
+else ([Không])
+  |#ffffff| Người dùng\n(TNV / Nạn nhân) |
+  stop
+endif
+
+@enduml

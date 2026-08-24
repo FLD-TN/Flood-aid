@@ -1,0 +1,104 @@
+﻿@startuml UC10_Activity
+
+scale 0.88
+skinparam shadowing false
+skinparam backgroundColor #f0f0f0
+skinparam headerBackgroundColor #f0f0f0
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+
+skinparam ActivityBorderColor black
+skinparam ActivityBackgroundColor White
+skinparam ActivityFontColor black
+skinparam ActivityFontSize 13
+
+skinparam ActivityDiamondBorderColor black
+skinparam ActivityDiamondBackgroundColor White
+skinparam ActivityDiamondFontColor black
+skinparam ActivityDiamondFontSize 14
+
+skinparam ActivityArrowColor black
+skinparam ArrowFontColor black
+skinparam ArrowFontSize 12
+
+skinparam ActivityStartColor Black
+skinparam ActivityEndColor Black
+
+skinparam conditionStyle diamond
+
+skinparam DiagramBorderColor black
+skinparam DiagramBorderThickness 8
+skinparam PartitionBorderColor black
+skinparam PartitionBorderThickness 3
+
+<style>
+diamond {
+  RoundCorner 0
+  LineThickness 1.5
+  Padding 10
+}
+activity {
+  RoundCorner 8
+}
+swimlane {
+  BorderThickness 3
+  BorderColor black
+  TitleBorderThickness 4
+  TitleBorderColor black
+  TitleBackgroundColor #e8e8e8
+  TitleFontSize 24
+  BackgroundColor #ffffff
+  Padding 10
+}
+document {
+  Padding 10
+}
+</style>
+
+|#ffffff| Admin |
+start
+:Mở trang "Quản lý Tình nguyện viên"\ntrên Dashboard;
+
+|#ffffff| Ứng dụng |
+:Gửi yêu cầu tải\ndanh sách TNV chờ duyệt;
+
+|#ffffff| Máy chủ |
+:Tải danh sách TNV\nđang chờ phê duyệt;
+:Trả về danh sách TNV\nchờ phê duyệt;
+
+|#ffffff| Ứng dụng |
+:Hiển thị danh sách TNV chờ duyệt:\nHọ tên, số điện thoại\nTrạng thái xác minh CCCD;
+
+|#ffffff| Admin |
+:Chọn 1 hồ sơ\nđể xem chi tiết;
+
+|#ffffff| Ứng dụng |
+:Hiển thị thông tin hồ sơ TNV:\nHọ tên, số điện thoại\nTrạng thái eKYC;
+
+|#ffffff| Admin |
+if (Admin nhấn\n"Từ chối"?) then ([Có])
+  :Nhấn "Từ chối";
+  |#ffffff| Ứng dụng |
+  :Gửi yêu cầu từ chối\nlên máy chủ;
+  |#ffffff| Máy chủ |
+  :Cập nhật trạng thái hồ sơ\nthành "Từ chối";
+  |#ffffff| Ứng dụng |
+  :Cập nhật trạng thái hồ sơ\ntrong danh sách;
+  stop
+else ([Không])
+endif
+
+|#ffffff| Admin |
+:Nhấn "Phê duyệt";
+
+|#ffffff| Ứng dụng |
+:Gửi yêu cầu phê duyệt\nlên máy chủ;
+
+|#ffffff| Máy chủ |
+:Cập nhật trạng thái hồ sơ\nthành "Đã phê duyệt";
+
+|#ffffff| Ứng dụng |
+:Cập nhật trạng thái hồ sơ\ntrong danh sách;
+stop
+
+@enduml

@@ -6,6 +6,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
+import '../../config/vietmap_config.dart';
 
 /// Kết quả trả về từ màn chọn vị trí: toạ độ + địa chỉ chữ (nếu có).
 class LocationPickResult {
@@ -222,7 +223,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                     ),
                     children: [
                       TileLayer(
-                        urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        urlTemplate: 'https://maps.vietmap.vn/maps/tiles/tm/{z}/{x}/{y}@2x.png?apikey=${VietmapConfig.mapApiKey}',
                         userAgentPackageName: 'com.floodaid.mobile',
                       ),
                       MarkerLayer(

@@ -84,7 +84,7 @@ async function onVolunteerLocationUpdate(volunteerId, newCoordsWkt) {
         await sendFcmToVolunteer(tnvFcm, {
           id: row.case_id,
           urgency_level: 3,
-          summary_1line: `Bạn sắp tới nơi — còn ~${distM}m, chuẩn bị tiếp cận!`,
+          summary_1line: `Bạn sắp tới nơi! Còn khoảng${distM}m, chuẩn bị tiếp cận!`,
         });
         await db.query(
           'UPDATE case_assignments SET notif_sent_300m = true WHERE case_id = $1 AND volunteer_id = $2',

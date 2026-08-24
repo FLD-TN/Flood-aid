@@ -22,17 +22,17 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
           // Top illustration - hiện full màn hình phía trên (bỏ qua SafeArea)
           SizedBox(
             width: double.infinity,
-            height: MediaQuery.of(context).size.height * 0.35, // Chiếm 35% màn hình
+            height:
+                MediaQuery.of(context).size.height * 0.35, // Chiếm 35% màn hình
             child: Image.asset(
               'assets/images/hero_illustration.png',
               fit: BoxFit.cover, // Cắt cúp để lấp đầy khung hình
-              errorBuilder: (context, error, stackTrace) => SizedBox(
-                height: MediaQuery.of(context).size.height * 0.35,
-              ),
+              errorBuilder: (context, error, stackTrace) =>
+                  SizedBox(height: MediaQuery.of(context).size.height * 0.35),
             ),
           ),
           const SizedBox(height: 32),
-          
+
           // Phần chữ và nút bọc trong Padding và SafeArea để không dính viền dưới
           Expanded(
             child: SafeArea(
@@ -52,10 +52,10 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    
+
                     // Subtitle
                     Text(
-                      'Chọn Cứu hộ nếu bạn cần được giúp đỡ\nhoặc Tình nguyện viên nếu bạn muốn giúp',
+                      'Chọn Nạn nhân nếu bạn cần được giúp đỡ\nhoặc Tình nguyện viên nếu bạn muốn giúp',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.inter(
                         fontSize: 15,
@@ -64,18 +64,23 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                       ),
                     ),
                     const SizedBox(height: 40),
-                    
+
                     // Cards Row
                     Row(
                       children: [
                         Expanded(
                           child: _buildModernCard(
-                            role: 'Cứu hộ',
+                            role: 'Nạn nhân',
                             imagePath: 'assets/images/victim_modern.png',
-                            backgroundColor: const Color(0xFFD3EBEB), // Light teal
-                            borderColor: const Color(0xFF008989), // Dark teal border
+                            backgroundColor: const Color(
+                              0xFFD3EBEB,
+                            ), // Light teal
+                            borderColor: const Color(
+                              0xFF008989,
+                            ), // Dark teal border
                             isSelected: selectedRole == 'victim',
-                            onTap: () => setState(() => selectedRole = 'victim'),
+                            onTap: () =>
+                                setState(() => selectedRole = 'victim'),
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -83,30 +88,38 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                           child: _buildModernCard(
                             role: 'Tình nguyện viên',
                             imagePath: 'assets/images/volunteer_modern.png',
-                            backgroundColor: const Color(0xFFFFE6D5), // Light orange
-                            borderColor: const Color(0xFFF19D60), // Dark orange border
+                            backgroundColor: const Color(
+                              0xFFFFE6D5,
+                            ), // Light orange
+                            borderColor: const Color(
+                              0xFFF19D60,
+                            ), // Dark orange border
                             isSelected: selectedRole == 'volunteer',
-                            onTap: () => setState(() => selectedRole = 'volunteer'),
+                            onTap: () =>
+                                setState(() => selectedRole = 'volunteer'),
                           ),
                         ),
                       ],
                     ),
-                    
+
                     const Spacer(),
-                    
+
                     // Nút Tiếp tục (Đen nguyên khối)
                     SizedBox(
                       width: double.infinity,
                       height: 56,
                       child: ElevatedButton(
-                        onPressed: selectedRole == null ? null : () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => PhoneAuthScreen(role: selectedRole!),
-                            ),
-                          );
-                        },
+                        onPressed: selectedRole == null
+                            ? null
+                            : () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        PhoneAuthScreen(role: selectedRole!),
+                                  ),
+                                );
+                              },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.black,
                           disabledBackgroundColor: Colors.grey[300],
@@ -120,7 +133,9 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                           style: GoogleFonts.inter(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
-                            color: selectedRole == null ? Colors.grey[500] : Colors.white,
+                            color: selectedRole == null
+                                ? Colors.grey[500]
+                                : Colors.white,
                           ),
                         ),
                       ),
@@ -162,7 +177,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                     color: borderColor.withOpacity(0.2),
                     blurRadius: 16,
                     offset: const Offset(0, 8),
-                  )
+                  ),
                 ]
               : [],
         ),
@@ -181,7 +196,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                 child: Image.asset(
                   imagePath,
                   fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.person, color: Colors.white, size: 40),
+                  errorBuilder: (context, error, stackTrace) =>
+                      const Icon(Icons.person, color: Colors.white, size: 40),
                 ),
               ),
             ),

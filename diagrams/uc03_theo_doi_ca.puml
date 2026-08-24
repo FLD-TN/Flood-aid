@@ -1,0 +1,57 @@
+@startuml UC03_TheodoiCa
+
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 14
+skinparam ArrowColor Black
+skinparam SequenceArrowThickness 1
+skinparam ParticipantBorderColor Black
+skinparam ParticipantBackgroundColor White
+skinparam ParticipantFontColor Black
+skinparam ParticipantFontSize 15
+skinparam ParticipantBorderThickness 1
+skinparam LifeLineBorderColor Black
+skinparam LifeLineBorderThickness 1
+skinparam SequenceGroupBorderColor Black
+skinparam SequenceGroupBackgroundColor White
+skinparam SequenceGroupBodyBackgroundColor White
+skinparam SequenceGroupFontSize 14
+skinparam SequenceDividerBorderColor Black
+skinparam SequenceDividerBackgroundColor White
+skinparam SequenceDividerFontSize 14
+skinparam SequenceDividerFontStyle bold
+skinparam SequenceActivationBorderColor Black
+skinparam SequenceActivationBackgroundColor White
+skinparam NoteBackgroundColor White
+skinparam NoteBorderColor Black
+hide footbox
+
+participant "Nạn nhân" as Victim
+participant "Ứng dụng" as Screen
+participant "Máy chủ" as TrackCtrl
+participant "Cơ sở dữ liệu" as SOSCase
+
+Victim -> Screen : Mở màn hình theo dõi ca cứu hộ
+Screen --> Victim : Hiển thị bản đồ vị trí nạn nhân\nvà trạng thái "Đang tìm tình nguyện viên..."
+
+TrackCtrl -> SOSCase : Theo dõi trạng thái ca
+
+alt 1a : Sau 15 phút chưa có TNV nhận ca
+    TrackCtrl --> Screen : Chưa tìm được TNV — đã thông báo Admin
+    Screen --> Victim : "Chưa tìm được tình nguyện viên.\nAdmin đã được thông báo."
+    note over Victim, SOSCase : Nạn nhân tiếp tục chờ — Admin xử lý thủ công
+
+else Tình nguyện viên nhận ca
+    TrackCtrl -> SOSCase : Cập nhật trạng thái ca thành "Đang cứu hộ"
+
+    alt 2a : Mất kết nối trực tiếp
+        TrackCtrl --> Screen : Cập nhật vị trí TNV định kỳ (chế độ dự phòng)
+    else Kết nối ổn định
+        TrackCtrl --> Screen : Cập nhật vị trí TNV liên tục theo thời gian thực
+    end
+
+    Screen --> Victim : Hiển thị vị trí TNV trên bản đồ\nvà khoảng cách còn lại
+end
+
+@enduml

@@ -1,0 +1,81 @@
+@startuml UC02_GuiSOS
+
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 14
+skinparam ArrowColor Black
+skinparam SequenceArrowThickness 1
+skinparam ParticipantBorderColor Black
+skinparam ParticipantBackgroundColor White
+skinparam ParticipantFontColor Black
+skinparam ParticipantFontSize 15
+skinparam ParticipantBorderThickness 1
+skinparam LifeLineBorderColor Black
+skinparam LifeLineBorderThickness 1
+skinparam SequenceGroupBorderColor Black
+skinparam SequenceGroupBackgroundColor White
+skinparam SequenceGroupBodyBackgroundColor White
+skinparam SequenceGroupFontSize 14
+skinparam SequenceDividerBorderColor Black
+skinparam SequenceDividerBackgroundColor White
+skinparam SequenceDividerFontSize 14
+skinparam SequenceDividerFontStyle bold
+skinparam SequenceActivationBorderColor Black
+skinparam SequenceActivationBackgroundColor White
+skinparam NoteBackgroundColor White
+skinparam NoteBorderColor Black
+hide footbox
+
+participant "Nạn nhân" as Victim
+participant "Ứng dụng" as App
+participant "Máy chủ" as SOSCtrl
+participant "Cơ sở dữ liệu" as SOSCase
+
+Victim -> App : Nhấn nút SOS
+App --> Victim : Hiển thị form SOS (ô mô tả, nút ghi âm, bản đồ)
+
+alt 2a : Nhập mô tả bằng giọng nói
+    Victim -> App : Nhấn giữ mic, nói mô tả tình trạng
+    App -> App : Chuyển giọng nói thành văn bản,\nchuẩn hóa phương ngữ miền Trung
+    App --> Victim : Điền kết quả vào ô mô tả
+else Nhập mô tả bằng văn bản
+    Victim -> App : Gõ mô tả vào ô nhập
+end
+
+alt 2b : Không xác định được GPS
+    App --> Victim : Thông báo không lấy được vị trí tự động
+    Victim -> App : Kéo thả ghim chọn vị trí thủ công trên bản đồ
+else GPS xác định được vị trí
+    App --> Victim : Tự động đặt ghim vị trí GPS trên bản đồ
+end
+
+Victim -> App : Nhấn "Gửi SOS"
+
+alt 3a : Mất kết nối mạng
+    App --> Victim : "Không có kết nối mạng.\nVui lòng thử lại khi có mạng."
+
+else Có kết nối mạng
+    App -> SOSCtrl : Gửi yêu cầu SOS (mô tả, tọa độ vị trí)
+    SOSCtrl -> SOSCase : Kiểm tra có ca SOS đang hoạt động không
+
+    alt 4a : Đang có ca SOS chưa kết thúc
+        SOSCtrl --> App : Từ chối
+        App --> Victim : "Bạn đang có ca SOS chưa kết thúc."
+
+    else Không có ca hoạt động
+        SOSCtrl -> SOSCtrl : Phân tích mô tả bằng AI\n(mức độ khẩn cấp 1–5, nhãn phân loại, tóm tắt)
+
+        alt 5a : AI không phản hồi trong 3 giây
+            SOSCtrl -> SOSCtrl : Dùng kết quả phân tích dự phòng
+        end
+
+        SOSCtrl -> SOSCase : Lưu ca SOS — trạng thái "Đang chờ"
+        SOSCtrl -> SOSCtrl : Phát sóng thông báo tới mọi TNV\nđang sẵn sàng và bật nhận thông báo
+        note right of SOSCtrl : TNV nhận thông báo và\ncó thể chọn nhận ca (UC08)
+        SOSCtrl --> App : Gửi SOS thành công
+        App --> Victim : Chuyển sang màn hình theo dõi ca (UC03)
+    end
+end
+
+@enduml

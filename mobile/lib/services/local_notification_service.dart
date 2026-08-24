@@ -108,6 +108,16 @@ class LocalNotificationService {
     );
   }
 
+  /// Hiển thị thông báo chung (dùng cho các thông báo nhận được ở foreground)
+  static Future<void> showNotification({
+    required int id,
+    required String title,
+    required String body,
+    String? payload,
+  }) async {
+    await _show(id: id, title: title, body: body, payload: payload);
+  }
+
   /// Hàm gửi notification nội bộ
   static Future<void> _show({
     required int id,

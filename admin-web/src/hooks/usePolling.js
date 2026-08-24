@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import axios from 'axios';
-
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3000';
+import api from '../api';
 
 /**
- * Universal polling hook
- * @param {string} path - API endpoint path
- * @param {number} intervalMs - polling interval (mặc định 15s)
+ * Polling dùng chung.
+ *
+ * Dùng axios instance ở ../api để mọi request tự đính JWT admin — các endpoint
+ * /api/admin/* có adminAuthMiddleware, gọi bằng axios thô sẽ luôn nhận 401.
+ *
+ * @param {string} path        đường dẫn API
+ * @param {number} intervalMs  chu kỳ poll (mặc định 15s)
  */
 export function usePolling(path, intervalMs = 15000) {
   const [data, setData] = useState(null);
@@ -16,11 +18,11 @@ export function usePolling(path, intervalMs = 15000) {
 
   const fetchData = useCallback(async () => {
     try {
-      const res = await axios.get(`${API_BASE}${path}`);
+      const res = await api.get(path);
       setData(res.data);
       setError(null);
     } catch (err) {
-      setError(err.message);
+      setError(err.response?.data?.error || err.message);
     } finally {
       setLoading(false);
     }
@@ -28,8 +30,30 @@ export function usePolling(path, intervalMs = 15000) {
 
   useEffect(() => {
     fetchData();
-    timerRef.current = setInterval(fetchData, intervalMs);
-    return () => clearInterval(timerRef.current);
+
+    const start = () => {
+      clearInterval(timerRef.current);
+      timerRef.current = setInterval(fetchData, intervalMs);
+    };
+    const stop = () => clearInterval(timerRef.current);
+
+    // Tab ẩn thì ngừng poll, hiện lại thì fetch ngay rồi poll tiếp
+    const onVisibility = () => {
+      if (document.hidden) {
+        stop();
+      } else {
+        fetchData();
+        start();
+      }
+    };
+
+    if (!document.hidden) start();
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      stop();
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, [fetchData, intervalMs]);
 
   return { data, error, loading, refresh: fetchData };

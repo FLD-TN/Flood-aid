@@ -1,0 +1,54 @@
+{
+  "_mo_ta": "Tập tin nhắn SOS mô phỏng dùng cho mục 4.5.1 của khóa luận. urgency_dung = mức khẩn cấp đúng do người viết xác định thủ công, dùng để đối chiếu; không bắt buộc cho phép đo độ trễ. Phân bố đều trên 5 mức.",
+  "messages": [
+    { "id": 1,  "urgency_dung": 5, "text": "Cứu với! Con tôi bị đuối nước, nước cuốn đi rồi, cứu nhanh lên" },
+    { "id": 2,  "urgency_dung": 5, "text": "Chồng tôi bất tỉnh không thở được, nước ngập tới cổ rồi" },
+    { "id": 3,  "urgency_dung": 5, "text": "Có người bị nước cuốn chìm dưới cầu, cần cứu ngay lập tức" },
+    { "id": 4,  "urgency_dung": 5, "text": "Mẹ tôi chảy máu nhiều lắm, ngất đi rồi, nhà đang ngập" },
+    { "id": 5,  "urgency_dung": 5, "text": "Ba tôi ngã đập đầu, máu ra nhiều, không tỉnh lại, cần cấp cứu gấp" },
+    { "id": 6,  "urgency_dung": 5, "text": "Nhà bị sập, có người kẹt bên trong, nước dâng nhanh, sợ chết đuối" },
+    { "id": 7,  "urgency_dung": 5, "text": "Em bé rơi xuống nước, vớt lên rồi nhưng không thở, cứu với" },
+    { "id": 8,  "urgency_dung": 5, "text": "Có hai người bị chìm khi qua sông, mất tích chưa tìm thấy" },
+
+    { "id": 9,  "urgency_dung": 4, "text": "Nhà tôi có ba đứa trẻ nhỏ, nước đã ngập tới nóc, cần cứu gấp" },
+    { "id": 10, "urgency_dung": 4, "text": "Bà tôi 85 tuổi bị gãy chân, không di chuyển được, nước đang lên" },
+    { "id": 11, "urgency_dung": 4, "text": "Có người già và trẻ em trên gác mái, nước ngập tới mái nhà rồi" },
+    { "id": 12, "urgency_dung": 4, "text": "Vợ tôi bị thương ở chân, chảy máu, cần đưa đi cấp cứu" },
+    { "id": 13, "urgency_dung": 4, "text": "Trong nhà có cụ già nằm liệt giường, nước ngập nóc, không tự di tản được" },
+    { "id": 14, "urgency_dung": 4, "text": "Hai em bé đang sốt cao, nhà ngập sâu, cần đưa ra ngoài" },
+    { "id": 15, "urgency_dung": 4, "text": "Cần cấp cứu, có người bị mảnh tôn cắt vào tay, máu chảy nhiều" },
+    { "id": 16, "urgency_dung": 4, "text": "Nhà có con nhỏ mới sinh, nước lên tới mái, xin cứu trợ khẩn" },
+
+    { "id": 17, "urgency_dung": 3, "text": "Nhà tôi bị cô lập, nước ngập sâu quá đầu người, không ra ngoài được" },
+    { "id": 18, "urgency_dung": 3, "text": "Cả xóm bị mắc kẹt, nước dâng cao, đường vào đã ngập hết" },
+    { "id": 19, "urgency_dung": 3, "text": "Gia đình bốn người kẹt trên tầng hai, nước vẫn đang dâng" },
+    { "id": 20, "urgency_dung": 3, "text": "Chúng tôi bị cô lập hai ngày rồi, hết đồ ăn, nước ngập sâu" },
+    { "id": 21, "urgency_dung": 3, "text": "Nước dâng nhanh quá, không thoát được ra khỏi nhà" },
+    { "id": 22, "urgency_dung": 3, "text": "Mắc kẹt ở trạm xá, nước ngập sâu, có mấy người cần di tản" },
+    { "id": 23, "urgency_dung": 3, "text": "Nhà nằm sát bờ sông, nước dâng cao, sợ sạt lở, chưa ra được" },
+    { "id": 24, "urgency_dung": 3, "text": "Đường bị ngập sâu, xe không qua được, cả nhà đang kẹt lại" },
+
+    { "id": 25, "urgency_dung": 2, "text": "Nhà tôi bị ngập, cần xuồng để di chuyển ra ngoài" },
+    { "id": 26, "urgency_dung": 2, "text": "Nước lên tới đầu gối rồi, cần người giúp chuyển đồ lên cao" },
+    { "id": 27, "urgency_dung": 2, "text": "Cần hỗ trợ di dời, nhà đã bị ngập nửa mét" },
+    { "id": 28, "urgency_dung": 2, "text": "Xin cần ghe qua chở giúp mấy người sang bờ bên kia" },
+    { "id": 29, "urgency_dung": 2, "text": "Nước lên nhanh, cần giúp đưa gia súc và đồ đạc lên chỗ cao" },
+    { "id": 30, "urgency_dung": 2, "text": "Nhà bị ngập, không có phương tiện nào để đi lại" },
+    { "id": 31, "urgency_dung": 2, "text": "Cần xuồng để đưa mấy người trong xóm ra khu vực an toàn" },
+    { "id": 32, "urgency_dung": 2, "text": "Nước đang lên dần, cần hỗ trợ trước khi ngập sâu hơn" },
+
+    { "id": 33, "urgency_dung": 1, "text": "Nhà tôi hết lương thực, xin hỗ trợ mì và nước uống" },
+    { "id": 34, "urgency_dung": 1, "text": "Xin hỗ trợ nước sạch, cả xóm dùng hết nước rồi" },
+    { "id": 35, "urgency_dung": 1, "text": "Gia đình cần thêm chăn màn, đêm lạnh quá" },
+    { "id": 36, "urgency_dung": 1, "text": "Nhà không còn gạo, xin cứu trợ lương thực khi nào tiện" },
+    { "id": 37, "urgency_dung": 1, "text": "Xin hỗ trợ thuốc men thông thường, không có ai bị thương nặng" },
+    { "id": 38, "urgency_dung": 1, "text": "Mất điện mấy ngày rồi, xin hỗ trợ đèn pin và pin dự phòng" },
+
+    { "id": 39, "urgency_dung": 4, "text": "May quá không ai bị thương, nhưng nhà có người già, nước đã ngập tới mái" },
+    { "id": 40, "urgency_dung": 2, "text": "Xe bị kẹt xe rồi chết máy giữa đường ngập, cần người giúp đẩy" }
+  ],
+  "_kiem_chung_san_an_toan": {
+    "_mo_ta": "Ca dùng riêng cho kịch bản kiểm chứng quy tắc Math.max ở mục 4.5.1. Câu chứa từ khóa mức 5 ('đuối nước') nhưng ngữ cảnh dễ khiến mô hình ngôn ngữ hạ mức.",
+    "text": "Bác tôi bị đuối nước nhưng đã vớt lên rồi, giờ cần người đưa đi viện"
+  }
+}

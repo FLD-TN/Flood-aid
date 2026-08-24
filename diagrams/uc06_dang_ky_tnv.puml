@@ -1,0 +1,89 @@
+@startuml UC06_DangKyTNV
+
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 14
+skinparam ArrowColor Black
+skinparam SequenceArrowThickness 1
+skinparam ParticipantBorderColor Black
+skinparam ParticipantBackgroundColor White
+skinparam ParticipantFontColor Black
+skinparam ParticipantFontSize 15
+skinparam ParticipantBorderThickness 1
+skinparam LifeLineBorderColor Black
+skinparam LifeLineBorderThickness 1
+skinparam SequenceGroupBorderColor Black
+skinparam SequenceGroupBackgroundColor White
+skinparam SequenceGroupBodyBackgroundColor White
+skinparam SequenceGroupFontSize 14
+skinparam SequenceDividerBorderColor Black
+skinparam SequenceDividerBackgroundColor White
+skinparam SequenceDividerFontSize 14
+skinparam SequenceDividerFontStyle bold
+skinparam SequenceActivationBorderColor Black
+skinparam SequenceActivationBackgroundColor White
+skinparam NoteBackgroundColor White
+skinparam NoteBorderColor Black
+hide footbox
+
+participant "Tình nguyện viên" as TNV
+participant "Ứng dụng" as Screen
+participant "Máy chủ" as KYCCtrl
+participant "Dịch vụ xác minh eKYC" as FPTAI
+participant "Cơ sở dữ liệu" as Profile
+
+TNV -> Screen : Mở màn hình đăng ký (chuyển tiếp từ UC01)
+Screen --> TNV : Hiển thị form đăng ký và hướng dẫn xác minh danh tính
+
+TNV -> Screen : Nhập họ tên đầy đủ, nhấn "Tiếp tục"
+Screen --> TNV : Hướng dẫn chụp ảnh CCCD
+
+loop 3a : Chụp lại khi ảnh CCCD không đạt chất lượng
+    TNV -> Screen : Chụp ảnh mặt trước CCCD
+    Screen -> KYCCtrl : Gửi ảnh CCCD để nhận dạng thông tin
+    KYCCtrl -> FPTAI : Nhận dạng thông tin CCCD
+
+    break *a : Dịch vụ xác minh không phản hồi
+        KYCCtrl --> Screen : Lỗi kết nối dịch vụ nhận dạng
+        Screen --> TNV : "Dịch vụ đang gián đoạn. Vui lòng thử lại sau."
+    end
+
+    alt 3a : Ảnh CCCD không đủ rõ — chụp lại
+        FPTAI --> KYCCtrl : Không nhận dạng được (mờ, thiếu sáng, góc sai)
+        KYCCtrl --> Screen : Ảnh không đạt yêu cầu
+        Screen --> TNV : "Ảnh CCCD không đủ rõ. Vui lòng chụp lại."
+    else CCCD nhận dạng thành công
+        FPTAI --> KYCCtrl : Thông tin CCCD đã trích xuất
+        KYCCtrl --> Screen : Thông tin CCCD
+        Screen --> TNV : Hiển thị thông tin CCCD đã nhận dạng để xem lại
+    end
+end
+
+Screen --> TNV : Hướng dẫn chụp ảnh selfie
+
+loop 5a : Chụp lại selfie khi khuôn mặt không khớp
+    TNV -> Screen : Chụp ảnh selfie theo hướng dẫn
+    Screen -> KYCCtrl : Gửi cặp ảnh CCCD + selfie để đối chiếu khuôn mặt
+    KYCCtrl -> FPTAI : Đối chiếu khuôn mặt (yêu cầu tương đồng >= 80%)
+
+    break *a : Dịch vụ xác minh không phản hồi
+        KYCCtrl --> Screen : Lỗi kết nối dịch vụ đối chiếu
+        Screen --> TNV : "Dịch vụ đang gián đoạn. Vui lòng thử lại sau."
+    end
+
+    alt 5a : Khuôn mặt không khớp với ảnh CCCD
+        FPTAI --> KYCCtrl : Mức tương đồng không đủ
+        KYCCtrl --> Screen : Đối chiếu thất bại
+        Screen --> TNV : "Khuôn mặt không khớp với CCCD. Vui lòng chụp lại selfie."
+    else Khuôn mặt khớp
+        FPTAI --> KYCCtrl : Xác nhận khớp
+        KYCCtrl --> Screen : Đối chiếu thành công
+    end
+end
+
+KYCCtrl -> Profile : Lưu hồ sơ TNV — trạng thái "Chờ Admin phê duyệt"\nvà ghi nhận thông báo đến Admin
+KYCCtrl --> Screen : Đăng ký hoàn tất
+Screen --> TNV : "Đăng ký thành công!\nVui lòng chờ Admin xét duyệt hồ sơ."
+
+@enduml

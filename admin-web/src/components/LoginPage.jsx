@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import axios from 'axios';
+import Icon from './ui/Icon';
+import ThemeToggle from './ThemeToggle';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3000';
 
@@ -29,101 +31,102 @@ export default function LoginPage({ onLogin }) {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="relative flex min-h-screen items-center justify-center bg-background p-md">
+      <div className="absolute right-md top-md">
+        <ThemeToggle />
+      </div>
+
       <div className="w-full max-w-md">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/20 mb-4">
-            <span className="material-symbols-outlined text-primary text-4xl" data-icon="emergency">emergency</span>
+        <div className="mb-lg text-center">
+          <div className="mb-md inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/15 text-primary">
+            <Icon name="emergency" size={36} />
           </div>
-          <h1 className="font-h1 text-3xl text-on-surface">RescueCore Admin</h1>
-          <p className="text-on-surface-variant font-body-md mt-1">Hệ thống điều phối cứu trợ lũ lụt</p>
+          <h1 className="font-h1 text-2xl font-semibold text-on-surface sm:text-3xl">Trang Quản trị Admin</h1>
+          <p className="mt-xs font-body-md text-sm text-on-surface-variant">
+            Hệ thống điều phối cứu trợ lũ lụt
+          </p>
         </div>
 
-        {/* Card */}
-        <div className="glass-panel rounded-2xl p-8">
-          <h2 className="font-h1 text-xl text-on-surface mb-6">
+        <div className="panel p-lg">
+          <h2 className="mb-lg font-h1 text-lg font-semibold text-on-surface">
             {mode === 'login' ? 'Đăng nhập' : 'Tạo tài khoản Admin'}
           </h2>
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-md">
             {mode === 'register' && (
               <div>
-                <label className="font-label-sm text-on-surface-variant text-xs uppercase tracking-widest block mb-1">
+                <label htmlFor="fullname" className="section-label mb-xs block">
                   Họ và tên
                 </label>
                 <input
+                  id="fullname"
                   type="text"
                   value={fullName}
-                  onChange={e => setFullName(e.target.value)}
+                  onChange={(e) => setFullName(e.target.value)}
                   placeholder="Nguyễn Văn A"
                   required
-                  className="w-full bg-surface-container-low border border-outline-variant text-on-surface rounded-lg px-4 py-3 font-body-md text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+                  autoComplete="name"
+                  className="field py-3"
                 />
               </div>
             )}
 
             <div>
-              <label className="font-label-sm text-on-surface-variant text-xs uppercase tracking-widest block mb-1">
+              <label htmlFor="email" className="section-label mb-xs block">
                 Email
               </label>
               <input
+                id="email"
                 type="email"
                 value={email}
-                onChange={e => setEmail(e.target.value)}
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder="admin@floodaid.vn"
                 required
-                className="w-full bg-surface-container-low border border-outline-variant text-on-surface rounded-lg px-4 py-3 font-body-md text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+                autoComplete="email"
+                className="field py-3"
               />
             </div>
 
             <div>
-              <label className="font-label-sm text-on-surface-variant text-xs uppercase tracking-widest block mb-1">
+              <label htmlFor="password" className="section-label mb-xs block">
                 Mật khẩu
               </label>
               <input
+                id="password"
                 type="password"
                 value={password}
-                onChange={e => setPassword(e.target.value)}
+                onChange={(e) => setPassword(e.target.value)}
                 placeholder="Tối thiểu 6 ký tự"
                 required
-                className="w-full bg-surface-container-low border border-outline-variant text-on-surface rounded-lg px-4 py-3 font-body-md text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                className="field py-3"
               />
             </div>
 
             {error && (
-              <div className="flex items-center gap-2 bg-error/10 border border-error/30 text-error rounded-lg px-4 py-3 text-sm">
-                <span className="material-symbols-outlined text-[18px]" data-icon="error">error</span>
+              <p className="flex items-center gap-xs rounded-lg border border-error/40 bg-error/10 px-md py-sm font-body-md text-sm text-error">
+                <Icon name="error" size={18} />
                 {error}
-              </div>
+              </p>
             )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-primary text-on-primary rounded-lg py-3 font-label-sm font-semibold text-sm hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-2"
-            >
+            <button type="submit" disabled={loading} className="btn-primary mt-xs w-full py-3">
               {loading ? 'Đang xử lý...' : mode === 'login' ? 'Đăng nhập' : 'Tạo tài khoản'}
             </button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-on-surface-variant">
-            {mode === 'login' ? (
-              <>
-                Chưa có tài khoản?{' '}
-                <button onClick={() => { setMode('register'); setError(''); }} className="text-primary hover:underline font-semibold">
-                  Tạo tài khoản
-                </button>
-              </>
-            ) : (
-              <>
-                Đã có tài khoản?{' '}
-                <button onClick={() => { setMode('login'); setError(''); }} className="text-primary hover:underline font-semibold">
-                  Đăng nhập
-                </button>
-              </>
-            )}
-          </div>
+          <p className="mt-lg text-center font-body-md text-sm text-on-surface-variant">
+            {mode === 'login' ? 'Chưa có tài khoản? ' : 'Đã có tài khoản? '}
+            <button
+              onClick={() => {
+                setMode(mode === 'login' ? 'register' : 'login');
+                setError('');
+              }}
+              className="font-semibold text-primary hover:underline"
+            >
+              {mode === 'login' ? 'Tạo tài khoản' : 'Đăng nhập'}
+            </button>
+          </p>
         </div>
       </div>
     </div>

@@ -1,0 +1,68 @@
+@startuml UC11_LienLac
+
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 14
+skinparam ArrowColor Black
+skinparam SequenceArrowThickness 1
+skinparam ParticipantBorderColor Black
+skinparam ParticipantBackgroundColor White
+skinparam ParticipantFontColor Black
+skinparam ParticipantFontSize 15
+skinparam ParticipantBorderThickness 1
+skinparam LifeLineBorderColor Black
+skinparam LifeLineBorderThickness 1
+skinparam SequenceGroupBorderColor Black
+skinparam SequenceGroupBackgroundColor White
+skinparam SequenceGroupBodyBackgroundColor White
+skinparam SequenceGroupFontSize 14
+skinparam SequenceDividerBorderColor Black
+skinparam SequenceDividerBackgroundColor White
+skinparam SequenceDividerFontSize 14
+skinparam SequenceDividerFontStyle bold
+skinparam SequenceActivationBorderColor Black
+skinparam SequenceActivationBackgroundColor White
+skinparam NoteBackgroundColor White
+skinparam NoteBorderColor Black
+hide footbox
+
+participant "Người dùng\n(TNV / Nạn nhân)" as User
+participant "Ứng dụng" as App
+participant "Máy chủ" as Server
+participant "Cơ sở dữ liệu" as DB
+
+note over User, DB : Ca đang ở trạng thái "Đang cứu hộ"
+
+User -> App : Nhấn "Nhắn tin" trên màn hình theo dõi
+App -> Server : Kết nối vào phòng chat và tải lịch sử tin nhắn
+Server -> DB : Truy vấn tối đa 100 tin nhắn gần nhất
+Server --> App : Lịch sử tin nhắn
+App --> User : Mở màn hình chat và hiển thị lịch sử
+
+User -> App : Nhập nội dung tin nhắn, nhấn "Gửi"
+
+alt *a : Mất kết nối thời gian thực
+    App -> Server : Gửi tin qua kênh dự phòng
+    Server -> DB : Lưu tin nhắn, gửi thông báo đẩy đến đối phương
+    App --> User : Hiển thị tin nhắn (gửi qua kênh dự phòng)
+
+else Kết nối thời gian thực ổn định
+    App -> Server : Gửi tin nhắn thời gian thực
+    Server -> DB : Lưu tin nhắn
+    Server --> App : Phát tán đến đối phương
+    App --> User : Cả hai bên thấy tin nhắn mới
+end
+
+User -> App : Đóng màn hình chat
+App -> App : Duy trì kết nối ở nền\nhiển thị badge số tin chưa đọc
+App --> User : Quay về màn hình theo dõi
+
+opt 1a : Người dùng mở lại màn hình chat
+    User -> App : Nhấn vào biểu tượng chat
+    App -> Server : Đồng bộ tin nhắn mới trong lúc ở nền
+    Server --> App : Tin nhắn mới (nếu có)
+    App --> User : Hiển thị chat với toàn bộ tin nhắn đã cập nhật
+end
+
+@enduml

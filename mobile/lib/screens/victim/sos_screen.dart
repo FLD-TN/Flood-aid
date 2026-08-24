@@ -1,4 +1,10 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'package:record/record.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -795,6 +801,13 @@ class _SosFormSheetState extends State<_SosFormSheet> {
   // Khoá chống reentrancy khi đang khởi động phiên (có nhiều await bên trong).
   bool _isStarting = false;
 
+  // ===== STT qua Gemini (giữ phương ngữ) — dùng khi CÓ MẠNG =====
+  // Ghi âm ra file rồi gửi backend cho Gemini chép; offline/lỗi thì rơi về
+  // nhận dạng trên máy (device STT ở trên). Đây là phương án "giữ cả hai".
+  final AudioRecorder _recorder = AudioRecorder();
+  bool _isRecording = false; // đang thu âm chờ gửi Gemini
+  bool _isTranscribing = false; // đã gửi, đang chờ Gemini trả text
+
   @override
   void initState() {
     super.initState();
@@ -810,6 +823,7 @@ class _SosFormSheetState extends State<_SosFormSheet> {
   void dispose() {
     _textController.dispose();
     _speech.stop();
+    _recorder.dispose();
     super.dispose();
   }
 
@@ -842,13 +856,123 @@ class _SosFormSheetState extends State<_SosFormSheet> {
     if (mounted) setState(() {});
   }
 
-  void _toggleListening() async {
-    if (_isStarting) return; // đang khởi động dở → bỏ qua tap thừa (chống reentrancy)
+  // Bộ điều phối nút mic (phương án "giữ cả hai"):
+  //  - CÓ mạng  → thu âm rồi gửi Gemini (chép phương ngữ chuẩn hơn).
+  //  - OFFLINE  → dùng nhận dạng trên máy (device STT) như cũ.
+  Future<void> _onMicTap() async {
+    if (_isStarting || _isTranscribing) return;
+    if (_isRecording) {
+      await _stopRecordingAndTranscribe();
+      return;
+    }
     if (_isListening) {
       _endSession();
       return;
     }
-    await _startSession();
+    if (await _hasConnectivity()) {
+      await _startRecording();
+    } else {
+      await _startSession(); // offline → nhận dạng trên máy
+    }
+  }
+
+  Future<bool> _hasConnectivity() async {
+    try {
+      final r = await Connectivity().checkConnectivity();
+      return r.any((e) => e != ConnectivityResult.none);
+    } catch (_) {
+      return true; // không kiểm được → cứ thử online
+    }
+  }
+
+  Future<void> _startRecording() async {
+    try {
+      if (!await _recorder.hasPermission()) {
+        await _startSession(); // không có quyền mic cho recorder → device STT
+        return;
+      }
+      String path;
+      if (kIsWeb) {
+        // Web: path bị bỏ qua, stop() trả blob URL. Chrome ghi ra webm/opus.
+        path = 'sos_stt.webm';
+      } else {
+        final dir = await getTemporaryDirectory();
+        path =
+            '${dir.path}/sos_stt_${DateTime.now().millisecondsSinceEpoch}.m4a';
+      }
+      await _recorder.start(
+        RecordConfig(encoder: kIsWeb ? AudioEncoder.opus : AudioEncoder.aacLc),
+        path: path,
+      );
+      if (mounted) setState(() => _isRecording = true);
+    } catch (e) {
+      if (mounted) setState(() => _isRecording = false);
+      await _startSession(); // lỗi ghi âm → rơi về device STT
+    }
+  }
+
+  Future<void> _stopRecordingAndTranscribe() async {
+    String? path;
+    try {
+      path = await _recorder.stop();
+    } catch (_) {}
+    if (mounted) {
+      setState(() {
+        _isRecording = false;
+        _isTranscribing = true;
+      });
+    }
+    try {
+      if (path == null) return;
+      final bytes = await _readRecordedBytes(path);
+      final mime = kIsWeb ? 'audio/webm' : 'audio/mp4';
+      final raw = await ApiService.sttTranscribe(bytes, mimeType: mime);
+      if (raw != null && raw.trim().isNotEmpty) {
+        // Chuẩn hóa ngay trên máy (1 nguồn dict), rồi ghép vào ô ghi chú.
+        final norm = DialectNormalizer.normalize(raw).trim();
+        final base = _textController.text.trim();
+        final combined = base.isEmpty ? norm : '$base $norm';
+        // Giữ song song bản gốc chưa chuẩn hóa để gửi kèm (như device STT).
+        _rawSpoken =
+            _rawSpoken.isEmpty ? raw.trim() : '$_rawSpoken ${raw.trim()}';
+        _programmaticEdit = true;
+        _textController.value = TextEditingValue(
+          text: combined,
+          selection: TextSelection.collapsed(offset: combined.length),
+        );
+        _programmaticEdit = false;
+      } else if (mounted) {
+        ToastService.show(
+          context: context,
+          type: ToastType.warning,
+          message: 'Không nghe rõ, bạn nói lại giúp nhé.',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ToastService.show(
+          context: context,
+          type: ToastType.error,
+          message: 'Nhận dạng thất bại (mạng yếu?). Bạn thử lại giúp nhé.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isTranscribing = false);
+      try {
+        if (path != null && !kIsWeb) await File(path).delete();
+      } catch (_) {}
+    }
+  }
+
+  // Đọc bytes file ghi âm — khác nhau theo nền tảng:
+  //  - Web: stop() trả blob URL → tải bytes qua http (dart:io File không dùng được).
+  //  - Mobile: đọc thẳng file.
+  Future<List<int>> _readRecordedBytes(String path) async {
+    if (kIsWeb) {
+      final resp = await http.get(Uri.parse(path));
+      return resp.bodyBytes;
+    }
+    return File(path).readAsBytes();
   }
 
   // Kết thúc phiên đang chạy: tăng id để vô hiệu closure của phiên hiện tại,
@@ -1163,38 +1287,65 @@ class _SosFormSheetState extends State<_SosFormSheet> {
                     ),
                   ),
                   GestureDetector(
-                    onTap: _toggleListening,
+                    onTap: _isTranscribing ? null : _onMicTap,
                     child: Container(
                       width: 48,
                       height: 48,
                       margin: const EdgeInsets.only(bottom: 4),
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: _isListening ? AppColors.alertRed : AppColors.primary,
+                        color: (_isListening || _isRecording)
+                            ? AppColors.alertRed
+                            : AppColors.primary,
                       ),
-                      child: Icon(
-                        _isListening ? Icons.stop : Icons.mic,
-                        color: Colors.white,
-                      ),
+                      child: _isTranscribing
+                          ? const Padding(
+                              padding: EdgeInsets.all(12),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : Icon(
+                              (_isListening || _isRecording)
+                                  ? Icons.stop
+                                  : Icons.mic,
+                              color: Colors.white,
+                            ),
                     ),
                   ),
                 ],
               ),
             ),
-            if (_isListening)
+            if (_isListening || _isRecording || _isTranscribing)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Row(
                   children: [
                     Container(
-                      width: 8, height: 8,
-                      decoration: const BoxDecoration(
-                        color: AppColors.alertRed,
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: _isTranscribing
+                            ? AppColors.primary
+                            : AppColors.alertRed,
                         shape: BoxShape.circle,
                       ),
                     ),
                     const SizedBox(width: 6),
-                    Text('Đang nghe...', style: AppTypography.bodySmall.copyWith(color: AppColors.alertRed)),
+                    Text(
+                      _isTranscribing
+                          ? 'Đang nhận dạng...'
+                          : (_isRecording
+                              ? 'Đang ghi âm... (bấm để dừng)'
+                              : 'Đang nghe...'),
+                      style: AppTypography.bodySmall.copyWith(
+                        color: _isTranscribing
+                            ? AppColors.primary
+                            : AppColors.alertRed,
+                      ),
+                    ),
                   ],
                 ),
               ),

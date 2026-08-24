@@ -9,13 +9,14 @@ const readline = require('readline');
 const path = require('path');
 
 const WORDLIST_URL = 'https://raw.githubusercontent.com/duyet/vietnamese-wordlist/master/Viet74K.txt';
-// Ghi thẳng ra file mà app đóng gói — 1 nguồn sự thật duy nhất, không copy tay.
 const DICT_OUTPUT_PATH = path.join(__dirname, '../../mobile/assets/dialect_dict.json');
 const RAW_VOCAB_PATH = path.join(__dirname, '../Viet74K.txt');
 
 // 1. Từ điển cứng (Hardcoded Dictionary)
 const hardcodedDict = {
   "răng": "sao",
+  "ren": "sao",
+  "lồm": "làm",
   "rứa": "thế",
   "mô": "đâu",
   "tê": "kia",
@@ -25,10 +26,43 @@ const hardcodedDict = {
   "chu cha": "ôi trời",
   "tau": "tao",
   "mi": "mày",
+  "hén": "nó",
+  "hán": "nó",
   "con trơ": "con trai",
   "thằng trơ": "thằng trai",
   "con gớ": "con gái",
   "mớ nhoà": "mái nhà",
+  "chẹn": "chặn",
+  "dô": "vô",
+  "nhoà": "nhà",
+  "cái chi": "cái gì",
+  "chi": "gì",
+  "chi phí": "chi phí",
+  "chi tiết": "chi tiết",
+  "chi nhánh": "chi nhánh",
+  "chi tiêu": "chi tiêu",
+  "chi hội": "chi hội",
+  "chi bộ": "chi bộ",
+  "chi cục": "chi cục",
+  "chi trả": "chi trả",
+  "chi chít": "chi chít",
+  "nác": "nóc",
+  "nát nhoà": "nóc nhà",
+  "núa": "nói",
+  "nỏ": "không",
+  "o": "cô",
+  // "phở" = "phải" (bắt buộc). Trùng tên món ăn "phở", nhưng trong ngữ cảnh cứu hộ lũ
+  // nghĩa "phải" áp đảo và "phải" đi với quá nhiều động từ để gom theo cụm → thêm blanket.
+  "phở": "phải",
+  // "cô" = "cao" (ở trên cao) — CHỈ thêm theo cụm để không phá nghĩa "cô/dì/cô giáo".
+  "trên cô": "trên cao",
+  "lên cô": "lên cao",
+  // "xoa" = "xa" (khoảng cách) — CHỈ thêm theo cụm để không phá nghĩa "xoa bóp/xoa dịu".
+  "ở xoa": "ở xa",
+  "xoa lắm": "xa lắm",
+  "còn xoa": "còn xa",
+  "đường xoa": "đường xa",
+  "xoa xôi": "xa xôi",
 };
 
 // 2. Công thức biến âm (Rules)

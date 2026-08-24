@@ -112,8 +112,11 @@ class DialectNormalizer {
   ///
   /// Thuật toán:
   /// 1. Tách câu thành từng từ (theo khoảng trắng).
-  /// 2. Thử khớp cụm từ dài trước (2-3 từ), nếu không khớp thì thử từ đơn.
-  /// 3. Giữ nguyên viết hoa/thường của từ gốc.
+  /// 2. Ở mỗi từ, tách phần dấu câu dính ở đầu/cuối ("rứa," -> "rứa" + ",")
+  ///    để tra từ điển trên phần lõi, rồi gắn dấu câu lại sau khi thay thế.
+  /// 3. Thử khớp cụm từ dài trước (3 rồi 2 từ), không khớp thì thử từ đơn.
+  ///    Cụm chỉ hợp lệ khi dấu câu nằm ở rìa ngoài, không xen giữa các từ.
+  /// 4. Giữ nguyên viết hoa/thường của cụm gốc, kể cả cụm thay thế nhiều từ.
   ///
   /// Ví dụ: "Bữa ni nước lên gốp quá" → "Bữa này nước lên gấp quá"
   static String normalize(String text) {
@@ -124,33 +127,53 @@ class DialectNormalizer {
     int i = 0;
 
     while (i < words.length) {
+      // Token rỗng (nhiều khoảng trắng liên tiếp) → giữ nguyên.
+      if (words[i].isEmpty) {
+        result.add(words[i]);
+        i++;
+        continue;
+      }
+
       bool matched = false;
 
-      // Thử khớp cụm 3 từ trước (cho các cụm như "chu cha ơi")
-      if (i + 2 < words.length) {
-        final trigram = '${words[i]} ${words[i + 1]} ${words[i + 2]}'.toLowerCase();
-        if (_dict.containsKey(trigram)) {
-          result.add(_preserveCase(words[i], _dict[trigram]!));
-          i += 3;
+      // Thử khớp cụm dài trước: 3 từ rồi 2 từ.
+      for (int n = 3; n >= 2 && !matched; n--) {
+        if (i + n - 1 >= words.length) continue;
+
+        // Mỗi phần tử: [dấu đầu, lõi, dấu cuối] của từng từ trong cụm.
+        final parts = <List<String>>[];
+        bool eligible = true;
+        for (int k = 0; k < n; k++) {
+          final p = _splitPunct(words[i + k]);
+          // Dấu câu chỉ được phép ở rìa ngoài: đầu-của-từ-đầu và cuối-của-từ-cuối.
+          final badInnerPrefix = k != 0 && p[0].isNotEmpty;
+          final badInnerSuffix = k != n - 1 && p[2].isNotEmpty;
+          if (p[1].isEmpty || badInnerPrefix || badInnerSuffix) {
+            eligible = false;
+            break;
+          }
+          parts.add(p);
+        }
+        if (!eligible) continue;
+
+        final cores = parts.map((p) => p[1]).toList();
+        final key = cores.join(' ').toLowerCase();
+        if (_dict.containsKey(key)) {
+          final replaced = _preserveCasePhrase(cores, _dict[key]!);
+          result.add(parts.first[0] + replaced + parts.last[2]);
+          i += n;
           matched = true;
         }
       }
 
-      // Thử khớp cụm 2 từ (cho các cụm như "chu cha")
-      if (!matched && i + 1 < words.length) {
-        final bigram = '${words[i]} ${words[i + 1]}'.toLowerCase();
-        if (_dict.containsKey(bigram)) {
-          result.add(_preserveCase(words[i], _dict[bigram]!));
-          i += 2;
-          matched = true;
-        }
-      }
-
-      // Thử khớp từ đơn
+      // Thử khớp từ đơn.
       if (!matched) {
-        final lower = words[i].toLowerCase();
-        if (_dict.containsKey(lower)) {
-          result.add(_preserveCase(words[i], _dict[lower]!));
+        final p = _splitPunct(words[i]);
+        final core = p[1];
+        final lower = core.toLowerCase();
+        if (core.isNotEmpty && _dict.containsKey(lower)) {
+          final replaced = _preserveCasePhrase([core], _dict[lower]!);
+          result.add(p[0] + replaced + p[2]);
         } else {
           result.add(words[i]); // Giữ nguyên nếu không khớp
         }
@@ -161,23 +184,54 @@ class DialectNormalizer {
     return result.join(' ');
   }
 
-  /// Giữ nguyên quy tắc viết hoa của từ gốc khi thay thế.
-  /// Ví dụ: gốc = "Lồm" (viết hoa chữ đầu), thay thế = "làm" → "Làm"
-  static String _preserveCase(String original, String replacement) {
-    if (original.isEmpty || replacement.isEmpty) return replacement;
+  /// Các ký tự được coi là dấu câu khi tách khỏi rìa từ.
+  static const String _punctChars = ',.;:!?"\'“”‘’()[]{}…-–—/\\`~@#\$%^&*_+=|<>';
 
-    // Nếu toàn bộ viết hoa (VD: "LỒM") → "LÀM"
-    if (original == original.toUpperCase() && original != original.toLowerCase()) {
+  static bool _isPunct(String ch) => _punctChars.contains(ch);
+
+  /// Tách một từ thành [dấu câu đầu, lõi, dấu câu cuối].
+  /// Ví dụ: "rứa," → ["", "rứa", ","];  "(nhà)" → ["(", "nhà", ")"].
+  static List<String> _splitPunct(String w) {
+    int start = 0, end = w.length;
+    while (start < end && _isPunct(w[start])) {
+      start++;
+    }
+    while (end > start && _isPunct(w[end - 1])) {
+      end--;
+    }
+    return [w.substring(0, start), w.substring(start, end), w.substring(end)];
+  }
+
+  /// Giữ nguyên quy tắc viết hoa của cụm gốc khi thay thế, xử lý được cả cụm
+  /// thay thế nhiều từ (VD: gốc "Nhoà Tôi" → thay "nhà tôi" → "Nhà Tôi").
+  static String _preserveCasePhrase(
+      List<String> originalWords, String replacement) {
+    if (originalWords.isEmpty || replacement.isEmpty) return replacement;
+
+    // Chỉ coi là VIẾT HOA TOÀN BỘ khi từ dài ≥ 2 ký tự: một chữ cái hoa đơn lẻ
+    // (VD "O" đầu câu) là viết hoa chữ đầu, không phải cả từ in hoa.
+    bool isUpper(String s) =>
+        s.length > 1 && s == s.toUpperCase() && s != s.toLowerCase();
+    bool isTitle(String s) =>
+        s.isNotEmpty && s[0] == s[0].toUpperCase() && s[0] != s[0].toLowerCase();
+    String cap(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+
+    final repWords = replacement.split(' ');
+
+    // Cả cụm gốc VIẾT HOA (VD "LỒM") → thay thế viết hoa hết.
+    if (originalWords.every(isUpper)) {
       return replacement.toUpperCase();
     }
-
-    // Nếu chữ đầu viết hoa (VD: "Lồm") → "Làm"
-    if (original[0] == original[0].toUpperCase() &&
-        original[0] != original[0].toLowerCase()) {
-      return replacement[0].toUpperCase() + replacement.substring(1);
+    // Mỗi từ trong cụm gốc Viết Hoa chữ đầu → viết hoa chữ đầu từng từ thay thế.
+    if (originalWords.every(isTitle)) {
+      return repWords.map(cap).join(' ');
     }
-
-    // Ngược lại giữ nguyên chữ thường
+    // Chỉ từ đầu cụm viết Hoa → chỉ viết hoa chữ đầu của từ thay thế đầu tiên.
+    if (isTitle(originalWords.first)) {
+      repWords[0] = cap(repWords[0]);
+      return repWords.join(' ');
+    }
+    // Còn lại giữ nguyên chữ thường.
     return replacement;
   }
 }

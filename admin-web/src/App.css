@@ -2,36 +2,364 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   DESIGN TOKENS — mỗi biến là 3 kênh "R G B" để Tailwind
+   chèn được alpha (bg-primary/20 → rgb(var(--primary) / 0.2)).
+   :root = sáng (mặc định), .dark = tối.
+   ============================================================ */
 @layer base {
+  :root {
+    /* --- Nền & bề mặt (sáng) --- */
+    --background: 244 247 250;
+    --on-background: 15 30 43;
+
+    --surface: 255 255 255;
+    --on-surface: 15 30 43;
+    --on-surface-variant: 84 100 117;
+
+    --surface-bright: 255 255 255;
+    --surface-dim: 232 238 244;
+    --surface-variant: 227 234 241;
+
+    --surface-container-lowest: 255 255 255;
+    --surface-container-low: 249 251 253;
+    --surface-container: 240 244 248;
+    --surface-container-high: 232 238 244;
+    --surface-container-highest: 222 231 239;
+
+    /* --- Thương hiệu --- */
+    --primary: 13 130 124;
+    --on-primary: 255 255 255;
+    --primary-container: 205 241 238;
+    --on-primary-container: 0 46 44;
+
+    --secondary: 47 90 122;
+    --on-secondary: 255 255 255;
+    --secondary-container: 214 232 245;
+    --on-secondary-container: 10 42 63;
+
+    --tertiary: 13 130 124;
+    --on-tertiary: 255 255 255;
+    --tertiary-container: 205 241 238;
+    --on-tertiary-container: 0 46 44;
+
+    /* --- Đường viền --- */
+    --outline: 122 139 156;
+    --outline-variant: 205 216 227;
+
+    /* --- Trạng thái --- */
+    --error: 190 40 40;
+    --on-error: 255 255 255;
+    --error-container: 253 226 226;
+    --on-error-container: 108 16 16;
+
+    --success: 21 128 61;
+    --on-success: 255 255 255;
+    --success-container: 214 245 224;
+    --on-success-container: 12 74 36;
+
+    --warning: 168 105 6;
+    --on-warning: 255 255 255;
+    --warning-container: 253 237 199;
+    --on-warning-container: 92 55 0;
+
+    --inverse-surface: 26 42 58;
+    --inverse-on-surface: 240 245 250;
+
+    /* --- Thang mức độ khẩn cấp (đậm hơn để đọc được trên nền sáng) --- */
+    --urgency-1: 22 143 78;
+    --urgency-2: 179 138 8;
+    --urgency-3: 202 138 4;
+    --urgency-4: 220 90 62;
+    --urgency-5: 200 30 30;
+
+    /* --- Hiệu ứng --- */
+    --glass-bg: 255 255 255;
+    --glass-alpha: 0.86;
+    --glass-blur: 12px;
+
+    --shadow-panel: 0 1px 2px rgb(15 30 43 / 0.06), 0 4px 16px rgb(15 30 43 / 0.06);
+    --shadow-raised: 0 2px 4px rgb(15 30 43 / 0.08), 0 8px 24px rgb(15 30 43 / 0.10);
+    --shadow-float: 0 4px 8px rgb(15 30 43 / 0.10), 0 16px 40px rgb(15 30 43 / 0.16);
+
+    color-scheme: light;
+  }
+
+  .dark {
+    /* --- Nền & bề mặt (tối — nâng sáng hơn bản cũ để bớt "đen đặc") --- */
+    --background: 16 28 40;
+    --on-background: 230 237 243;
+
+    --surface: 22 39 58;
+    --on-surface: 230 237 243;
+    --on-surface-variant: 169 186 203;
+
+    --surface-bright: 44 63 84;
+    --surface-dim: 13 25 38;
+    --surface-variant: 38 54 71;
+
+    --surface-container-lowest: 12 23 35;
+    --surface-container-low: 19 32 46;
+    --surface-container: 24 40 56;
+    --surface-container-high: 30 49 67;
+    --surface-container-highest: 38 57 77;
+
+    /* --- Thương hiệu --- */
+    --primary: 60 186 178;
+    --on-primary: 4 32 31;
+    --primary-container: 29 61 59;
+    --on-primary-container: 165 243 237;
+
+    --secondary: 179 202 218;
+    --on-secondary: 29 51 64;
+    --secondary-container: 52 73 87;
+    --on-secondary-container: 199 218 232;
+
+    --tertiary: 60 186 178;
+    --on-tertiary: 0 55 52;
+    --tertiary-container: 29 61 59;
+    --on-tertiary-container: 128 246 237;
+
+    /* --- Đường viền --- */
+    --outline: 122 145 168;
+    --outline-variant: 46 65 85;
+
+    /* --- Trạng thái --- */
+    --error: 255 154 148;
+    --on-error: 105 0 5;
+    --error-container: 108 26 26;
+    --on-error-container: 255 218 214;
+
+    --success: 74 222 128;
+    --on-success: 5 46 22;
+    --success-container: 22 78 47;
+    --on-success-container: 187 247 208;
+
+    --warning: 251 191 36;
+    --on-warning: 66 40 0;
+    --warning-container: 92 62 6;
+    --on-warning-container: 253 230 178;
+
+    --inverse-surface: 224 232 240;
+    --inverse-on-surface: 22 39 58;
+
+    /* --- Thang mức độ khẩn cấp --- */
+    --urgency-1: 134 239 172;
+    --urgency-2: 253 224 71;
+    --urgency-3: 251 191 36;
+    --urgency-4: 252 165 165;
+    --urgency-5: 239 68 68;
+
+    /* --- Hiệu ứng --- */
+    --glass-bg: 22 39 58;
+    --glass-alpha: 0.78;
+    --glass-blur: 14px;
+
+    --shadow-panel: 0 1px 2px rgb(0 0 0 / 0.35), 0 4px 16px rgb(0 0 0 / 0.30);
+    --shadow-raised: 0 2px 6px rgb(0 0 0 / 0.40), 0 10px 28px rgb(0 0 0 / 0.35);
+    --shadow-float: 0 6px 12px rgb(0 0 0 / 0.45), 0 20px 48px rgb(0 0 0 / 0.50);
+
+    color-scheme: dark;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
   body {
-    @apply bg-background text-on-background font-body-md overflow-hidden;
+    @apply bg-background text-on-background font-body-md;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    transition: background-color 0.25s ease, color 0.25s ease;
+  }
+
+  /* Icon font — khai báo tường minh để không nháy chữ ligature khi tải */
+  .material-symbols-outlined {
+    font-family: "Material Symbols Outlined";
+    font-weight: normal;
+    font-style: normal;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    font-feature-settings: "liga";
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+  }
+
+  /* Thanh cuộn hoà theo theme thay vì trắng/đen mặc định */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--outline) / 0.4) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: rgb(var(--outline) / 0.35);
+    border-radius: 999px;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--outline) / 0.55);
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--primary));
+    outline-offset: 2px;
+  }
+}
+
+/* ============================================================
+   COMPONENT CLASSES dùng lại nhiều nơi
+   ============================================================ */
+@layer components {
+  .glass-panel {
+    background: rgb(var(--glass-bg) / var(--glass-alpha));
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    @apply border border-outline-variant/60 shadow-panel;
+  }
+
+  /* Khung panel đặc — dùng cho vùng nội dung không nằm trên bản đồ */
+  .panel {
+    @apply bg-surface border border-outline-variant/60 rounded-xl shadow-panel;
+  }
+
+  .panel-header {
+    @apply flex items-center justify-between gap-sm px-md py-sm
+           border-b border-outline-variant/60 bg-surface-container/60;
+  }
+
+  .panel-title {
+    @apply font-label-sm text-[11px] font-bold uppercase tracking-widest
+           text-on-surface flex items-center gap-xs;
+  }
+
+  .section-label {
+    @apply font-label-sm text-[10px] uppercase tracking-widest text-on-surface-variant;
+  }
+
+  /* Nút biểu tượng vuông — sidebar, topbar, điều khiển bản đồ */
+  .icon-btn {
+    @apply inline-flex items-center justify-center rounded-lg
+           text-on-surface-variant transition-colors
+           hover:bg-surface-bright hover:text-primary
+           active:scale-95;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-xs rounded-lg
+           bg-primary px-md py-sm font-label-sm text-xs font-bold uppercase
+           tracking-widest text-on-primary transition-all
+           hover:brightness-110 active:scale-[0.98]
+           disabled:opacity-50 disabled:pointer-events-none;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-xs rounded-lg
+           border border-outline-variant/60 px-md py-sm font-label-sm text-xs
+           text-on-surface-variant transition-colors
+           hover:bg-surface-bright hover:text-on-surface
+           disabled:opacity-50 disabled:pointer-events-none;
+  }
+
+  .field {
+    @apply w-full rounded-lg border border-outline-variant bg-surface-container-low
+           px-md py-sm font-body-md text-sm text-on-surface
+           placeholder:text-on-surface-variant/60
+           outline-none transition-colors
+           focus:border-primary focus:ring-1 focus:ring-primary;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-xs rounded-full px-sm py-xs
+           font-label-sm text-[10px] uppercase tracking-wider;
+  }
+
+  .data-table {
+    @apply w-full border-collapse;
+  }
+  .data-table th {
+    @apply px-md py-sm text-left font-label-sm text-[10px] uppercase
+           tracking-widest text-on-surface-variant whitespace-nowrap
+           border-b border-outline-variant/60;
+  }
+  .data-table td {
+    @apply px-md py-sm border-b border-outline-variant/30 align-middle;
+  }
+  .data-table tbody tr {
+    @apply transition-colors hover:bg-surface-bright/40;
   }
 }
 
 @layer utilities {
-  .glass-panel {
-    background: rgba(20, 38, 55, 0.75);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-  }
-  
   .pulse-teal {
-    box-shadow: 0 0 0 0 rgba(60, 186, 178, 0.7);
+    box-shadow: 0 0 0 0 rgb(var(--primary) / 0.7);
     animation: pulse-teal-anim 2s infinite;
   }
-  
+
   @keyframes pulse-teal-anim {
-    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(60, 186, 178, 0.7); }
-    70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(60, 186, 178, 0); }
-    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(60, 186, 178, 0); }
+    0%   { transform: scale(0.95); box-shadow: 0 0 0 0 rgb(var(--primary) / 0.7); }
+    70%  { transform: scale(1);    box-shadow: 0 0 0 10px rgb(var(--primary) / 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgb(var(--primary) / 0); }
   }
-  
+
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }
 
-/* Ensure Leaflet map takes full height */
+/* ============================================================
+   LEAFLET — ép popup/control theo theme thay vì trắng cố định
+   ============================================================ */
 .leaflet-container {
   height: 100%;
   width: 100%;
+  background: rgb(var(--surface-dim));
+  font-family: Inter, system-ui, sans-serif;
+}
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: rgb(var(--surface));
+  color: rgb(var(--on-surface));
+  box-shadow: var(--shadow-float);
+  border: 1px solid rgb(var(--outline-variant));
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 0.75rem;
+}
+
+.leaflet-popup-content {
+  margin: 0;
+  padding: 12px 14px;
+}
+
+.leaflet-popup-close-button {
+  color: rgb(var(--on-surface-variant)) !important;
+  padding: 6px 6px 0 0 !important;
+}
+
+.leaflet-control-attribution {
+  background: rgb(var(--surface) / 0.75) !important;
+  color: rgb(var(--on-surface-variant)) !important;
+  font-size: 10px !important;
+  backdrop-filter: blur(4px);
+}
+.leaflet-control-attribution a {
+  color: rgb(var(--primary)) !important;
+}
+
+/* Tile của bản đồ tối cần giảm chói khi đang ở theme sáng và ngược lại */
+.leaflet-tile-pane {
+  transition: filter 0.3s ease;
 }

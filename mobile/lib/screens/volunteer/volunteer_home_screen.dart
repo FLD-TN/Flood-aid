@@ -250,10 +250,10 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
       final cases = await ApiService.getNearbyCases(
         lat: _currentLat,
         lon: _currentLon,
-        maxDistance: _currentFilter?.maxDistance ?? 10.0,
+        maxDistance: _currentFilter?.maxDistance ?? -1, // -1 = toàn quốc, không lọc bán kính
         urgencyLevels: _currentFilter?.urgencyLevels,
         tags: _currentFilter?.tags,
-        sortBy: _currentFilter?.sortByDistance ?? 'distance_asc',
+        sortBy: _currentFilter?.sortByDistance ?? 'newest', // mặc định: ca mới nhất lên đầu
       );
       if (mounted) {
         // ── Diffing: Phát hiện ca SOS mới để hiện notification ──

@@ -1,0 +1,73 @@
+@startuml UC12_TheodoiHanhTrinh
+
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 14
+skinparam ArrowColor Black
+skinparam SequenceArrowThickness 1
+skinparam ParticipantBorderColor Black
+skinparam ParticipantBackgroundColor White
+skinparam ParticipantFontColor Black
+skinparam ParticipantFontSize 15
+skinparam ParticipantBorderThickness 1
+skinparam LifeLineBorderColor Black
+skinparam LifeLineBorderThickness 1
+skinparam SequenceGroupBorderColor Black
+skinparam SequenceGroupBackgroundColor White
+skinparam SequenceGroupBodyBackgroundColor White
+skinparam SequenceGroupFontSize 14
+skinparam SequenceDividerBorderColor Black
+skinparam SequenceDividerBackgroundColor White
+skinparam SequenceDividerFontSize 14
+skinparam SequenceDividerFontStyle bold
+skinparam SequenceActivationBorderColor Black
+skinparam SequenceActivationBackgroundColor White
+skinparam NoteBackgroundColor White
+skinparam NoteBorderColor Black
+skinparam SequenceReferenceBorderColor Black
+skinparam SequenceReferenceBackgroundColor White
+skinparam SequenceReferenceFontSize 11
+hide footbox
+
+participant "Tình nguyện viên" as TNV
+participant "Ứng dụng" as App
+participant "Máy chủ" as Server
+participant "Cơ sở dữ liệu" as DB
+
+note over TNV, DB : Vừa nhận ca thành công (UC08)\nCa đang ở trạng thái "Đang cứu hộ"
+
+TNV -> App : Mở màn hình theo dõi hành trình
+App -> Server : Tải thông tin ca và vị trí nạn nhân
+Server -> DB : Truy vấn ca và toạ độ nạn nhân
+Server --> App : Vị trí nạn nhân và số điện thoại
+App --> TNV : Hiển thị bản đồ vị trí nạn nhân và TNV\nkhoảng cách hiện tại và số điện thoại nạn nhân
+
+alt 1b : TNV từ bỏ nhiệm vụ (trước khi di chuyển)
+    TNV -> App : Nhấn "Từ bỏ nhiệm vụ" và xác nhận
+    App -> Server : Gửi yêu cầu từ bỏ nhiệm vụ
+    Server -> DB : Trả ca về "Đang chờ"\nCập nhật TNV về "Sẵn sàng"
+    Server --> App : Từ bỏ thành công
+    App --> TNV : Quay về màn hình chính
+
+else TNV tiếp tục di chuyển đến nạn nhân
+    alt 2a : Mất kết nối trực tiếp
+        Server -> App : Cập nhật vị trí TNV định kỳ (chế độ dự phòng)
+
+    else Kết nối ổn định
+        Server -> App : Cập nhật vị trí TNV liên tục theo thời gian thực
+    end
+
+    App --> TNV : Hiển thị trạng thái tiếp cận\ncập nhật liên tục cho tới khi đến nơi
+
+    opt 1a : TNV muốn liên lạc nạn nhân khi đang di chuyển
+        TNV -> App : Chọn gọi điện hoặc nhắn tin
+        ref over TNV, App : UC11 — Liên lạc trong ca
+    end
+
+    Server -> DB : Cập nhật trạng thái ca "Đã đến nơi"\nThông báo cho cả hai bên
+    Server --> App : Ca đã đến nơi
+    App --> TNV : Hiển thị thông báo "Đã đến nơi"\nTiến hành cứu hộ
+end
+
+@enduml

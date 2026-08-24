@@ -1,0 +1,103 @@
+@startuml UC12_Activity
+
+scale 0.88
+skinparam shadowing false
+skinparam backgroundColor #f0f0f0
+skinparam headerBackgroundColor #f0f0f0
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+
+skinparam ActivityBorderColor black
+skinparam ActivityBackgroundColor White
+skinparam ActivityFontColor black
+skinparam ActivityFontSize 13
+
+skinparam ActivityDiamondBorderColor black
+skinparam ActivityDiamondBackgroundColor White
+skinparam ActivityDiamondFontColor black
+skinparam ActivityDiamondFontSize 14
+
+skinparam ActivityArrowColor black
+skinparam ArrowFontColor black
+skinparam ArrowFontSize 12
+
+skinparam ActivityStartColor Black
+skinparam ActivityEndColor Black
+
+skinparam conditionStyle diamond
+
+skinparam DiagramBorderColor black
+skinparam DiagramBorderThickness 8
+skinparam PartitionBorderColor black
+skinparam PartitionBorderThickness 3
+
+<style>
+diamond {
+  RoundCorner 0
+  LineThickness 1.5
+  Padding 10
+}
+activity {
+  RoundCorner 8
+}
+swimlane {
+  BorderThickness 3
+  BorderColor black
+  TitleBorderThickness 4
+  TitleBorderColor black
+  TitleBackgroundColor #e8e8e8
+  TitleFontSize 24
+  BackgroundColor #ffffff
+  Padding 10
+}
+document {
+  Padding 10
+}
+</style>
+
+|#ffffff| Tình nguyện viên |
+start
+:Mở màn hình theo dõi hành trình;
+
+|#ffffff| Ứng dụng |
+:Hiển thị bản đồ vị trí nạn nhân và TNV\nKhoảng cách hiện tại và số điện thoại nạn nhân;
+
+|#ffffff| Tình nguyện viên |
+if (Từ bỏ\nnhiệm vụ?) then ([1b] Từ bỏ)
+  :**[1b]** Xác nhận từ bỏ nhiệm vụ;
+  |#ffffff| Máy chủ |
+  :Trả ca về trạng thái chờ\nCập nhật TNV về sẵn sàng;
+  stop
+else ([Tiếp tục])
+endif
+
+|#ffffff| Tình nguyện viên |
+:Di chuyển đến vị trí nạn nhân;
+
+|#ffffff| Máy chủ |
+if (Kết nối ổn định?) then ([Không])
+  :**[2a]** Chuyển chế độ dự phòng\nCập nhật vị trí định kỳ;
+else ([Có])
+  :Cập nhật vị trí TNV liên tục\ntheo thời gian thực;
+endif
+
+:Cập nhật trạng thái tiếp cận khi TNV đến gần;
+
+|#ffffff| Ứng dụng |
+if (Liên lạc\nnạn nhân?) then ([1a] Có)
+  :**[1a]** Gọi điện hoặc nhắn tin\nvới nạn nhân (UC11);
+else ([Bỏ qua])
+endif
+
+|#ffffff| Ứng dụng |
+:Hiển thị trạng thái tiếp cận\ncập nhật liên tục cho tới khi TNV đến nơi;
+
+|#ffffff| Máy chủ |
+:Cập nhật trạng thái ca "Đã đến nơi"\nThông báo cho cả hai bên;
+
+|#ffffff| Ứng dụng |
+:Hiển thị thông báo đã đến nơi\nTNV tiến hành cứu hộ;
+
+stop
+
+@enduml

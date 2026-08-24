@@ -1,0 +1,59 @@
+@startuml UC00_DangNhapAdmin
+
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 14
+skinparam ArrowColor Black
+skinparam SequenceArrowThickness 1
+skinparam ParticipantBorderColor Black
+skinparam ParticipantBackgroundColor White
+skinparam ParticipantFontColor Black
+skinparam ParticipantFontSize 15
+skinparam ParticipantBorderThickness 1
+skinparam LifeLineBorderColor Black
+skinparam LifeLineBorderThickness 1
+skinparam SequenceGroupBorderColor Black
+skinparam SequenceGroupBackgroundColor White
+skinparam SequenceGroupBodyBackgroundColor White
+skinparam SequenceGroupFontSize 14
+skinparam SequenceDividerBorderColor Black
+skinparam SequenceDividerBackgroundColor White
+skinparam SequenceDividerFontSize 14
+skinparam SequenceDividerFontStyle bold
+skinparam SequenceActivationBorderColor Black
+skinparam SequenceActivationBackgroundColor White
+skinparam NoteBackgroundColor White
+skinparam NoteBorderColor Black
+hide footbox
+
+participant "Admin" as Admin
+participant "Trình duyệt" as Form
+participant "Máy chủ" as Auth
+participant "Cơ sở dữ liệu" as Account
+
+Admin -> Form : Truy cập trang quản trị FloodAid
+Form --> Admin : Hiển thị form đăng nhập
+
+Admin -> Form : Nhập email, mật khẩu rồi nhấn "Đăng nhập"
+Form -> Auth : Gửi yêu cầu xác thực
+Auth -> Account : Kiểm tra thông tin đăng nhập
+
+alt 3a : Sai email hoặc mật khẩu
+    Account --> Auth : Thông tin không hợp lệ
+    Auth --> Form : Từ chối
+    Form --> Admin : "Email hoặc mật khẩu không đúng"
+    note right of Auth : Ghi nhận thêm 1 lần đăng nhập thất bại.\nKhông tiết lộ trường nào bị sai.
+
+else 3b : Sai quá nhiều lần — tài khoản bị tạm khóa
+    Account --> Auth : Tài khoản đang bị tạm khóa
+    Auth --> Form : Từ chối — tài khoản tạm khóa
+    Form --> Admin : "Tài khoản đang bị tạm khóa.\nVui lòng thử lại sau."
+
+else Thông tin đăng nhập hợp lệ
+    Account --> Auth : Hợp lệ
+    Auth --> Form : Xác thực thành công — cấp phiên làm việc
+    Form --> Admin : Chuyển vào trang Dashboard
+end
+
+@enduml

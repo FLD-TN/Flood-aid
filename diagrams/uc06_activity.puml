@@ -1,0 +1,131 @@
+﻿@startuml UC06_Activity
+
+scale 0.75
+skinparam shadowing false
+skinparam backgroundColor #f0f0f0
+skinparam headerBackgroundColor #f0f0f0
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+
+skinparam ActivityBorderColor black
+skinparam ActivityBackgroundColor White
+skinparam ActivityFontColor black
+skinparam ActivityFontSize 13
+
+skinparam ActivityDiamondBorderColor black
+skinparam ActivityDiamondBackgroundColor White
+skinparam ActivityDiamondFontColor black
+skinparam ActivityDiamondFontSize 14
+
+skinparam ActivityArrowColor black
+skinparam ArrowFontColor black
+skinparam ArrowFontSize 12
+
+skinparam ActivityStartColor Black
+skinparam ActivityEndColor Black
+
+skinparam conditionStyle diamond
+
+skinparam DiagramBorderColor black
+skinparam DiagramBorderThickness 8
+skinparam PartitionBorderColor black
+skinparam PartitionBorderThickness 3
+
+<style>
+diamond {
+  RoundCorner 0
+  LineThickness 1.5
+  Padding 10
+}
+activity {
+  RoundCorner 8
+}
+swimlane {
+  BorderThickness 3
+  BorderColor black
+  TitleBorderThickness 4
+  TitleBorderColor black
+  TitleBackgroundColor #e8e8e8
+  TitleFontSize 24
+  BackgroundColor #ffffff
+  Padding 5
+}
+document {
+  Padding 5
+}
+</style>
+
+|#ffffff| Tình nguyện viên |
+start
+:Xem màn hình đăng ký\nTình nguyện viên;
+
+|#ffffff| Ứng dụng |
+:Hiển thị form đăng ký\nvới các bước hướng dẫn;
+
+|#ffffff| Tình nguyện viên |
+:Nhập họ tên đầy đủ;
+
+repeat
+  :Chụp ảnh CCCD\n(mặt trước);
+
+  |#ffffff| Ứng dụng |
+  :Gửi ảnh CCCD đến\nmáy chủ để nhận diện;
+
+  |#ffffff| Máy chủ |
+  :Gửi ảnh đến dịch vụ\nnhận diện CCCD;
+
+  if (Kết nối dịch vụ\nnhận diện thành công?) then ([Không])
+    :**[*a]** Không kết nối được\ndịch vụ nhận diện\nThông báo lỗi kết nối, gợi ý thử lại sau;
+    kill
+  else ([Có])
+  endif
+
+  |#ffffff| Máy chủ |
+  if (CCCD nhận dạng\nthành công?) then ([Không])
+    :**[3a]** Ảnh không đạt\n(mờ, góc sai, thiếu sáng)\nThông báo lỗi, yêu cầu chụp lại CCCD;
+  else ([Có])
+  endif
+
+  |#ffffff| Tình nguyện viên |
+repeat while (Nhận dạng\nCCCD thất bại?) is ([Có]) not ([Không])
+
+:CCCD đã được nhận dạng;
+
+|#ffffff| Ứng dụng |
+:Hiển thị thông tin trích xuất từ CCCD\n(số CCCD, họ tên, ngày sinh)\nTự động chuyển sang bước selfie;
+
+repeat
+  |#ffffff| Tình nguyện viên |
+  :Chụp ảnh selfie\ntheo hướng dẫn trên màn hình;
+
+  |#ffffff| Ứng dụng |
+  :Gửi cặp ảnh (CCCD + selfie)\nlên máy chủ để đối chiếu khuôn mặt;
+
+  |#ffffff| Máy chủ |
+  :Gửi cặp ảnh đến dịch vụ\nđối chiếu khuôn mặt;
+
+  if (Kết nối dịch vụ\nđối chiếu thành công?) then ([Không])
+    :**[*a]** Không kết nối được\ndịch vụ đối chiếu\nThông báo lỗi kết nối, gợi ý thử lại sau;
+    kill
+  else ([Có])
+  endif
+
+  if (Khuôn mặt trùng khớp\nvới ảnh CCCD?) then ([Không])
+    :**[5a]** Khuôn mặt không khớp\nvới ảnh trên CCCD\nThông báo lỗi, yêu cầu chụp lại selfie;
+  else ([Có])
+  endif
+
+  |#ffffff| Tình nguyện viên |
+repeat while (Khuôn mặt\nkhông khớp?) is ([Có]) not ([Không])
+
+:Selfie đã xác nhận khớp;
+
+|#ffffff| Máy chủ |
+:Lưu hồ sơ TNV\nTrạng thái "Chờ Admin phê duyệt";
+:Ghi nhận để thông báo Admin\ncó hồ sơ mới cần xem xét;
+
+|#ffffff| Ứng dụng |
+:Hiển thị màn hình\n"Hồ sơ đang chờ Admin phê duyệt";
+stop
+
+@enduml

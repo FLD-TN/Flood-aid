@@ -1,0 +1,79 @@
+@startuml Hinh4_3_PhanLoaiKhanCap
+
+scale 0.95
+skinparam shadowing false
+skinparam backgroundColor #f0f0f0
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+
+skinparam ActivityBorderColor black
+skinparam ActivityBackgroundColor White
+skinparam ActivityFontColor black
+skinparam ActivityFontSize 13
+
+skinparam ActivityDiamondBorderColor black
+skinparam ActivityDiamondBackgroundColor White
+skinparam ActivityDiamondFontColor black
+skinparam ActivityDiamondFontSize 13
+
+skinparam ActivityArrowColor black
+skinparam ArrowFontColor black
+skinparam ArrowFontSize 11
+
+skinparam ActivityStartColor Black
+skinparam ActivityEndColor Black
+skinparam conditionStyle diamond
+skinparam NoteBackgroundColor #fdfdd0
+skinparam NoteBorderColor black
+
+skinparam DiagramBorderColor black
+skinparam DiagramBorderThickness 6
+
+<style>
+diamond {
+  RoundCorner 0
+  LineThickness 1.5
+  Padding 10
+}
+activity {
+  RoundCorner 8
+}
+partition {
+  BorderThickness 2
+  BorderColor black
+}
+</style>
+
+start
+:Văn bản mô tả đã chuẩn hóa;
+
+partition "**Nhánh dò từ khóa** — chạy trước, đồng bộ" {
+  :Tách mệnh đề, dò từ khóa theo biên từ\n(có xử lý phủ định và cụm loại trừ);
+  :Mức khẩn cấp theo luật **m_luật**\nluôn có kết quả, không bao giờ lỗi;
+}
+
+partition "**Nhánh mô hình ngôn ngữ lớn** — chờ, có giới hạn thời gian" {
+  :Gửi văn bản đến mô hình ngôn ngữ lớn;
+  if (Trả lời trong\n3 giây?) then ([Có])
+    :Mức khẩn cấp theo mô hình **m_ai**\nkèm nhãn và mô tả ngắn;
+  else ([Không / lỗi dịch vụ])
+    :Bỏ kết quả mô hình\nDùng kết quả nhánh dò từ khóa;
+    note right
+      Đây là lý do nhánh dò từ khóa
+      phải chạy trước và không được lỗi.
+    end note
+  endif
+}
+
+:**Hợp nhất:** mức cuối = max(m_ai, m_luật)\nTập nhãn hợp từ cả hai nhánh;
+
+note right
+  **Sàn an toàn.** Lấy mức cao hơn nên hệ thống
+  không bao giờ đánh giá một ca nhẹ hơn mức mà
+  từ khóa cảnh báo đã phát hiện.
+end note
+
+:Ca SOS có mức khẩn cấp 1–5,\nnhãn phân loại và mô tả ngắn;
+stop
+
+@enduml

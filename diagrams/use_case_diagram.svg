@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1600" viewBox="0 0 1400 1600">
+  <defs>
+    <style>
+      text { font-family: 'Segoe UI', 'Arial', sans-serif; fill: #000; }
+    </style>
+    <marker id="arrow-include" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polyline points="0 0, 10 3.5, 0 7" fill="none" stroke="#000" stroke-width="1.2"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1400" height="1600" fill="#fff"/>
+
+  <!-- Title -->
+  <text x="700" y="25" text-anchor="middle" font-size="15" font-weight="bold">Use Case Diagram — Hệ thống FloodAid</text>
+
+  <!-- ==================== SYSTEM BOUNDARY ==================== -->
+  <rect x="205" y="60" width="990" height="1340" fill="none" stroke="#000" stroke-width="1.5"/>
+  <text x="700" y="82" text-anchor="middle" font-size="13" font-weight="bold">Hệ thống FloodAid</text>
+
+  <!-- ==================== ASSOCIATION LINES ==================== -->
+  <!-- Drawn FIRST — ovals and actors cover endpoints -->
+
+  <!-- Nạn nhân → Left column UCs -->
+  <line x1="90" y1="490" x2="410" y2="155" stroke="#000" stroke-width="1"/>
+  <line x1="90" y1="490" x2="410" y2="325" stroke="#000" stroke-width="1"/>
+  <line x1="90" y1="490" x2="410" y2="495" stroke="#000" stroke-width="1"/>
+  <line x1="90" y1="490" x2="410" y2="665" stroke="#000" stroke-width="1"/>
+  <line x1="90" y1="490" x2="410" y2="835" stroke="#000" stroke-width="1"/>
+
+  <!-- TNV → Right column UCs -->
+  <line x1="1310" y1="490" x2="990" y2="155" stroke="#000" stroke-width="1"/>
+  <line x1="1310" y1="490" x2="990" y2="325" stroke="#000" stroke-width="1"/>
+  <line x1="1310" y1="490" x2="990" y2="495" stroke="#000" stroke-width="1"/>
+  <line x1="1310" y1="490" x2="990" y2="665" stroke="#000" stroke-width="1"/>
+  <line x1="1310" y1="490" x2="990" y2="835" stroke="#000" stroke-width="1"/>
+  <line x1="1310" y1="490" x2="990" y2="1005" stroke="#000" stroke-width="1"/>
+
+  <!-- TNV → UC01 (orthogonal route: up → left across top → down into UC01) -->
+  <polyline points="1310,453 1310,45 410,45 410,127" fill="none" stroke="#000" stroke-width="1"/>
+
+  <!-- Admin → Bottom row UCs -->
+  <line x1="700" y1="1480" x2="330" y2="1255" stroke="#000" stroke-width="1"/>
+  <line x1="700" y1="1480" x2="570" y2="1255" stroke="#000" stroke-width="1"/>
+  <line x1="700" y1="1480" x2="810" y2="1255" stroke="#000" stroke-width="1"/>
+  <line x1="700" y1="1480" x2="1050" y2="1255" stroke="#000" stroke-width="1"/>
+
+  <!-- ==================== «include» DASHED ARROWS ==================== -->
+
+  <!-- UC02 → Sub-UC "Xử lý AI NLP" -->
+  <line x1="503" y1="330" x2="622" y2="376" stroke="#000" stroke-width="1" stroke-dasharray="7,4" marker-end="url(#arrow-include)"/>
+  <text x="555" y="342" text-anchor="middle" font-size="9" font-style="italic">«include»</text>
+
+  <!-- UC06 → Sub-UC "Xác minh danh tính" -->
+  <line x1="896" y1="159" x2="779" y2="196" stroke="#000" stroke-width="1" stroke-dasharray="7,4" marker-end="url(#arrow-include)"/>
+  <text x="840" y="168" text-anchor="middle" font-size="9" font-style="italic">«include»</text>
+
+  <!-- ==================== WHITE MASKS BEHIND ACTORS ==================== -->
+  <rect x="60" y="440" width="60" height="100" fill="#fff" stroke="none"/>
+  <rect x="1280" y="440" width="60" height="100" fill="#fff" stroke="none"/>
+  <rect x="650" y="1450" width="100" height="95" fill="#fff" stroke="none"/>
+
+  <!-- ==================== UC OVALS + TEXT ==================== -->
+
+  <!-- === Left Column — Nạn nhân UCs (cx=410) === -->
+
+  <!-- UC01: Xác thực OTP -->
+  <ellipse cx="410" cy="155" rx="95" ry="28" fill="#fff" stroke="#000" stroke-width="1.5"/>
+  <text x="410" y="149" text-anchor="middle" font-size="9" font-weight="bold">UC01</text>
+  <text x="410" y="164" text-anchor="middle" font-size="11">Xác thực OTP</text>
+
+  <!-- UC02: Gửi yêu cầu SOS -->
+  <ellipse cx="410" cy="325" rx="95" ry="28" fill="#fff" stroke="#000" stroke-width="1.5"/>
+  <text x="410" y="319" text-anchor="middle" font-size="9" font-weight="bold">UC02</text>
+  <text x="410" y="334" text-anchor="middle" font-size="11">Gửi yêu cầu SOS</text>
+
+  <!-- UC03: Theo dõi ca cứu hộ -->
+  <ellipse cx="410" cy="495" rx="95" ry="28" fill="#fff" stroke="#000" stroke-width="1.5"/>
+  <text x="410" y="489" text-anchor="middle" font-size="9" font-weight="bold">UC03</text>
+  <text x="410" y="504" text-anchor="middle" font-size="11">Theo dõi ca cứu hộ</text>
+
+  <!-- UC04: Đóng / Hủy ca SOS -->
+  <ellipse cx="410" cy="665" rx="95" ry="28" fill="#fff" stroke="#000" stroke-width="1.5"/>
+  <text x="410" y="659" text-anchor="middle" font-size="9" font-weight="bold">UC04</text>
+  <text x="410" y="674" text-anchor="middle" font-size="11">Đóng / Hủy ca SOS</text>
+
+  <!-- UC05: Xem lịch sử SOS -->
+  <ellipse cx="410" cy="835" rx="95" ry="28" fill="#fff" stroke="#000" stroke-width="1.5"/>
+  <text x="410" y="829" text-anchor="middle" font-size="9" font-weight="bold">UC05</text>
+  <text x="410" y="844" text-anchor="middle" font-size="11">Xem lịch sử SOS</text>
+
+  <!-- === Right Column — TNV UCs (cx=990) === -->
+
+  <!-- UC06: Đăng ký eKYC -->
+  <ellipse cx="990" cy="155" rx="95" ry="28" fill="#fff" stroke="#000" stroke-width="1.5"/>
+  <text x="990" y="149" text-anchor="middle" font-size="9" font-weight="bold">UC06</text>
+  <text x="990" y="164" text-anchor="middle" font-size="11">Đăng ký eKYC</text>
+
+  <!-- UC07: Xem DS ca SOS gần -->
+  <ellipse cx="990" cy="325" rx="95" ry="28" fill="#fff" stroke="#000" stroke-width="1.5"/>
+  <text x="990" y="319" text-anchor="middle" font-size="9" font-weight="bold">UC07</text>
+  <text x="990" y="334" text-anchor="middle" font-size="11">Xem DS ca SOS gần</text>
+
+  <!-- UC08: Nhận ca cứu hộ -->
+  <ellipse cx="990" cy="495" rx="95" ry="28" fill="#fff" stroke="#000" stroke-width="1.5"/>
+  <text x="990" y="489" text-anchor="middle" font-size="9" font-weight="bold">UC08</text>
+  <text x="990" y="504" text-anchor="middle" font-size="11">Nhận ca cứu hộ</text>
+
+  <!-- UC09: Thực hiện cứu hộ -->
+  <ellipse cx="990" cy="665" rx="95" ry="28" fill="#fff" stroke="#000" stroke-width="1.5"/>
+  <text x="990" y="659" text-anchor="middle" font-size="9" font-weight="bold">UC09</text>
+  <text x="990" y="674" text-anchor="middle" font-size="11">Thực hiện cứu hộ</text>
+
+  <!-- UC10: Quản lý cá nhân TNV -->
+  <ellipse cx="990" cy="835" rx="95" ry="28" fill="#fff" stroke="#000" stroke-width="1.5"/>
+  <text x="990" y="829" text-anchor="middle" font-size="9" font-weight="bold">UC10</text>
+  <text x="990" y="844" text-anchor="middle" font-size="11">Quản lý cá nhân TNV</text>
+
+  <!-- UC11: Xem lịch sử cứu hộ -->
+  <ellipse cx="990" cy="1005" rx="95" ry="28" fill="#fff" stroke="#000" stroke-width="1.5"/>
+  <text x="990" y="999" text-anchor="middle" font-size="9" font-weight="bold">UC11</text>
+  <text x="990" y="1014" text-anchor="middle" font-size="11">Xem lịch sử cứu hộ</text>
+
+  <!-- === Bottom Row — Admin UCs (cy=1255) === -->
+
+  <!-- UC12: Duyệt hồ sơ TNV -->
+  <ellipse cx="330" cy="1255" rx="95" ry="28" fill="#fff" stroke="#000" stroke-width="1.5"/>
+  <text x="330" y="1249" text-anchor="middle" font-size="9" font-weight="bold">UC12</text>
+  <text x="330" y="1264" text-anchor="middle" font-size="11">Duyệt hồ sơ TNV</text>
+
+  <!-- UC13: Giám sát bản đồ -->
+  <ellipse cx="570" cy="1255" rx="95" ry="28" fill="#fff" stroke="#000" stroke-width="1.5"/>
+  <text x="570" y="1249" text-anchor="middle" font-size="9" font-weight="bold">UC13</text>
+  <text x="570" y="1264" text-anchor="middle" font-size="11">Giám sát bản đồ</text>
+
+  <!-- UC14: Quản lý ca SOS -->
+  <ellipse cx="810" cy="1255" rx="95" ry="28" fill="#fff" stroke="#000" stroke-width="1.5"/>
+  <text x="810" y="1249" text-anchor="middle" font-size="9" font-weight="bold">UC14</text>
+  <text x="810" y="1264" text-anchor="middle" font-size="11">Quản lý ca SOS</text>
+
+  <!-- UC15: Xem thống kê -->
+  <ellipse cx="1050" cy="1255" rx="95" ry="28" fill="#fff" stroke="#000" stroke-width="1.5"/>
+  <text x="1050" y="1249" text-anchor="middle" font-size="9" font-weight="bold">UC15</text>
+  <text x="1050" y="1264" text-anchor="middle" font-size="11">Xem thống kê</text>
+
+  <!-- === Sub-UCs (include targets) === -->
+
+  <!-- Sub-UC: Xử lý AI NLP (included by UC02) -->
+  <ellipse cx="700" cy="380" rx="80" ry="23" fill="#fff" stroke="#000" stroke-width="1"/>
+  <text x="700" y="383" text-anchor="middle" font-size="10">Xử lý AI NLP</text>
+
+  <!-- Sub-UC: Xác minh danh tính (included by UC06) -->
+  <ellipse cx="700" cy="200" rx="80" ry="23" fill="#fff" stroke="#000" stroke-width="1"/>
+  <text x="700" y="203" text-anchor="middle" font-size="10">Xác minh danh tính</text>
+
+  <!-- ==================== ACTOR STICK FIGURES ==================== -->
+
+  <!-- === Nạn nhân (x=90) === -->
+  <circle cx="90" cy="460" r="9" fill="#fff" stroke="#000" stroke-width="1.5"/>
+  <line x1="90" y1="469" x2="90" y2="491" stroke="#000" stroke-width="1.5"/>
+  <line x1="76" y1="478" x2="104" y2="478" stroke="#000" stroke-width="1.5"/>
+  <line x1="90" y1="491" x2="78" y2="513" stroke="#000" stroke-width="1.5"/>
+  <line x1="90" y1="491" x2="102" y2="513" stroke="#000" stroke-width="1.5"/>
+  <text x="90" y="533" text-anchor="middle" font-size="12" font-weight="bold">Nạn nhân</text>
+
+  <!-- === Tình nguyện viên (x=1310) === -->
+  <circle cx="1310" cy="460" r="9" fill="#fff" stroke="#000" stroke-width="1.5"/>
+  <line x1="1310" y1="469" x2="1310" y2="491" stroke="#000" stroke-width="1.5"/>
+  <line x1="1296" y1="478" x2="1324" y2="478" stroke="#000" stroke-width="1.5"/>
+  <line x1="1310" y1="491" x2="1298" y2="513" stroke="#000" stroke-width="1.5"/>
+  <line x1="1310" y1="491" x2="1322" y2="513" stroke="#000" stroke-width="1.5"/>
+  <text x="1310" y="531" text-anchor="middle" font-size="11" font-weight="bold">Tình nguyện viên</text>
+  <text x="1310" y="544" text-anchor="middle" font-size="10">(TNV)</text>
+
+  <!-- === Admin (x=700, bottom) === -->
+  <circle cx="700" cy="1465" r="9" fill="#fff" stroke="#000" stroke-width="1.5"/>
+  <line x1="700" y1="1474" x2="700" y2="1496" stroke="#000" stroke-width="1.5"/>
+  <line x1="686" y1="1483" x2="714" y2="1483" stroke="#000" stroke-width="1.5"/>
+  <line x1="700" y1="1496" x2="688" y2="1518" stroke="#000" stroke-width="1.5"/>
+  <line x1="700" y1="1496" x2="712" y2="1518" stroke="#000" stroke-width="1.5"/>
+  <text x="700" y="1540" text-anchor="middle" font-size="12" font-weight="bold">Admin</text>
+
+</svg>

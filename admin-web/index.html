@@ -1,11 +1,28 @@
 <!doctype html>
-<html lang="en">
+<html lang="vi">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500;600;700&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-    <title>RescueCore Admin</title>
+    <meta name="theme-color" content="#101c28" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f4f7fa" media="(prefers-color-scheme: light)" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500;600;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet"/>
+    <title>Trang Quản Trị FloodAid</title>
+    <script>
+      // Đặt theme trước khi React mount để không nháy trắng khi đang ở chế độ tối
+      (function () {
+        try {
+          var saved = localStorage.getItem('adminTheme');
+          var dark = saved ? saved === 'dark' : !window.matchMedia('(prefers-color-scheme: light)').matches;
+          document.documentElement.classList.toggle('dark', dark);
+          document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+        } catch (e) {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
