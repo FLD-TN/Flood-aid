@@ -249,7 +249,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
             .toUtc()
             .difference(warnedTime.toUtc())
             .inSeconds;
-        final remaining = 300 - elapsed;
+        final remaining = 20 - elapsed;
 
         if (remaining <= 0) {
           // Thời gian đã hết trong khi WS bị ngắt → hủy luôn phía client
@@ -320,7 +320,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
             final seconds = _staleRemainingSeconds % 60;
             final timeStr =
                 '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-            final progress = (_staleRemainingSeconds / 300).clamp(0.0, 1.0);
+            final progress = (_staleRemainingSeconds / 20).clamp(0.0, 1.0);
 
             return WillPopScope(
               onWillPop: () async => false, // Chặn nút Back
@@ -579,7 +579,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
     if (!mounted) return;
     setState(() {
       _hasStaleWarning = false;
-      _staleRemainingSeconds = 300; // reset cho lần sau
+      _staleRemainingSeconds = 20; // reset cho lần sau
     });
 
     // Làm giống y hệt luồng bấm nút Hủy ca SOS theo yêu cầu của user

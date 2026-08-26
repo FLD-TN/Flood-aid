@@ -248,7 +248,7 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
               if (_hasActiveCase)
                 Positioned(
                   left: 16.w,
-                  bottom: 80.h, // Đẩy lên để tránh bị che bởi BottomBar
+                  bottom: MediaQuery.of(context).padding.bottom + 75.h, // Luôn nằm phía trên BottomAppBar
                   child: _buildActiveCaseBanner(),
                 ),
             ],
@@ -397,43 +397,65 @@ class _SosScreenState extends State<SosScreen> with TickerProviderStateMixin {
           child: child,
         );
       },
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 8,
-        ),
-        decoration: BoxDecoration(
-          color: AppColors.textPrimary, // Dark, sleek contrast
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.textPrimary.withOpacity(0.25),
-              blurRadius: 12,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Red recording/live dot
-            Container(
-              width: 8, height: 8,
-              decoration: const BoxDecoration(
-                color: AppColors.alertRed,
-                shape: BoxShape.circle,
+      child: GestureDetector(
+        onTap: () {
+          if (_activeCaseId != null) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => TrackingScreen(
+                  caseId: _activeCaseId!,
+                  victimLat: _activeLat,
+                  victimLon: _activeLon,
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-            const Text(
-              'Đang theo dõi ca SOS',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
+            ).then((_) => _checkActiveCase());
+          }
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 8,
+          ),
+          decoration: BoxDecoration(
+            color: AppColors.textPrimary, // Dark, sleek contrast
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.textPrimary.withOpacity(0.25),
+                blurRadius: 12,
+                offset: const Offset(0, 6),
               ),
-            ),
-          ],
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Red recording/live dot
+              Container(
+                width: 8, height: 8,
+                decoration: const BoxDecoration(
+                  color: AppColors.alertRed,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'Đang theo dõi ca SOS',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Icon(
+                Icons.arrow_forward_ios_rounded,
+                color: Colors.white70,
+                size: 11,
+              ),
+            ],
+          ),
         ),
       ),
     );

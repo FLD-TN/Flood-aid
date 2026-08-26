@@ -12,7 +12,7 @@ const { db } = require('../db');
 const { sendFcmToVolunteer } = require('../services/fcmService');
 const { broadcastToRoom } = require('../services/wsServer');
 
-cron.schedule('*/2 * * * *', async () => {
+cron.schedule('*/20 * * * * *', async () => {
   try {
     // ── Scan 1: Gửi cảnh báo đứng im ────────────────────────────────────────
     const staleAssignments = await db.query(`
@@ -28,7 +28,7 @@ cron.schedule('*/2 * * * *', async () => {
       JOIN volunteers vol ON vol.id = ca.volunteer_id
       JOIN cases c ON c.id = ca.case_id
       WHERE c.status = 'responding'
-        AND ca.assigned_at < NOW() - INTERVAL '1 minutes'
+        AND ca.assigned_at < NOW() - INTERVAL '30 seconds'
         AND ca.completed_at IS NULL
         AND ca.revoked_at IS NULL
         AND ca.warned_at IS NULL
@@ -68,15 +68,13 @@ cron.schedule('*/2 * * * *', async () => {
     }
 
     // ── Scan 2: Hủy ca nếu TNV không phản hồi sau 5 phút kể từ warned_at ───
-    // Bug fix: Dùng SQL query thay vì setTimeout trong RAM
-    // → Không mất trạng thái khi Render.com restart server
     const timedOutAssignments = await db.query(`
       SELECT ca.volunteer_id, ca.case_id, vol.fcm_token
       FROM case_assignments ca
       JOIN volunteers vol ON vol.id = ca.volunteer_id
       JOIN cases c ON c.id = ca.case_id
       WHERE ca.warned_at IS NOT NULL
-        AND ca.warned_at < NOW() - INTERVAL '5 minutes'
+        AND ca.warned_at < NOW() - INTERVAL '20 seconds'
         AND ca.confirmed_en_route = false
         AND ca.revoked_at IS NULL
         AND ca.completed_at IS NULL
