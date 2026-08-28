@@ -54,11 +54,9 @@ Hệ thống được thiết kế theo kiến trúc Client-Server với các mo
 
 ## 📸 Screenshots / Demo
 
-| 📱 Nạn nhân gửi SOS (Voice/Text) | 📱 TNV Tracking GPS & Nhận ca | 💻 Web Admin - Live Map |
+| Main Screen | Manga List | Reader View |
 | :---: | :---: | :---: |
-| <img src="[Đường_dẫn_ảnh_A.2_và_A.3]" width="220"/> | <img width="300" height="630" alt="image" src="https://github.com/user-attachments/assets/49441c37-f53e-4e2d-a054-4b4b2cd1f0fe" />
- | <img width="300" height="630" alt="image" src="https://github.com/user-attachments/assets/306d602c-d1f4-48b2-a5ac-717844a1f72e" />
-|
+|<img width="385" height="824" alt="Screenshot 2025-07-29 173922" src="https://github.com/user-attachments/assets/18894e83-f03c-4386-97ab-96b6cbcc86aa" />||<img width="385" height="824" alt="Screenshot 2025-07-29 184026" src="https://github.com/user-attachments/assets/0f17d0cf-c757-4919-9731-c141095c114b" />|
 
 ---
 
