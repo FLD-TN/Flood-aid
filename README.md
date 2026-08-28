@@ -85,4 +85,3 @@ npm run dev
 ```
 
 ---
-*© 2026 Trần Anh Duy - Sản phẩm thuộc khuôn khổ Khóa luận Tốt nghiệp.*
