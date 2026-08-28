@@ -54,9 +54,11 @@ Hệ thống được thiết kế theo kiến trúc Client-Server với các mo
 
 ## 📸 Screenshots / Demo
 
-| Main Screen | Manga List | Reader View |
+| Nạn nhân tạo 1 ca SOS | Theo dõi ca cứu hộ | Nhắn tin thời gian thực |
 | :---: | :---: | :---: |
-|<img width="385" height="824" alt="Screenshot 2025-07-29 173922" src="https://github.com/user-attachments/assets/18894e83-f03c-4386-97ab-96b6cbcc86aa" />|<img width="415" height="839" alt="Screenshot 2025-07-29 173933" src="https://github.com/user-attachments/assets/53705232-65d0-4b46-9328-9b6ddc9be0f2" />|<img width="300" height="630" alt="image" src="https://github.com/user-attachments/assets/1aff837a-f743-4f54-97ec-b17be7e3b830" />
+|<img width="320" height="640" alt="image" src="https://github.com/user-attachments/assets/cd6b337f-c9d2-44be-8baa-fb84650f6876" />
+|<img width="320" height="640" alt="image" src="https://github.com/user-attachments/assets/35ca7d48-4bdb-4824-acd4-ce61e7537b58" />
+|<img width="320" height="640" alt="image" src="https://github.com/user-attachments/assets/1aff837a-f743-4f54-97ec-b17be7e3b830" />
 |
 
 ---
