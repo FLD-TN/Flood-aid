@@ -30,9 +30,7 @@ claude.exe
 
 # Ignore root-level reports and docs
 /*.md
+!/README.md
 /*.docx
 /*.xlsx
 /*.html
-/noi_dung_slide.txt
-/vietmap-agent-docs/
-/diagrams/
