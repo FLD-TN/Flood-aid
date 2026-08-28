@@ -1,6 +1,6 @@
 <img width="300" height="200"  style="display: block; margin-left: auto; margin-right: auto;" alt="Logo ĐH Ngoại Ngữ - Tin Học - HUFLIT" src="https://github.com/user-attachments/assets/c9365500-f365-4262-bf2a-317bc5141475" />
 
-  # FloodAid - Nền tảng Hỗ trợ Điều phối Cứu trợ Lũ lụt tại Miền Trung
+  # Nghiên cứu và xây dựng Nền tảng Hỗ trợ Điều phối Cứu trợ Lũ lụt tại Miền Trung dựa trên AI NLP
   
   **Khóa luận Tốt nghiệp - Khoa Công nghệ Thông tin, Đại học Ngoại ngữ - Tin học TP.HCM (HUFLIT)**<br>
   *Sinh viên: Trần Anh Duy | Giảng viên hướng dẫn: ThS. Lê Thị Minh Nguyện*
@@ -14,7 +14,7 @@
 
 ---
 
-## 📖 Giới thiệu Dự án (Overview)
+## 📖 Giới thiệu Dự án
 
 **FloodAid** là hệ thống điều phối cứu trợ khẩn cấp theo thời gian thực (Real-time), thiết kế riêng cho vùng lũ lụt Miền Trung. Hệ thống giải quyết bài toán tiếp nhận thông tin kêu cứu, tự động chuẩn hóa phương ngữ, đánh giá mức độ khẩn cấp bằng Trí tuệ Nhân tạo (AI NLP) và điều phối lực lượng Tình nguyện viên (TNV) dựa trên vị trí địa lý (GIS).
 
