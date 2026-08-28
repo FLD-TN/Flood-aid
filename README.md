@@ -56,7 +56,8 @@ Hệ thống được thiết kế theo kiến trúc Client-Server với các mo
 
 | 📱 Nạn nhân gửi SOS (Voice/Text) | 📱 TNV Tracking GPS & Nhận ca | 💻 Web Admin - Live Map |
 | :---: | :---: | :---: |
-| <img src="[Đường_dẫn_ảnh_A.2_và_A.3]" width="220"/> | <img src="[Đường_dẫn_ảnh_A.5]" width="220"/> | <img width="300" height="600" alt="image" src="https://github.com/user-attachments/assets/306d602c-d1f4-48b2-a5ac-717844a1f72e" />
+| <img src="[Đường_dẫn_ảnh_A.2_và_A.3]" width="220"/> | <img width="300" height="630" alt="image" src="https://github.com/user-attachments/assets/49441c37-f53e-4e2d-a054-4b4b2cd1f0fe" />
+ | <img width="300" height="630" alt="image" src="https://github.com/user-attachments/assets/306d602c-d1f4-48b2-a5ac-717844a1f72e" />
 |
 
 ---
