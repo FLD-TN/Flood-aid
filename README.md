@@ -1,4 +1,4 @@
-<div align="center">
+<img width="615" height="1286" alt="image" src="https://github.com/user-attachments/assets/595b3ef9-badf-45d6-8fec-e26ea547c705" /><div align="center">
   <img src="https://via.placeholder.com/150x150?text=FloodAid+Logo" alt="FloodAid Logo" width="120" />
 
   # FloodAid - Nền tảng Hỗ trợ Điều phối Cứu trợ Lũ lụt tại Miền Trung
@@ -59,7 +59,8 @@ Hệ thống được thiết kế theo kiến trúc Client-Server với các mo
 
 | 📱 Nạn nhân gửi SOS (Voice/Text) | 📱 TNV Tracking GPS & Nhận ca | 💻 Web Admin - Live Map |
 | :---: | :---: | :---: |
-| <img src="[Đường_dẫn_ảnh_A.2_và_A.3]" width="220"/> | <img src="[Đường_dẫn_ảnh_A.5]" width="220"/> | <img src="[Đường_dẫn_ảnh_Web_Admin]" width="350"/> |
+| <img width="615" height="1286" alt="image" src="https://github.com/user-attachments/assets/f3023c92-1b16-4d41-a6ef-49d426ac2a98" />
+ | <img src="[Đường_dẫn_ảnh_A.5]" width="220"/> | <img src="[Đường_dẫn_ảnh_Web_Admin]" width="350"/> |
 | *Giao diện phân tích khẩn cấp* | *Tracking thời gian thực qua WebSocket* | *Bản đồ điều phối tổng thể* |
 
 ---
