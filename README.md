@@ -1,4 +1,4 @@
-  <img width="100" height="200" alt="image" align="center" src="https://github.com/user-attachments/assets/e37f2daf-9868-4bc3-929e-9a627a33e1b8" />
+<img width="1200" height="806" alt="Logo ĐH Ngoại Ngữ - Tin Học - HUFLIT" src="https://github.com/user-attachments/assets/c9365500-f365-4262-bf2a-317bc5141475" />
 
   # FloodAid - Nền tảng Hỗ trợ Điều phối Cứu trợ Lũ lụt tại Miền Trung
   
