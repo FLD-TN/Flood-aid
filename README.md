@@ -56,7 +56,8 @@ Hệ thống được thiết kế theo kiến trúc Client-Server với các mo
 
 | Main Screen | Manga List | Reader View |
 | :---: | :---: | :---: |
-|<img width="385" height="824" alt="Screenshot 2025-07-29 173922" src="https://github.com/user-attachments/assets/18894e83-f03c-4386-97ab-96b6cbcc86aa" />||<img width="385" height="824" alt="Screenshot 2025-07-29 184026" src="https://github.com/user-attachments/assets/0f17d0cf-c757-4919-9731-c141095c114b" />|
+|<img width="385" height="824" alt="Screenshot 2025-07-29 173922" src="https://github.com/user-attachments/assets/18894e83-f03c-4386-97ab-96b6cbcc86aa" />|<img width="415" height="839" alt="Screenshot 2025-07-29 173933" src="https://github.com/user-attachments/assets/53705232-65d0-4b46-9328-9b6ddc9be0f2" />|<img width="300" height="630" alt="image" src="https://github.com/user-attachments/assets/1aff837a-f743-4f54-97ec-b17be7e3b830" />
+|
 
 ---
 
