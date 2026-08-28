@@ -1,9 +1,9 @@
-  <img src="https://via.placeholder.com/150x150?text=FloodAid+Logo" alt="FloodAid Logo" width="120" />
+  <img width="100" height="200" alt="image" align="center" src="https://github.com/user-attachments/assets/e37f2daf-9868-4bc3-929e-9a627a33e1b8" />
 
   # FloodAid - Nền tảng Hỗ trợ Điều phối Cứu trợ Lũ lụt tại Miền Trung
   
   **Khóa luận Tốt nghiệp - Khoa Công nghệ Thông tin, Đại học Ngoại ngữ - Tin học TP.HCM (HUFLIT)**<br>
-  *Tác giả: Trần Anh Duy | Giảng viên hướng dẫn: ThS. Lê Thị Minh Nguyện*
+  *Sinh viên: Trần Anh Duy | Giảng viên hướng dẫn: ThS. Lê Thị Minh Nguyện*
 
   [![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev/)
   [![Node.js](https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
@@ -58,9 +58,11 @@ Hệ thống được thiết kế theo kiến trúc Client-Server với các mo
 
 | 📱 Nạn nhân gửi SOS (Voice/Text) | 📱 TNV Tracking GPS & Nhận ca | 💻 Web Admin - Live Map |
 | :---: | :---: | :---: |
-| <img width="300" height="700" alt="image" src="https://github.com/user-attachments/assets/f3023c92-1b16-4d41-a6ef-49d426ac2a98" />
- | <img src="[Đường_dẫn_ảnh_A.5]" width="220"/> | <img src="[Đường_dẫn_ảnh_Web_Admin]" width="350"/> |
-| *Giao diện phân tích khẩn cấp* | *Tracking thời gian thực qua WebSocket* | *Bản đồ điều phối tổng thể* |
+| <img width="300" height="650" alt="image" src="https://github.com/user-attachments/assets/f3023c92-1b16-4d41-a6ef-49d426ac2a98" />
+ | <img width="300" height="650" alt="image" src="https://github.com/user-attachments/assets/c00f22c8-f3ab-44d5-a9aa-8bb6de8739b5" />
+ | <img width="300" height="650" alt="image" src="https://github.com/user-attachments/assets/5d3686cc-ce1d-4156-9481-edc570f312cd" />
+ |
+| *Giao diện phân tích khẩn cấp* | *Tracking thời gian thực qua WebSocket* | *Nhắn tin thời gian thực qua WebSocket* |
 
 ---
 
