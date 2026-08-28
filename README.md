@@ -57,7 +57,6 @@ Hệ thống được thiết kế theo kiến trúc Client-Server với các mo
 | Nạn nhân tạo 1 ca SOS | Theo dõi ca cứu hộ | Nhắn tin thời gian thực |
 | :---: | :---: | :---: |
 |<img width="320" height="640" alt="image" src="https://github.com/user-attachments/assets/cd6b337f-c9d2-44be-8baa-fb84650f6876" />|<img width="320" height="640" alt="image" src="https://github.com/user-attachments/assets/35ca7d48-4bdb-4824-acd4-ce61e7537b58" />|<img width="320" height="640" alt="image" src="https://github.com/user-attachments/assets/1aff837a-f743-4f54-97ec-b17be7e3b830" />
-|
 
 ---
 
