@@ -35,7 +35,7 @@ Hệ thống được thiết kế theo kiến trúc Client-Server với các mo
 - **Mobile App (Nạn nhân & TNV):** Phát triển bằng Flutter/Dart. Tích hợp bản đồ **VietMap** (dữ liệu hẻm, phố Việt Nam chính xác hơn OpenStreetMap).
 - **Admin Dashboard:** React + Vite + Leaflet, cung cấp "Live Command Map" giám sát toàn cảnh.
 
-### 3. Trí tuệ Nhân tạo (AI Pipeline) & Định danh
+### 3. AI Pipeline & Định danh
 - **Parallel Race Pipeline:** Kết hợp dò từ khóa (Rule-based) và Mô hình ngôn ngữ lớn (**Gemini 2.5 Flash** dạng few-shot learning). Luôn lấy mức khẩn cấp (1-5) cao hơn giữa 2 nhánh để làm "sàn an toàn", đảm bảo không bao giờ bỏ sót ca nguy kịch kể cả khi API AI bị lỗi (timeout cứng 3s).
 - **Dialect Normalizer (On-device):** Thuật toán chuẩn hóa phương ngữ Miền Trung (tham chiếu từ điển *Viet74K*) chạy cục bộ trên Android bằng thuật toán *Greedy longest-match*, giúp sửa lỗi nhận dạng giọng nói (ví dụ: *"nước lên răng mà nhanh rứa"* ➔ *"nước lên sao mà nhanh thế"*).
 - **eKYC:** Tích hợp **FPT.AI** (OCR & FaceMatch >= 80%) để xác minh danh tính Tình nguyện viên qua Căn cước công dân.
