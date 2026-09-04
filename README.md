@@ -4,7 +4,10 @@
   
   **Khóa luận Tốt nghiệp - Khoa Công nghệ Thông tin, Đại học Ngoại ngữ - Tin học TP.HCM (HUFLIT)**<br>
   *Sinh viên: Trần Anh Duy | Giảng viên hướng dẫn: ThS. Lê Thị Minh Nguyện*
+  <br>
+  [Tải xuống Bài Báo Cáo ở đây !](https://github.com/user-attachments/files/31817053/Report_KLTN_1.pdf)
 
+  
   [![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev/)
   [![Node.js](https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
   [![PostgreSQL](https://img.shields.io/badge/PostGIS-316192?style=for-the-badge&logo=postgresql&logoColor=white)](https://postgis.net/)
